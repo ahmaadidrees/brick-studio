@@ -49,6 +49,24 @@ describe('tidy on open: only overlapping layouts are rearranged', () => {
     expect(placed[1].top).toBe(placed[0].bottom + STACK_GAP)
     expect(placed[2].top).toBe(placed[1].bottom + STACK_GAP + LABEL_BAND)
   })
+
+  it('keeps two columns as two columns, each tidied on its own, without the columns overlapping', () => {
+    const input = [
+      stack('a1', 20, 20, 300, 400, true), stack('a2', 20, 300, 300, 200, true),
+      stack('b1', 900, 20, 250, 300, true), stack('b2', 905, 200, 250, 100, true),
+    ]
+    expect(anyOverlap(input)).toBe(true)
+    const target = columnLayout(input)
+    expect([target.get('a1')!.x, target.get('a2')!.x]).toEqual([20, 20])
+    expect([target.get('b1')!.x, target.get('b2')!.x]).toEqual([900, 900])
+    expect(target.get('a2')!.y).toBeGreaterThan(target.get('a1')!.y)
+    expect(target.get('b2')!.y).toBeGreaterThan(target.get('b1')!.y)
+    const placed = input.map((s) => {
+      const at = target.get(s.id)!
+      return { ...s, left: at.x, right: at.x + (s.right - s.left), top: at.y, bottom: at.y + (s.bottom - s.top) }
+    })
+    expect(anyOverlap(placed)).toBe(false)
+  })
 })
 
 describe('undo and redo use Blockly\'s own stack', () => {
@@ -69,5 +87,51 @@ describe('undo and redo use Blockly\'s own stack', () => {
     } finally {
       ws.dispose()
     }
+  })
+})
+
+describe('turning a script off', () => {
+  it('keeps it in the workspace, saves it as off, and the program leaves it out; turning it on brings it back', async () => {
+    const { registerEditorBlocks } = await import('../../core/editor/definitions')
+    const { compileWorkspace } = await import('../../core/editor/compile')
+    const { setScriptOff, isScriptOff } = await import('./affordances')
+    const { createHeroBrick, heroVariables } = await import('../hero/heroBrick')
+    const Blockly = await import('blockly/core')
+    registerEditorBlocks({ getVariables: () => [...heroVariables(), { id: 'coins', name: 'coins', value: 0 }], getBricks: () => ['Hero'] })
+    const { workspace, brick } = createHeroBrick()
+    const ws = new Blockly.Workspace()
+    try {
+      Blockly.serialization.workspaces.load(workspace as never, ws)
+      const coyote = ws.getTopBlocks(false).find((b) => (b.data ?? '').includes('Coyote time'))!
+      setScriptOff(coyote, true)
+      expect(isScriptOff(coyote)).toBe(true)
+      const saved = Blockly.serialization.workspaces.save(ws)
+      expect(ws.getTopBlocks(false)).toHaveLength(29)
+      const off = compileWorkspace(saved, { variables: heroVariables() })
+      expect(off.program.scripts).toHaveLength(brick.program.scripts.length - 1)
+      setScriptOff(coyote, false)
+      const on = compileWorkspace(Blockly.serialization.workspaces.save(ws), { variables: heroVariables() })
+      expect(on.program.scripts).toHaveLength(brick.program.scripts.length)
+    } finally {
+      ws.dispose()
+    }
+  })
+
+  it('a built-in brick with a script turned off stays built-in (it is tuning, not a remix), and Back to the original turns it on again', async () => {
+    const { StudioStore } = await import('../store')
+    const { createStarterProject } = await import('../starter')
+    const store = new StudioStore(createStarterProject())
+    const ws = structuredClone(store.getState().project.workspaces.brick_hero) as { blocks: { blocks: Array<Record<string, unknown>> } }
+    const coyote = ws.blocks.blocks.find((b) => String(b.data ?? '').includes('Coyote time'))!
+    coyote.disabledReasons = ['MANUALLY_DISABLED']
+    const before = store.brick('brick_hero')!.program.scripts.length
+    store.setWorkspace('brick_hero', ws)
+    expect(store.brick('brick_hero')!.remixOf).toBeUndefined()
+    expect(store.brick('brick_hero')!.name).toBe('Hero')
+    expect(store.brick('brick_hero')!.program.scripts).toHaveLength(before - 1)
+    expect(store.canResetBrick('brick_hero')).toBe(true)
+    store.resetBrickOriginal('brick_hero')
+    expect(store.brick('brick_hero')!.program.scripts).toHaveLength(before)
+    expect(store.canResetBrick('brick_hero')).toBe(false)
   })
 })

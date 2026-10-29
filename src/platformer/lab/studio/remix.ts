@@ -1,6 +1,6 @@
 /** Catalog bricks are copied into each level. A remix changes that level's definition, never the catalog. */
 import type { BrickDef } from '../core/contracts'
-import { compileWorkspace, type Diagnostic } from '../core/editor/compile'
+import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
 import type { StudioProject } from './store'
 
@@ -62,9 +62,22 @@ function workspaceShape(workspace: unknown, values = false): unknown {
     // Empty argument arrays/warp=false are serialization defaults, not new procedure structure.
     const extraState = Object.fromEntries(Object.entries(extra).filter(([key, val]) => !(key === 'warp' && val === false) && !(Array.isArray(val) && val.length === 0)))
     const fields = values && record(b.fields) ? Object.fromEntries(Object.entries(b.fields).filter(([key]) => key !== 'LABEL').map(([key, val]) => [key, String(record(val) ? val.id ?? val.name ?? '' : val)])) : undefined
-    return { id: b.id, type: b.type, inputs: Object.fromEntries(connections), ...(next ? { next: node(next) } : {}), ...(Object.keys(extraState).length ? { extraState } : {}), ...(fields && Object.keys(fields).length ? { fields } : {}) }
+    // A script switched off is a change from the original (Back to the original undoes it), but not a remix.
+    const off = values && isTurnedOff(b) ? { off: true } : {}
+    return { id: b.id, type: b.type, inputs: Object.fromEntries(connections), ...(next ? { next: node(next) } : {}), ...(Object.keys(extraState).length ? { extraState } : {}), ...(fields && Object.keys(fields).length ? { fields } : {}), ...off }
   }
   return roots.map(node).sort((a, b) => stable(a).localeCompare(stable(b)))
+}
+
+/** A short fingerprint of a workspace's blocks, values included (FNV-1a over the stable shape), to recognise a known version. */
+export function workspaceFingerprint(workspace: unknown): string {
+  const text = stable(workspaceShape(workspace, true))
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
 }
 
 export function isStructuralWorkspaceChange(before: unknown, after: unknown): boolean {
@@ -200,4 +213,30 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
   const restored = clone(baseline)
   const next = retainOwnValues(replaceBrick(project, restored.brick, restored.workspace), restored.brick)
   return renameReferences(next, brick.name, restored.brick.name)
+}
+
+/**
+ * Earlier built-in Heroes' blocks, as generated and after a trip through the editor: the two My Blocks versions, and the
+ * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
+ * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits.
+ */
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812']
+
+/**
+ * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly
+ * an earlier original moves to the current original. Slider values the kid tuned are kept for every variable that
+ * still exists, and so are its costumes and sounds.
+ */
+export function upgradeUntouchedHero(project: StudioProject): StudioProject {
+  const hero = project.design.bricks.find((b) => b.id === 'brick_hero')
+  const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
+  if (!hero || !original || !EARLIER_HERO_FINGERPRINTS.includes(workspaceFingerprint(project.workspaces[hero.id]))) return project
+  const tuned = new Map(hero.program.variables.map((v) => [v.id, v.value]))
+  const fresh = clone(original)
+  const variables = fresh.brick.program.variables.map((v) => (tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+  const upgraded: BrickDef = { ...hero, program: { ...fresh.brick.program, variables } }
+  return {
+    design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? upgraded : b)) },
+    workspaces: { ...project.workspaces, [hero.id]: fresh.workspace },
+  }
 }

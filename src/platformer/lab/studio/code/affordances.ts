@@ -110,13 +110,52 @@ const LABEL_CLASS = 'code-script-label'
 /** How far above the hat's origin the label sits, in workspace units (the zelos hat cap rises about 20). */
 const LABEL_RISE = 26
 
-/** Draw (or remove) each top script's one-line label above its hat. */
+const SWITCH_CLASS = 'code-script-switch'
+const SWITCH_W = 42
+const SWITCH_H = 22
+
+/** Is this script turned off (Blockly's own "disabled", which the compiler skips)? */
+export function isScriptOff(block: Blockly.Block): boolean {
+  return block.hasDisabledReason(Blockly.constants.MANUALLY_DISABLED)
+}
+
+/** Turn a script on or off as one undo step. Turned-off scripts stay in the workspace, greyed, and do not run. */
+export function setScriptOff(block: Blockly.Block, off: boolean): void {
+  if (isScriptOff(block) === off) return
+  Blockly.Events.setGroup(true)
+  try {
+    block.setDisabledReason(off, Blockly.constants.MANUALLY_DISABLED)
+  } finally {
+    Blockly.Events.setGroup(false)
+  }
+}
+
+/**
+ * Draw (or remove) each top script's one-line label above its hat, and in front of it an On/Off switch (editable
+ * workspaces only): turning a feel script off is how a kid feels what it does.
+ */
 export function renderLabels(ws: Blockly.WorkspaceSvg): void {
+  const editable = !ws.options.readOnly && !ws.isFlyout
   for (const block of ws.getTopBlocks(false)) {
     const root = block.getSvgRoot()
     if (!root) continue
+    const hat = takesLabel(block)
+    const text = hat ? getLabel(block) : ''
+    let sw = root.querySelector(`:scope > .${SWITCH_CLASS}`) as SVGGElement | null
+    if (!(hat && editable)) {
+      sw?.remove()
+      sw = null
+    } else {
+      if (!sw) sw = createSwitch(block)
+      if (sw.parentNode !== root) root.appendChild(sw)
+      const off = isScriptOff(block)
+      sw.classList.toggle('is-off', off)
+      sw.setAttribute('aria-pressed', off ? 'false' : 'true')
+      sw.setAttribute('aria-label', `${off ? 'Turn on' : 'Turn off'}: ${text || 'this script'}`)
+      const word = sw.querySelector('text')
+      if (word && word.textContent !== (off ? 'Off' : 'On')) word.textContent = off ? 'Off' : 'On'
+    }
     const existing = root.querySelector(`:scope > .${LABEL_CLASS}`)
-    const text = takesLabel(block) ? getLabel(block) : ''
     if (!text) {
       existing?.remove()
       continue
@@ -125,12 +164,43 @@ export function renderLabels(ws: Blockly.WorkspaceSvg): void {
     if (!el) {
       el = document.createElementNS(SVG_NS, 'text') as SVGTextElement
       el.setAttribute('class', LABEL_CLASS)
-      el.setAttribute('x', '4')
       el.setAttribute('y', String(-LABEL_RISE))
       root.appendChild(el)
     }
+    el.setAttribute('x', String(sw ? SWITCH_W + 12 : 4))
     if (el.textContent !== text) el.textContent = text
   }
+}
+
+function createSwitch(block: Blockly.Block): SVGGElement {
+  const g = document.createElementNS(SVG_NS, 'g') as SVGGElement
+  g.setAttribute('class', SWITCH_CLASS)
+  g.setAttribute('role', 'button')
+  g.setAttribute('tabindex', '0')
+  g.setAttribute('transform', `translate(4, ${-LABEL_RISE - SWITCH_H + 6})`)
+  const pill = document.createElementNS(SVG_NS, 'rect')
+  pill.setAttribute('width', String(SWITCH_W))
+  pill.setAttribute('height', String(SWITCH_H))
+  pill.setAttribute('rx', String(SWITCH_H / 2))
+  const word = document.createElementNS(SVG_NS, 'text')
+  word.setAttribute('x', String(SWITCH_W / 2))
+  word.setAttribute('y', String(SWITCH_H / 2 + 4))
+  word.setAttribute('text-anchor', 'middle')
+  g.append(pill, word)
+  const toggle = () => {
+    setScriptOff(block, !isScriptOff(block))
+    if (block.workspace instanceof Blockly.WorkspaceSvg) renderLabels(block.workspace)
+  }
+  // Blockly starts a drag on pointerdown anywhere in the block, so the switch keeps its own pointer events.
+  g.addEventListener('pointerdown', (e) => { e.stopPropagation(); e.preventDefault() })
+  g.addEventListener('click', (e) => { e.stopPropagation(); toggle() })
+  g.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault()
+    e.stopPropagation()
+    toggle()
+  })
+  return g
 }
 
 // ---------------------------------------------------------------- layers
@@ -245,16 +315,34 @@ export function anyOverlap(stacks: PlacedStack[]): boolean {
   return false
 }
 
-/** Scratch's "Clean up": one column, in reading order, each stack under the last with room for its label. */
+/** Stacks whose left edges are further apart than this are in different columns. */
+export const COLUMN_SPLIT = 300
+
+/**
+ * Scratch's "Clean up", keeping columns: stacks are grouped into the columns they were laid out in (left edges more
+ * than COLUMN_SPLIT apart), and each column becomes one tidy column in reading order, each stack under the last with
+ * room for its label. Columns stay left to right and never overlap each other. Most layouts are one column.
+ */
 export function columnLayout(stacks: PlacedStack[]): Map<string, { x: number; y: number }> {
-  const sorted = [...stacks].sort((a, b) => a.top - b.top || a.left - b.left)
-  const x = sorted.length ? Math.min(...sorted.map((s) => s.left)) : 0
+  const byLeft = [...stacks].sort((a, b) => a.left - b.left)
+  const columns: PlacedStack[][] = []
+  for (const s of byLeft) {
+    const last = columns[columns.length - 1]
+    if (last && s.left - last[0].left <= COLUMN_SPLIT) last.push(s)
+    else columns.push([s])
+  }
   const out = new Map<string, { x: number; y: number }>()
-  let y = sorted.length ? sorted[0].top - (sorted[0].labelled ? LABEL_BAND : 0) : 0
-  for (const s of sorted) {
-    const top = s.labelled ? y + LABEL_BAND : y
-    out.set(s.id, { x, y: top })
-    y = top + (s.bottom - s.top) + STACK_GAP
+  let minX = -Infinity
+  for (const column of columns) {
+    const sorted = [...column].sort((a, b) => a.top - b.top || a.left - b.left)
+    const x = Math.max(Math.min(...sorted.map((s) => s.left)), minX)
+    let y = sorted[0].top - (sorted[0].labelled ? LABEL_BAND : 0)
+    for (const s of sorted) {
+      const top = s.labelled ? y + LABEL_BAND : y
+      out.set(s.id, { x, y: top })
+      y = top + (s.bottom - s.top) + STACK_GAP
+    }
+    minX = x + Math.max(...sorted.map((s) => s.right - s.left)) + STACK_GAP * 2
   }
   return out
 }

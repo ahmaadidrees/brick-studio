@@ -183,7 +183,8 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
 
       // Draw grid lines when zoomed in
       if (zoom >= 6) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+        // Code mode's costume editor is light (assets/light.css): a faint dark line reads on its checker.
+        ctx.strokeStyle = 'rgba(31, 35, 64, 0.12)'
         ctx.lineWidth = 1
         ctx.beginPath()
         for (let x = 0; x <= imgToDraw.width; x++) {

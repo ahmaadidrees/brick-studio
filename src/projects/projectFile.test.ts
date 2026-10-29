@@ -37,6 +37,16 @@ describe('one project file for every kind', () => {
     expect(readProjectFile(JSON.stringify({ format: 'brickgineers', version: 1, kind: 'robots', document: {} })).ok).toBe(false)
   })
 
+  it('a Hackable Platformer travels as a file, and its own "Save file" opens too', () => {
+    const save = { schemaVersion: 1, design: { name: 'Hacky' }, workspaces: {} }
+    const document = { format: 'brickgineers-hackable' as const, version: 1 as const, save }
+    const file = projectFile({ title: 'Hacky', content: { kind: 'hackable', document } })
+    expect(file).toMatchObject({ kind: 'hackable', document })
+    expect(readProjectFile(JSON.stringify(file))).toEqual({ ok: true, project: { title: 'Hacky', content: { kind: 'hackable', document } } })
+    expect(readProjectFile(JSON.stringify(save), 'whatever.json')).toEqual({ ok: true, project: { title: 'Hacky', content: { kind: 'hackable', document } } })
+    expect(readProjectFile(JSON.stringify({ ...file, document: { format: 'brickgineers-hackable', version: 1 } })).ok).toBe(false)
+  })
+
   it('names files safely', () => {
     expect(projectFileName('Maya’s Big Race!')).toBe('maya-s-big-race.brickgineers')
     expect(projectFileName('   ')).toBe('my-project.brickgineers')

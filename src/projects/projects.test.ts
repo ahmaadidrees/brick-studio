@@ -6,7 +6,8 @@ import { saveLocalBrickStudioProject } from '../brick/documentPersistence'
 import type { ClassroomClient } from '../classroom/client'
 import type { ClassroomWorld } from '../classroom/contracts'
 import { listDrafts, saveDraft } from '../platformer/ui/drafts'
-import { LOCAL_3D_ID, importProject, kindOfWorld, listLocalProjects, moveToAccount } from './projects'
+import { listHackableProjects, saveHackableText, touchHackableEntry } from '../platformer/lab/studio/persist/hackableProjects'
+import { LOCAL_3D_ID, importProject, kindOfWorld, listLocalProjects, localProject, moveToAccount, projectHref, removeLocalProject } from './projects'
 
 const created = vi.hoisted(() => ({ levels: [] as unknown[] }))
 vi.mock('../platformer/ui/cloudLevel', () => ({
@@ -18,6 +19,7 @@ vi.mock('../platformer/ui/cloudLevel', () => ({
 
 const brick = { id: 'brick-a', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#ffffff' }
 const doc3d = () => createBrickStudioDocument([brick as never])
+type ClientWithCreate = ClassroomClient & { createWorld: ReturnType<typeof vi.fn> }
 const fakeClient = () => ({ createWorld: vi.fn(async ({ title }: { title: string }) => ({ id: 'w3d', title, format: 'brick' }) as ClassroomWorld) }) as unknown as ClassroomClient & { createWorld: ReturnType<typeof vi.fn> }
 
 beforeEach(() => {
@@ -83,4 +85,43 @@ it('says what kind an account project is', () => {
   expect(kindOfWorld({ format: '2d' })).toBe('platformer')
   expect(kindOfWorld({ format: '2d', kit: 'race' })).toBe('race')
   expect(kindOfWorld({})).toBe('3d')
+})
+
+describe('Hackable Platformers in My projects', () => {
+  const save = { schemaVersion: 1, design: { name: 'Hacky' }, workspaces: {} }
+  const hackableClient = () => ({ createWorld: vi.fn(async ({ title }: { title: string }) => ({ id: 'wh', title, format: 'hackable' }) as ClassroomWorld) }) as unknown as ClientWithCreate
+
+  it('lists them with the rest, with their picture, opening in the Hackable Platformer', () => {
+    saveHackableText('h1', 'Hacky', JSON.stringify(save))
+    touchHackableEntry('h1', 'Hacky', undefined, 'data:image/jpeg;base64,AAA')
+    saveDraft(null, createBlankLevel(40, 20, 'Jumps'))
+    const hack = listLocalProjects().find((p) => p.kind === 'hackable')!
+    expect(hack).toMatchObject({ id: 'h1', title: 'Hacky', href: '/2d/hackable?draft=h1', picture: 'data:image/jpeg;base64,AAA' })
+    expect(localProject(hack)).toEqual({ title: 'Hacky', content: { kind: 'hackable', document: { format: 'brickgineers-hackable', version: 1, save } } })
+    removeLocalProject(hack)
+    expect(listHackableProjects()).toEqual([])
+    expect(listDrafts()).toHaveLength(1)
+  })
+
+  it('moves one to the account as a Hackable world, then removes the one here', async () => {
+    saveHackableText('h1', 'Hacky', JSON.stringify(save))
+    const client = hackableClient()
+    const [hack] = listLocalProjects()
+    expect((await moveToAccount(hack, client)).href).toBe('/2d/hackable?world=wh')
+    expect(client.createWorld).toHaveBeenCalledWith({ title: 'Hacky', document: { format: 'brickgineers-hackable', version: 1, save } })
+    expect(listHackableProjects()).toEqual([])
+  })
+
+  it('imports one: into the account when signed in, into this browser for a guest', async () => {
+    const project = { title: 'Hacky', content: { kind: 'hackable' as const, document: { format: 'brickgineers-hackable' as const, version: 1 as const, save } } }
+    expect(await importProject(project, { signedIn: true, client: hackableClient() })).toEqual({ ok: true, href: '/2d/hackable?world=wh', where: 'account' })
+    const local = await importProject(project, { signedIn: false })
+    expect(local).toMatchObject({ ok: true, where: 'local', href: expect.stringMatching(/^\/2d\/hackable\?draft=h/) })
+    expect(listHackableProjects()[0].title).toBe('Hacky')
+  })
+
+  it('says what kind an account one is, and where it opens', () => {
+    expect(kindOfWorld({ format: 'hackable' })).toBe('hackable')
+    expect(projectHref({ id: 'abc', format: 'hackable' })).toBe('/2d/hackable?world=abc')
+  })
 })

@@ -129,6 +129,8 @@ export type AppHeaderEditorProps = CommonProps & {
   renameMaxLength?: number
   /** Replaces the ⋯ "This build" menu; gets the header's rename opener. */
   worldMenu?: (controls: { openRename?: () => void }) => ReactNode
+  /** Replaces the Build | Explore switch (Code Lab shows Build · Code · Play). */
+  modeSwitch?: ReactNode
 }
 
 export type AppHeaderProps = AppHeaderLandingProps | AppHeaderPageProps | AppHeaderEditorProps
@@ -209,7 +211,7 @@ function EditorHeader({
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
   onSaveToAccount, onGoHome, onSwitchDimension, onOpenProjects, editorActions,
-  dimension = '3d', modeLabels, modeLock, hideCharacter = false, hideScene = false, startLiveTitle, renameMaxLength, worldMenu,
+  dimension = '3d', modeLabels, modeLock, hideCharacter = false, hideScene = false, startLiveTitle, renameMaxLength, worldMenu, modeSwitch,
   session, className, accountMenuDefaultOpen, onKeyDown, id, onGoToInviteWorld, inviteNavigationBlocked, inviteClient,
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
@@ -251,7 +253,7 @@ function EditorHeader({
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} startTitle={startLiveTitle} />
       </div>
       <div className="app-header-mode">
-        <ModeSwitch mode={mode} onRequestMode={onRequestMode} canExplore={canExplore} exploreReason={exploreReason} locked={locked} lockedReason={lockedReason} exploreLabel={modeLabels?.explore} exploreIcon={modeLabels?.exploreIcon} buildIcon={modeLabels?.buildIcon} />
+        {modeSwitch ?? <ModeSwitch mode={mode} onRequestMode={onRequestMode} canExplore={canExplore} exploreReason={exploreReason} locked={locked} lockedReason={lockedReason} exploreLabel={modeLabels?.explore} exploreIcon={modeLabels?.exploreIcon} buildIcon={modeLabels?.buildIcon} />}
       </div>
       <div className="app-header-end">
         <InvitesButton session={session} client={inviteClient} onGoToInviteWorld={onGoToInviteWorld} navigationBlocked={inviteNavigationBlocked} />

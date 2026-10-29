@@ -292,16 +292,17 @@ describe('The Hero brick is built from open blocks', () => {
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 1 flag script (feel), 9 My Blocks, 2 bump hats (left, right), 4 broadcast hats (boing, stomped, hero hurt, bounce).
-      expect(ws.getTopBlocks(false)).toHaveLength(16)
+      // 1 flag script, 19 "every tick" scripts (the basics, the feel scripts and Move), 4 bump hats (wall slide and run
+      // meter, left and right), 4 broadcast hats (boing, stomped, hero hurt, bounce), and the one My Block: move and collide.
+      expect(ws.getTopBlocks(false)).toHaveLength(29)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
       expect(again.program.scripts.map((s) => s.hat.opcode).sort()).toEqual(brick.program.scripts.map((s) => s.hat.opcode).sort())
-      // My Blocks keep their names, inputs and warp flag through a Blockly round trip (PROCEDURE_STATE_MUTATOR).
-      const shape = (ps: typeof brick.program.procedures) => ps.map((p) => [p.proccode, p.argumentNames, p.warp]).sort()
-      expect(shape(again.program.procedures)).toEqual(shape(brick.program.procedures))
-      expect(again.program.procedures.every((p) => p.body.length > 0)).toBe(true)
+      // The scripts keep their order through a Blockly round trip: "every tick" scripts run in that order.
+      expect(again.program.scripts.map((s) => s.hat.opcode)).toEqual(brick.program.scripts.map((s) => s.hat.opcode))
+      expect(again.program.scripts.map((s) => JSON.stringify(s.body))).toEqual(brick.program.scripts.map((s) => JSON.stringify(s.body)))
+      expect(again.program.procedures).toEqual(brick.program.procedures)
     } finally {
       ws.dispose()
     }
@@ -324,7 +325,8 @@ describe('The Hero brick is built from open blocks', () => {
     }
     walk(workspace)
     const known = new Set([
-      'event_whenflagclicked', 'platformer_whenbump', 'platformer_setgravity', 'platformer_setspeed', 'platformer_changespeed',
+      'event_whenflagclicked', 'platformer_whenbump', 'platformer_everytick', 'platformer_setgravity', 'platformer_setmover',
+      'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_tellhit', 'platformer_setonground', 'platformer_setspeed', 'platformer_changespeed',
       'platformer_speed', 'platformer_onground', 'motion_pointindirection', 'motion_setrotationstyle', 'control_forever',
       'control_if', 'control_if_else', 'procedures_definition', 'procedures_call', 'data_variable', 'data_setvariableto',
       'data_changevariableby', 'sensing_keypressed', 'operator_add', 'operator_subtract', 'operator_multiply',
@@ -338,15 +340,39 @@ describe('The Hero brick is built from open blocks', () => {
     expect(JSON.stringify(workspace)).not.toContain('"GRAVITY":"on"')
   })
 
-  it('is split into My Blocks a kid can read: read keys, feel the wall, walk, run meter, jump, fall', () => {
-    const { brick } = createHeroBrick()
-    expect(brick.program.procedures.map((p) => p.proccode)).toEqual([
-      'read keys and walls', 'walk and run', 'read keys', 'feel the wall', 'walk', 'run meter', 'jump (hold to go higher)', 'fall and land', 'hit a wall',
+  it('is the basics plus small feel scripts, each "every tick", with only the plumbing to go inside', () => {
+    const { brick, workspace } = createHeroBrick()
+    expect(brick.program.procedures.map((p) => p.proccode)).toEqual(['move and collide'])
+    const labelOf = (id: string) => {
+      const top = ((workspace.blocks as { blocks: Array<{ id: string; data?: string }> }).blocks).find((b) => b.id === id)!
+      return (top.data ?? '').replace(/^label:/, '')
+    }
+    const ticks = brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_everytick').map((s) => labelOf(s.id).split(':')[0])
+    // The order is the order they run in each tick: each feel script sits just before the basic it changes.
+    expect(ticks).toEqual([
+      'Read the arrow keys, x and space',
+      'Start each tick with the normal numbers',
+      'Wall jump (part 1)',
+      'Wall slide (part 1)',
+      'Run with x',
+      'Skid',
+      'Walk',
+      'Run meter',
+      'Coyote time',
+      'Jump buffer',
+      'Faster jumps go higher',
+      'Jump',
+      'Wall jump (part 2)',
+      'Forget an old jump press, one tick at a time',
+      'Hold to jump higher',
+      'Gravity',
+      'Wall slide (part 2)',
+      'Top fall speed',
+      'Move',
     ])
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
-    const forever = flag.body.find((s) => s.opcode === 'control_forever')!
-    expect(forever.branches![0].map((s) => s.call?.proccode)).toEqual(['read keys and walls', 'walk and run', 'jump (hold to go higher)', 'fall and land'])
-    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right'])
+    expect(flag.body.some((s) => s.opcode === 'control_forever')).toBe(false)
+    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right', 'left', 'right'])
   })
 
   it('shows only four Hero knobs in Build; every other tuning number is a plain variable in the groups of "More tuning"', () => {
@@ -361,7 +387,7 @@ describe('The Hero brick is built from open blocks', () => {
     const shown = createHeroBrick().brick.program.variables.filter((v) => v.showInBuild)
     expect(shown.map((v) => v.id)).toEqual(['walk_top', 'run_top', 'jump_stand', 'fall_gravity'])
     // The working memory is not a knob either.
-    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 23)
+    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 27)
     // The groups hold every other tuning number exactly once, in Walking / Running / Jumping / Falling / Walls order.
     expect(HERO_KNOB_GROUPS.map((g) => g.label)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls'])
     const grouped = HERO_KNOB_GROUPS.flatMap((g) => g.knobIds)

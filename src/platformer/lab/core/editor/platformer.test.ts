@@ -15,13 +15,21 @@ const PLATFORMER_TEXT: Record<string, string> = {
   platformer_speed: '%1 speed',
   platformer_onground: 'on ground?',
   platformer_whenbump: 'when I bump %1 of %2',
+  platformer_everytick: 'every tick',
+  platformer_whenland: 'when I land',
+  platformer_whenleaveground: 'when I leave the ground',
+  platformer_setmover: 'move me with %1',
+  platformer_moveuntilhit: 'move %1 by %2 until I hit something',
+  platformer_hitsomething: 'hit something?',
+  platformer_tellhit: 'tell what I hit',
+  platformer_setonground: 'set on ground? to %1',
 }
 
 describe('Platformer blocks: wording', () => {
   const defs = createBlockDefinitions()
   const platformerDefs = defs.filter((d) => (d.type as string).startsWith('platformer_'))
 
-  it('has exactly the seven Platformer blocks, worded as the STEP3 table (and no touching tile: step 7 removed it)', () => {
+  it('has exactly the Platformer blocks, worded as the STEP3 table plus the three hook hats (and no touching tile: step 7 removed it)', () => {
     expect(platformerDefs.map((d) => d.type).sort()).toEqual(Object.keys(PLATFORMER_TEXT).sort())
     for (const d of platformerDefs) {
       expect(d.message0).toBe(PLATFORMER_TEXT[d.type as string])
@@ -49,6 +57,10 @@ describe('Platformer blocks: wording', () => {
     expect(byType.platformer_speed.output).toBe('Number')
     expect(byType.platformer_onground.output).toBe('Boolean')
     expect(byType.platformer_whenbump.hat).toBe('cap')
+    for (const hook of ['platformer_everytick', 'platformer_whenland', 'platformer_whenleaveground']) {
+      expect(HAT_OPCODES).toContain(hook)
+      expect(byType[hook].hat).toBe('cap')
+    }
     expect(byType.platformer_setgravity.previousStatement).toBeNull()
   })
 })
@@ -181,7 +193,7 @@ describe('Platformer blocks: workspace JSON compiles to IR', () => {
 })
 
 describe('Platformer toolbox category', () => {
-  it('is the last category (My Blocks is first), with an extension header and all eight blocks', () => {
+  it('is the last category (My Blocks is first), with an extension header and every Platformer block', () => {
     const t = createContinuousToolbox()
     const names = t.contents.map((c) => c.name)
     expect(names[0]).toBe('My Blocks')

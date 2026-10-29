@@ -267,6 +267,19 @@
 .landing-chips li { padding: 7px 13px; border-radius: var(--radius-pill); background: var(--surface); font-size: 14px; font-weight: 800; }
 
 /* Better with friends */
+/* The Hackable Platformer band: copy beside its looping clip, in its own violet. */
+.landing-hack { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: clamp(28px, 4.5vw, 64px); align-items: center; padding: clamp(28px, 4vw, 56px); border-radius: 32px; background: var(--landing-hack-soft); }
+.landing-hack-eyebrow { color: var(--landing-hack); }
+.landing-hack-copy h2 { margin-top: 10px; font-size: clamp(32px, 4.2vw, 56px); line-height: 1.02; letter-spacing: -0.02em; }
+.landing-hack-copy > p { margin-top: 18px; color: var(--text-muted); font-size: 18px; font-weight: 600; line-height: 1.55; }
+.landing-hack-steps { display: grid; gap: 10px; margin: 22px 0 0; padding: 0; list-style: none; }
+.landing-hack-steps li { padding: 12px 16px; border-left: 4px solid var(--landing-hack); border-radius: 12px; background: #fff; color: var(--text-muted); font-size: 16px; font-weight: 600; }
+.landing-hack-steps b { color: var(--text); font-weight: 800; }
+.landing-hack-copy .landing-cta-row { margin-top: 24px; }
+.landing-hack-copy .ui-button-primary { background: var(--landing-hack); border-color: var(--landing-hack); }
+.landing-hack-note { margin-top: 12px; color: var(--text-muted); font-size: 14px; font-weight: 700; }
+.landing-hack-picture { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 22px; background: #dcd3ff; box-shadow: 0 18px 40px rgba(76, 52, 160, 0.18); object-fit: cover; }
+
 .landing-friends { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: clamp(28px, 4.5vw, 64px); align-items: center; }
 .landing-friends-copy h2 { font-size: clamp(32px, 4.2vw, 56px); line-height: 1.02; letter-spacing: -0.02em; }
 .landing-friends-copy > p { margin-top: 18px; color: var(--text-muted); font-size: 18px; font-weight: 600; line-height: 1.55; }
@@ -283,12 +296,13 @@
 .landing-teachers .landing-eyebrow { color: var(--brand-butter); }
 .landing-teachers .landing-section-heading h2 { color: var(--primary-contrast); }
 .landing-teachers .landing-section-heading p { color: #D5DEE7; }
-.landing-features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.landing-features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
 .landing-features li { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 12px; align-items: center; padding: 22px; border-radius: 22px; background: #31495F; }
 .landing-feature-icon { grid-row: 1 / 3; align-self: start; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: var(--primary-contrast); }
 .landing-feature-icon-blue { background: var(--primary); }
 .landing-feature-icon-coral { background: var(--accent); color: var(--text); }
 .landing-feature-icon-butter { background: var(--brand-butter); color: var(--text); }
+.landing-feature-icon-hack { background: var(--landing-hack); }
 .landing-features h3 { font-size: 19px; }
 .landing-features p { margin-top: 6px; color: #CDD7E1; font-size: 14.5px; font-weight: 600; line-height: 1.5; }
 .landing-teachers-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 16px; }
@@ -380,11 +394,14 @@
 }
 
 @media (max-width: 940px) {
-  .landing-hero, .landing-friends { grid-template-columns: minmax(0, 1fr); }
+  .landing-hero, .landing-friends, .landing-hack { grid-template-columns: minmax(0, 1fr); }
   .landing-teachers-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 760px) {
+  /* A phone: the Hackable clip comes first, then the words. */
+  .landing-hack-art { order: -1; }
+  .landing-hack { padding: 20px; border-radius: 24px; }
   .landing-menu-toggle { display: inline-flex; }
   .landing-nav { padding-top: 14px; }
   .landing-nav .app-header-brand .brand-wordmark { font-size: 24px !important; }

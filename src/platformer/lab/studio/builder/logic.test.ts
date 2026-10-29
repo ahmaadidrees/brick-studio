@@ -5,7 +5,7 @@ import { activeEntryId, brickEntryId, categoryForBrick, drawerEntries, standardK
 import { fakeGridTemplate } from './testGridBricks'
 import { blankTileLayer, ensureTiles, withTiles } from './ensureTiles'
 import { knobRange, snapKnob } from './knobs'
-import { createBlankBrick, createBrickFromTemplate } from './newBrick'
+import { createNewBrick, isFreshBrick, startBrickFromTemplate } from './newBrick'
 
 // gridBrickTemplate is a stub until the step 7 bricks lane merges: these tests use the builder's test double.
 vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gridBricks')>()), gridBrickTemplate: (await import('./testGridBricks')).fakeGridTemplate }))
@@ -86,30 +86,34 @@ describe('tile layer for older saves', () => {
 })
 
 describe('+ New brick', () => {
-  it('a template becomes a selected brick with its workspace, and the workshop opens on it', () => {
+  it('makes "My brick 1" in one step, opens it in Code and asks for its name, without arming it', () => {
     const store = new StudioStore(emptyProject())
-    const id = createBrickFromTemplate(store, fakeTemplate, 'Robot')
+    const id = createNewBrick(store)
     const s = store.getState()
-    expect(s.workshopBrickId).toBe(id)
     expect(s.selectedBrickId).toBe(id)
-    expect(s.brushBrickId).toBe(id)
+    expect(s.cardTab).toBe('code')
+    expect(s.namingBrickId).toBe(id)
+    expect(s.brushBrickId).toBeNull()
     const brick = s.project.design.bricks.find((b) => b.id === id)!
-    expect(brick.name).toBe('Robot')
+    expect(brick.name).toBe('My brick 1')
+    expect(brick.costumes).toHaveLength(1)
+    expect(isFreshBrick(brick)).toBe(true)
+  })
+  it('takes the first free number, ignoring case', () => {
+    const store = new StudioStore(emptyProject())
+    const first = createNewBrick(store)
+    store.renameBrick(first, 'my brick 2')
+    const second = createNewBrick(store)
+    expect(store.brick(second)!.name).toBe('My brick 1')
+    expect(store.brick(createNewBrick(store))!.name).toBe('My brick 3')
+  })
+  it('Start from a template keeps the brick\'s id and name and gives it fresh block ids each time', () => {
+    const store = new StudioStore(emptyProject())
+    const id = createNewBrick(store)
+    startBrickFromTemplate(store, id, fakeTemplate)
+    const brick = store.brick(id)!
+    expect(brick.name).toBe('My brick 1')
     expect(brick.program.variables[0].id).toBe('fake_speed')
-    expect(s.project.workspaces[id]).toMatchObject({ marker: 'fake_1' })
-  })
-  it('names stay unique, and make() gets a fresh id each time', () => {
-    const store = new StudioStore(emptyProject())
-    createBrickFromTemplate(store, fakeTemplate, 'Robot')
-    const id2 = createBrickFromTemplate(store, fakeTemplate, 'Robot')
-    const bricks = store.getState().project.design.bricks
-    expect(bricks.map((b) => b.name)).toEqual(['Robot', 'Robot 2'])
-    expect(store.getState().project.workspaces[id2]).toMatchObject({ marker: 'fake_2' })
-  })
-  it('with no templates a blank brick still opens the workshop', () => {
-    const store = new StudioStore(emptyProject())
-    const id = createBlankBrick(store, 'Ghost')
-    expect(store.getState().workshopBrickId).toBe(id)
-    expect(store.getState().project.design.bricks[0].costumes).toHaveLength(1)
+    expect(store.getState().project.workspaces[id]).toMatchObject({ marker: 'fake_2' })
   })
 })

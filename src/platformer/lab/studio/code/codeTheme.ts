@@ -21,3 +21,23 @@ export const CODE_DARK_THEME = Blockly.Theme.defineTheme('code_dark_theme', {
     selectedGlowOpacity: 0.8,
   },
 })
+
+/** Code Lab's editor: Scratch's light look inside the light app (docs/qa/code-lab-on-main/UX-AUDIT.md). */
+export const CODE_LIGHT_THEME = Blockly.Theme.defineTheme('code_light_theme', {
+  name: 'code_light_theme',
+  base: Blockly.Themes.Zelos,
+  componentStyles: {
+    workspaceBackgroundColour: '#ffffff',
+    toolboxBackgroundColour: '#fbf9f4',
+    toolboxForegroundColour: '#2e3350',
+    flyoutBackgroundColour: '#f6f3ec',
+    flyoutForegroundColour: '#2e3350',
+    flyoutOpacity: 1,
+    scrollbarColour: '#c9c2b2',
+    scrollbarOpacity: 0.7,
+    insertionMarkerColour: '#1f2340',
+    insertionMarkerOpacity: 0.25,
+    selectedGlowColour: '#ffd43b',
+    selectedGlowOpacity: 0.95,
+  },
+})

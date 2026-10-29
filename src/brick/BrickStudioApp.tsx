@@ -1404,6 +1404,7 @@ export default function BrickStudioApp({
         if (cancelled) return
         // A 2D level opens in the 2D builder, never as a 3D build.
         if (isPlatformerDocument(world.document)) { window.location.replace(`/2d/build?world=${encodeURIComponent(world.id)}`); return }
+        if (world.format === 'hackable') { window.location.replace(`/2d/hackable?world=${encodeURIComponent(world.id)}`); return }
         if (!world.document) throw new Error('This world did not include a complete build.')
         await openCloudWorld(world.document, world)
       } catch {

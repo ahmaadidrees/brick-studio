@@ -3,6 +3,7 @@ import { PLATFORMER_FORMAT, isPlatformerDocument, validatePlatformerDocument, ty
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 import type { ClassroomInvite } from '../../../../packages/classroom-contracts/src/index';
+import { shelfRoute } from './shelf';
 
 export interface ClassroomEnv {
   SUPABASE_URL?: string;
@@ -89,6 +90,7 @@ export class ClassroomService {
     const data = response.status === 204 ? null : await response.json().catch(() => null) as Row | null;
     if (!response.ok) {
       if (data?.code === 'P0001' && ['brick_student_quota', 'brick_world_quota'].includes(data.message)) fail(409, 'quota_exceeded', data.message === 'brick_student_quota' ? 'This class has reached its student limit. Ask your teacher for help.' : 'You have reached the saved-world limit. Ask your teacher for help.');
+      if (data?.code === 'P0001' && data.message === 'brick_shelf_quota') fail(409, 'quota_exceeded', 'The class shelf is full (100 bricks). Ask your teacher to clear some space.');
       if (data?.code === '23514' && /brick_(world|checkpoint)_document_size/.test(data.message || '')) fail(413, 'too_large', 'This world exceeds the storage size limit. Your previous saved version is unchanged.');
       if (data?.code === '23505') fail(409, 'already_exists', 'That username or code is already in use.');
       // Admin user writes (registration, temporary/reset passwords) carry no sign-in credentials: a 400/422 there is
@@ -482,7 +484,7 @@ export class ClassroomService {
 }
 export type Caller = { id: string; username: string; rosterName: string; role: 'teacher' | 'student'; resetRequired: boolean; classId?: string; authVersion: number; sessionId: string; token: string };
 /** `teacherName` is null: teacher accounts are bare auth users with no roster name in the brick tables. */
-function classView(row: Row, code?: string, buildingNow: number | null = null) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, studentsCanShare: row.students_can_share !== false, buildingNow, teacherName: null, ...(code ? { code } : {}) }; }
+function classView(row: Row, code?: string, buildingNow: number | null = null) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, studentsCanShare: row.students_can_share !== false, shelfNeedsReview: row.shelf_needs_review !== false, raceHeroes: row.race_heroes ?? 'shelf', buildingNow, teacherName: null, ...(code ? { code } : {}) }; }
 /**
  * Whether a non-owner may edit a shared personal world right now: shared with editing, not hidden by the teacher,
  * the owner not suspended, and the owner's class has collaboration open and sharing on. Mirrors the checks
@@ -543,9 +545,25 @@ function inviteView(row: Row, world: Row, ownerName: string, canEdit: boolean): 
  * Worlds hold either a 3D brick build or a 2D level; the document's own `format` field says which (brick documents
  * have none). Metadata-only reads select it as `doc_format`; full rows carry the document itself.
  */
-export type WorldFormat = 'brick' | '2d';
+export type WorldFormat = 'brick' | '2d' | 'hackable';
+/** A Hackable Platformer project (Code Lab): its save envelope, wrapped so it says what it is. */
+export const HACKABLE_FORMAT = 'brickgineers-hackable';
+const isHackableDocument = (value: unknown): boolean => !!value && typeof value === 'object' && (value as Row).format === HACKABLE_FORMAT;
 export function worldFormat(row: Row): WorldFormat {
+  if (row.doc_format === HACKABLE_FORMAT || isHackableDocument(row.document)) return 'hackable';
   return row.doc_format === PLATFORMER_FORMAT || isPlatformerDocument(row.document) ? '2d' : 'brick';
+}
+/**
+ * The Worker only checks a Hackable project's outline (the app's own parser checks the rest when it opens one, as it
+ * does for files): what it is, its version, and a save envelope with a design and workspaces. Size is the table's limit.
+ */
+function hackableDocument(value: unknown): Row {
+  const v = value as Row, save = v?.save as Row | undefined;
+  const ok = v?.version === 1 && !!save && typeof save === 'object' && !Array.isArray(save) && typeof save.schemaVersion === 'number'
+    && !!save.design && typeof save.design === 'object' && !Array.isArray(save.design)
+    && (save.workspaces === undefined || (typeof save.workspaces === 'object' && save.workspaces !== null && !Array.isArray(save.workspaces)));
+  if (!ok) fail(400, 'invalid_document', 'This project is incomplete or invalid. Your existing saved project has not been replaced.');
+  return { format: HACKABLE_FORMAT, version: 1, save };
 }
 /** A 2D level's kit: 'race' for race tracks; absent for platformers and 3D builds (so older apps see nothing new). */
 export function worldKit(row: Row): 'race' | undefined {
@@ -593,11 +611,12 @@ async function body(request: Request): Promise<Row> {
  * Validates a document of either kind and returns its canonical form. `expected` pins the kind a world already has:
  * a save never turns a 3D world into a 2D level or the other way round.
  */
-function document(value: unknown, expected?: WorldFormat): BrickStudioDocument | PlatformerDocument | null {
-  const format: WorldFormat = isPlatformerDocument(value) ? '2d' : 'brick';
+function document(value: unknown, expected?: WorldFormat): BrickStudioDocument | PlatformerDocument | Row | null {
+  const format: WorldFormat = isHackableDocument(value) ? 'hackable' : isPlatformerDocument(value) ? '2d' : 'brick';
   if (expected && format !== expected) {
-    fail(400, 'wrong_world_kind', expected === '2d' ? 'This world is a 2D level. Open it in the 2D builder.' : 'This world is a 3D build. Open it in the 3D builder.');
+    fail(400, 'wrong_world_kind', expected === 'hackable' ? 'This is a Hackable Platformer. Open it there.' : expected === '2d' ? 'This world is a 2D level. Open it in the 2D builder.' : 'This world is a 3D build. Open it in the 3D builder.');
   }
+  if (format === 'hackable') return hackableDocument(value);
   if (format === '2d') {
     const level = validatePlatformerDocument(value);
     if (!level.ok) fail(400, 'invalid_document', 'This level is incomplete or invalid. Your existing saved level has not been replaced.');
@@ -795,6 +814,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
         .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id));
       return json({ classmates });
     }
+    if (path[2] === 'shelf') return shelfRoute(service, caller, await service.classFor(caller, path[1]), path, method, () => body(request), fail, rosterDisplayName);
     const cls = await service.classFor(caller, path[1], true);
     if (path.length === 2 && method === 'PATCH') {
       const input = await body(request), changes: Row = {};
@@ -802,6 +822,9 @@ async function route(request: Request, service: ClassroomService, path: string[]
       for (const [api, db] of [['enrollmentOpen', 'enrollment_open'], ['collaborationOpen', 'collaboration_open'], ['showNamesOnJoin', 'show_names_on_join'], ['studentsCanShare', 'students_can_share']]) {
         if (input[api] !== undefined) { if (typeof input[api] !== 'boolean') fail(400, 'invalid_input', `${api} must be true or false.`); changes[db] = input[api]; }
       }
+      // The class shelf: whether students' bricks wait for the teacher, and which Heroes a class race allows.
+      if (input.shelfNeedsReview !== undefined) { if (typeof input.shelfNeedsReview !== 'boolean') fail(400, 'invalid_input', 'shelfNeedsReview must be true or false.'); changes.shelf_needs_review = input.shelfNeedsReview; }
+      if (input.raceHeroes !== undefined) { if (!['builtin', 'shelf', 'any'].includes(input.raceHeroes)) fail(400, 'invalid_input', 'raceHeroes must be builtin, shelf or any.'); changes.race_heroes = input.raceHeroes; }
       const updated = Object.keys(changes).length ? (await service.patch('classes', `id=eq.${cls.id}&teacher_id=eq.${caller.id}`, changes))[0] : cls;
       let code: string | undefined;
       if (input.rotateCode === true) {
@@ -1093,6 +1116,8 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
+  // Hackable projects have no live rooms yet: never hand one to a 3D room.
+  if (worldFormat(row) === 'hackable') fail(409, 'wrong_world_kind', 'This is a Hackable Platformer. Open it there.');
   return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }
 /** A stored 2D level as the PlatformerRoom consumes it. Refuses 3D worlds. */
@@ -1101,6 +1126,7 @@ export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
+  if (worldFormat(row) === 'hackable') fail(409, 'wrong_world_kind', 'This is a Hackable Platformer. Open it there.');
   if (worldFormat(row) !== '2d') fail(409, 'wrong_world_kind', 'This world is a 3D build. Open it in the 3D builder.');
   const level = validatePlatformerDocument(row.document);
   if (!level.ok) fail(409, 'invalid_document', 'This level could not be opened.');

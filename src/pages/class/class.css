@@ -62,7 +62,7 @@
 .class-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3) var(--space-4); }
 .class-head h1 { font-size: 30px; }
 .class-head-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.class-tabs { max-width: 520px; }
+.class-tabs { max-width: 640px; }
 
 /* Chips, banners, helpers -------------------------------------------------- */
 .class-chip {
@@ -178,6 +178,40 @@
 .class-setting-row:first-of-type { border-top: 0; }
 .class-setting-row small { display: block; max-width: 56ch; color: var(--text-muted); }
 .class-setting-title { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Shelf -------------------------------------------------------------------- */
+.class-shelf-what { font-size: var(--text-md); }
+.class-shelf-peek {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: var(--text-sm);
+}
+.class-shelf-peek div { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.class-shelf-peek dt { color: var(--text-muted); font-weight: 700; }
+.class-shelf-peek dd { margin: 0; overflow-wrap: anywhere; }
+.class-shelf-hidden-title { margin-top: var(--space-3); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.class-radio-group { flex-direction: column; align-items: stretch; margin: 0; padding: var(--space-3) 0 0; border-width: 1px 0 0; border-style: solid; border-color: var(--border); }
+.class-radio-group legend { float: left; width: 100%; padding: 0; }
+.class-radio-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.class-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.class-radio:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.class-radio input { width: 20px; height: 20px; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--primary-strong); }
+.class-radio input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.class-radio span { display: flex; flex-direction: column; }
 
 /* First run ---------------------------------------------------------------- */
 .class-first-run { max-width: 820px; margin: 0 auto; }

@@ -18,7 +18,7 @@ export type ClassroomInvite = {
   worldId: string
   title: string
   ownerName: string
-  format: 'brick' | '2d'
+  format: 'brick' | '2d' | 'hackable'
   canEdit: boolean
   invitedAt: string
   seenAt: string | null

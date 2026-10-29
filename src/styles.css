@@ -105,6 +105,9 @@
   --landing-blue: var(--primary);
   --landing-blue-dark: var(--primary-strong);
   --landing-red: var(--accent);
+  /* The Hackable Platformer (landing band, demo pill, teacher card). */
+  --landing-hack: #7048e8;
+  --landing-hack-soft: #f3f0ff;
   --landing-yellow: var(--brand-butter);
   --landing-green: var(--success);
   --landing-cream: var(--bg);

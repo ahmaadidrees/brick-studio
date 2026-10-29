@@ -61,6 +61,11 @@ export type HatOpcode =
   | 'control_start_as_clone'
   /** Platformer extension (step 3): fields.SIDE ('_any_' | 'top' | 'bottom' | 'left' | 'right'), fields.BRICK ('_any_' | '_edge_' | brick name). */
   | 'platformer_whenbump'
+  /** Platformer hooks (Code Lab power bricks): run once per tick after the green flag, in program order. */
+  | 'platformer_everytick'
+  /** Platformer hooks: the brick's body just landed on something / just left the ground (started by the physics step). */
+  | 'platformer_whenland'
+  | 'platformer_whenleaveground'
 
 export interface Script {
   id: string
@@ -130,9 +135,24 @@ export interface Sound {
   asset?: string
 }
 
+/** A power brick snapped onto this brick (studio/powers): which scripts and variables it added, and who made it. */
+export interface SnappedPower {
+  /** This snap, unique within the brick. */
+  id: string
+  name: string
+  /** Who made the power, then who remixed it, oldest first. */
+  credits: string[]
+  /** Top-level block ids (scripts and My Block definitions) the power added to the brick's workspace. */
+  blockIds: string[]
+  /** Variable and list ids the power added. */
+  variableIds: string[]
+}
+
 export interface BrickDef {
   /** Catalog definition this level's edited brick came from. Missing on older saves and original bricks. */
   remixOf?: string
+  /** Power bricks snapped on, in the order they were added. */
+  powers?: SnappedPower[]
   /** Step 6b: how many copies a level may hold (1 for the Hero and the Goal). Missing means no limit. */
   limit?: number
   /** Step 7: a grid brick (Ground, ? block, Spikes...). Its copies are painted cells of LevelDesign.tiles. See GridSpec. */
@@ -306,6 +326,11 @@ export interface Body {
   vy: number
   /** True after a tick in which this body was stopped moving down by something solid (or the level floor). */
   onGround: boolean
+  /**
+   * "move me with [my own blocks]": the physics step leaves this body where it is (no gravity, no move, no bumps) and
+   * the brick's own blocks move it with "move [x] by (n) until I hit something". It is still solid for others.
+   */
+  selfMove?: boolean
 }
 
 export interface PhysicsSettings {

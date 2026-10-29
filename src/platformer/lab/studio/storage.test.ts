@@ -164,7 +164,7 @@ describe('Storage & Autosave (storage.ts)', () => {
     const notice = getStorageNotice()
     expect(notice).not.toBeNull()
     expect(notice?.type).toBe('newer-version')
-    expect(notice?.message).toContain('newer version of Code Lab')
+    expect(notice?.message).toContain('newer version of Brickgineers')
   })
 
   // ---------------------------------------------------------------------------

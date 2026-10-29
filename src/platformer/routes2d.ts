@@ -7,7 +7,9 @@
  *   /2d/play/<course>      play a course        /2d/play#l=<code> play a level from a share link
  *   /2d/r/<room>           a guest room (32 hex digits)
  *   /2d/w/<world>          a class level's live room (its world id, with or without dashes)
- *   /2d/lab/next           Code Lab on the new block runtime (preview; src/platformer/lab/studio)
+ *   /2d/hackable           the Hackable Platformer (Code Lab, src/platformer/lab/studio): your newest one in this browser
+ *   /2d/hackable?new=1     a new one (in the account when signed in)   ?world=<id> an account one   ?draft=<id> one in this browser
+ *   /2d/lab/next           the Hackable Platformer's old address: goes to /2d/hackable
  *   /2d/lab                the code lab: every brick (and you) is a block program (single player, this browser only)
  */
 
@@ -22,7 +24,8 @@ export type Route2D =
   | { kind: 'guest'; roomId: string }
   | { kind: 'classroom'; worldId: string }
   | { kind: 'lab' }
-  | { kind: 'studio' }
+  | { kind: 'studio'; world?: string; draft?: string; fresh: boolean }
+  | { kind: 'studio-moved' }
   | { kind: 'not-found' }
 
 /** A world id with dashes, from either spelling; null for anything else. */
@@ -37,7 +40,12 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
   const query = new URLSearchParams(search)
   if (path === '/2d') return { kind: 'home' }
   if (path === '/2d/lab') return { kind: 'lab' }
-  if (path === '/2d/lab/next') return { kind: 'studio' }
+  if (path === '/2d/lab/next') return { kind: 'studio-moved' }
+  if (path === '/2d/hackable') {
+    const world = query.get('world')?.trim() || ''
+    const draft = /^[a-z0-9]{1,64}$/i.exec(query.get('draft')?.trim() ?? '')?.[0]
+    return { kind: 'studio', ...(canonicalWorldId(world) ? { world: canonicalWorldId(world)! } : {}), ...(draft ? { draft } : {}), fresh: query.get('new') === '1' }
+  }
   if (path === '/2d/build') {
     const world = query.get('world')?.trim() || undefined
     const draft = query.get('draft')?.trim() || undefined

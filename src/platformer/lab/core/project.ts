@@ -82,6 +82,9 @@ const HAT_OPCODES: readonly HatOpcode[] = [
   'event_whengreaterthan',
   'control_start_as_clone',
   'platformer_whenbump',
+  'platformer_everytick',
+  'platformer_whenland',
+  'platformer_whenleaveground',
 ]
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/

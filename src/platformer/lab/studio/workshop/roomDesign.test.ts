@@ -154,6 +154,8 @@ describe('knob slider range rule', () => {
   it('formats tidily', () => {
     expect(formatKnob(3)).toBe('3')
     expect(formatKnob(0.2188))
-    expect(formatKnob(0.21875)).toBe('0.219')
+    expect(formatKnob(0.21875)).toBe('0.22')
+    expect(formatKnob(8.125)).toBe('8.1')
+    expect(formatKnob(12.6)).toBe('13')
   })
 })

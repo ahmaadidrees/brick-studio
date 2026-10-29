@@ -2,7 +2,7 @@ import { Maximize2, Pause, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 /*
- * The hero's demo: the recorded 3D and 2D clips (scripts/demo) play one after the other. The 3D | 2D pill shows which
+ * The hero's demo: the recorded 3D and 2D clips (scripts/demo) play one after the other. The pill shows which
  * is on and how far along it is, and jumps on a click; Pause stops the motion (it plays on its own for longer than
  * five seconds); Full screen opens the whole-screen cut with its captions. With reduced motion nothing plays until
  * asked: each clip shows its finished build. The clips (about a megabyte) wait until the page itself has loaded;
@@ -66,8 +66,8 @@ export function HeroDemo() {
     setDone(0)
     setView(key)
   }
-  const next = () => show(view === '3d' ? '2d' : '3d')
-  // A radio group: arrow keys move the choice (and focus) between 3D and 2D; Tab reaches only the chosen one.
+  const next = () => show(CLIPS[(CLIPS.findIndex((c) => c.key === view) + 1) % CLIPS.length].key)
+  // A radio group: arrow keys move the choice (and focus) between the clips; Tab reaches only the chosen one.
   const onPillKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
     event.preventDefault()
@@ -125,7 +125,7 @@ export function HeroDemo() {
           Full screen
         </button>
       </div>
-      <div className="landing-demo-switch" role="radiogroup" aria-label="Show the 3D or 2D builder">
+      <div className="landing-demo-switch" role="radiogroup" aria-label="Choose a demo">
         {CLIPS.map((c) => (
           <button
             key={c.key}

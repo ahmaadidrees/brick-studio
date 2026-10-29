@@ -3,7 +3,8 @@ import { useRef } from 'react'
 import type { Action, Input } from '../input/input'
 
 interface Props {
-  input: Input
+  /** Anything that takes button presses: the game's Input, or the Hackable Platformer's keys (PlayTouchControls). */
+  input: Pick<Input, 'setTouch'>
   canEnterPipe?: boolean
   onEnterPipe?: () => void
 }

@@ -2,9 +2,10 @@ import { createPlatformerDocument, isPlatformerDocument, validatePlatformerDocum
 import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { BRICK_STUDIO_FILE_EXTENSION, validateBrickStudioDocument, type BrickStudioDocument } from '../brick/brickDocument'
+import { HACKABLE_FORMAT, isHackableDocument, type HackableDocument } from '../platformer/lab/studio/persist/hackableProjects'
 
 /*
- * One file for every kind of project: a 3D build, a platformer or a race track. A `.brickgineers` file says what it
+ * One file for every kind of project: a 3D build, a platformer, a race track or a Hackable Platformer. A `.brickgineers` file says what it
  * is, its name and when it was saved, and holds the same document an account keeps, so opening a file and opening a
  * saved project are the same thing. Older files still open: 3D `.brickstudio.json` builds and the 2D recovery copies
  * rooms hand out (`{ format: 'brickgineers-2d', level }`). Importing always makes a new project; nothing is replaced.
@@ -18,13 +19,15 @@ export const PROJECT_FILE_ACCEPT = `${PROJECT_FILE_EXTENSION},${BRICK_STUDIO_FIL
 /** Larger than any project an account can hold (2 MB), so a real project always fits. */
 export const PROJECT_FILE_MAX_BYTES = 3_000_000
 
-export type ProjectKind = '3d' | 'platformer' | 'race'
+export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable'
 
-export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track' }
+export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer' }
 
 export type ProjectContent =
   | { kind: '3d'; document: BrickStudioDocument }
   | { kind: 'platformer' | 'race'; level: LevelDesign }
+  /** Kept as its document: it is only opened (and fully checked) by the Hackable Platformer itself. */
+  | { kind: 'hackable'; document: HackableDocument }
 
 export interface Project {
   title: string
@@ -37,8 +40,8 @@ export interface ProjectFile {
   kind: ProjectKind
   title: string
   savedAt: string
-  /** A 3D build's BrickStudioDocument, or a 2D level's PlatformerDocument. */
-  document: BrickStudioDocument | PlatformerDocument
+  /** A 3D build's BrickStudioDocument, a 2D level's PlatformerDocument, or a Hackable Platformer's document. */
+  document: BrickStudioDocument | PlatformerDocument | HackableDocument
 }
 
 export const kindOfLevel = (level: LevelDesign): 'platformer' | 'race' => (kitOf(level) === 'race' ? 'race' : 'platformer')
@@ -51,7 +54,7 @@ export function projectFile(project: Project, savedAt = new Date()): ProjectFile
     kind: content.kind,
     title: project.title.trim().slice(0, 80) || 'My project',
     savedAt: savedAt.toISOString(),
-    document: content.kind === '3d' ? content.document : createPlatformerDocument(content.level),
+    document: content.kind === '3d' || content.kind === 'hackable' ? content.document : createPlatformerDocument(content.level),
   }
 }
 
@@ -94,10 +97,21 @@ export function readProjectFile(text: string, fileName = ''): ReadResult {
     const title = typeof v.title === 'string' && v.title.trim() ? v.title.trim().slice(0, 80) : titleFromName(fileName)
     if (v.kind === '3d') return read3d(v.document, title)
     if (v.kind === 'platformer' || v.kind === 'race') return read2d(v.document, title)
+    if (v.kind === 'hackable') {
+      return isHackableDocument(v.document) && v.document.version === 1 && v.document.save && typeof v.document.save === 'object'
+        ? { ok: true, project: { title, content: { kind: 'hackable', document: v.document } } }
+        : { ok: false, message: 'That Hackable Platformer could not be opened: the file is damaged or from a newer version.' }
+    }
     return { ok: false, message: 'That project is a kind this app does not know yet.' }
   }
   // A room's 2D recovery copy, or any bare 2D document.
   if (isPlatformerDocument(v)) return read2d(v, null)
+  // A Hackable Platformer's own "Save file" (its bare save envelope).
+  if (typeof v.schemaVersion === 'number' && v.design && typeof v.design === 'object' && !Array.isArray(v.design)) {
+    const named = (v.design as { name?: unknown }).name
+    const title = typeof named === 'string' && named.trim() ? named.trim().slice(0, 80) : titleFromName(fileName)
+    return { ok: true, project: { title, content: { kind: 'hackable', document: { format: HACKABLE_FORMAT, version: 1, save: v } } } }
+  }
   // An older 3D file (.brickstudio.json): a bare BrickStudioDocument.
   return read3d(v, titleFromName(fileName))
 }

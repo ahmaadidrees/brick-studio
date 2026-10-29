@@ -4,11 +4,13 @@
  * integrator, never inside a lane.
  */
 import { useSyncExternalStore } from 'react'
-import type { BrickDef, Costume, CopyPlacement, LevelDesign, Sound, Value } from '../core/contracts'
+import type { BrickDef, Costume, CopyPlacement, LevelDesign, SnappedPower, Sound, Value } from '../core/contracts'
 import { type Diagnostic } from '../core/editor/compile'
 import { play, type Runtime } from '../core/index'
+import { deterministicStringify } from '../core/save'
 import { parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
+import { fits as fitsPower, isPowerOn as isPowerOnIn, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
 
@@ -19,6 +21,8 @@ export interface StudioProject {
 }
 
 export type StudioMode = 'build' | 'play'
+/** The three top-level screens. Code is Build with the code column open (cardTab 'code') and the level previewing. */
+export type StudioScreen = 'build' | 'code' | 'play'
 export type CardTab = 'sliders' | 'code' | 'look'
 export type SliderScope = 'all' | 'one'
 export type EditorTab = 'code' | 'costumes' | 'sounds'
@@ -47,8 +51,20 @@ export interface StudioState {
   runtime: Runtime | null
   /** Bumps on every change; persistence and renderers can watch it. */
   revision: number
-  /** Step 6: the brick open in the full-screen Brick Workshop, or null when the builder is showing. */
-  workshopBrickId: string | null
+  /** Code: the stage runs just the open brick in a small test room instead of the whole level. */
+  codeSolo: boolean
+  /** A brick just made with + New brick: its name field opens selected so typing replaces it. Cleared once used. */
+  namingBrickId: string | null
+}
+
+export function screenOf(s: Pick<StudioState, 'mode' | 'cardTab'>): StudioScreen {
+  return s.mode === 'play' ? 'play' : s.cardTab === 'code' ? 'code' : 'build'
+}
+
+/** Names a fresh brick gets until the kid types one: "My brick 1", "My brick 2"… */
+export function nextBrickName(taken: readonly string[]): string {
+  const lower = new Set(taken.map((t) => t.trim().toLowerCase()))
+  for (let n = 1; ; n++) if (!lower.has(`my brick ${n}`)) return `My brick ${n}`
 }
 
 type Listener = () => void
@@ -59,6 +75,8 @@ export class StudioStore {
   private loadListeners = new Set<Listener>()
   private beforeRunListeners = new Set<Listener>()
   private runningCode: string | null = null
+  /** Code has been opened at least once, so the selected brick is the one the kid was working on. */
+  private codeVisited = false
 
   private makeRuntime(): Runtime {
     this.runningCode = codeFingerprint(this.state.project)
@@ -71,7 +89,7 @@ export class StudioStore {
       project,
       selectedBrickId: first,
       selectedCopyId: null,
-      brushBrickId: initialBrush(project),
+      brushBrickId: null,
       brushTile: null,
       mode: 'build',
       editorTab: 'code',
@@ -84,7 +102,8 @@ export class StudioStore {
       diagnostics: {},
       runtime: null,
       revision: 0,
-      workshopBrickId: null,
+      codeSolo: false,
+      namingBrickId: null,
     }
   }
 
@@ -149,6 +168,35 @@ export class StudioStore {
     this.set({ mode: 'build', runtime: null, previewPaused: false, pendingCodeChanges: false })
   }
 
+  /** Build · Code · Play. Code opens on the selected brick, else the brick last open in Code, else the Hero. */
+  setScreen(screen: StudioScreen, brickId?: string) {
+    const s = this.state
+    if (screen === 'play') {
+      if (s.cardTab === 'code') this.set({ cardTab: 'sliders' })
+      return this.play()
+    }
+    if (s.mode === 'play') this.stop()
+    if (screen === 'code') return this.openCode(brickId ?? this.codeTarget())
+    // Build edits the saved level, so the Code preview stops.
+    this.state.runtime?.stopAll()
+    this.set({ cardTab: 'sliders', runtime: null, previewPaused: false, pendingCodeChanges: false, namingBrickId: null })
+  }
+
+  private codeTarget(): string {
+    const s = this.state
+    const d = s.project.design
+    const copyBrick = s.selectedCopyId ? (parseGridCopyId(s.selectedCopyId) ? s.selectedBrickId : d.copies.find((c) => c.id === s.selectedCopyId)?.brickId) : undefined
+    if (copyBrick && this.brick(copyBrick)) return copyBrick
+    if (this.codeVisited && this.brick(s.selectedBrickId)) return s.selectedBrickId
+    return d.bricks.find((b) => b.id === 'brick_hero')?.id ?? d.bricks[0]?.id ?? STAGE_ID
+  }
+
+  /** Code: run the whole level, or just the open brick. */
+  setCodeSolo(codeSolo: boolean) { this.set({ codeSolo }) }
+
+  /** The fresh brick's name was focused (or the kid moved on). */
+  clearNaming() { if (this.state.namingBrickId) this.set({ namingBrickId: null }) }
+
   setCardTab(cardTab: CardTab) {
     if (cardTab === 'code') return this.openCode(this.state.selectedBrickId)
     this.set({ cardTab })
@@ -163,7 +211,8 @@ export class StudioStore {
   }
 
   openCode(brickId: string) {
-    this.set({ selectedBrickId: brickId, cardTab: 'code',
+    this.codeVisited = true
+    this.set({ selectedBrickId: brickId, cardTab: 'code', editorTab: brickId === this.state.selectedBrickId ? this.state.editorTab : 'code',
       ...(!this.state.runtime ? { runtime: this.makeRuntime(), previewPaused: false, pendingCodeChanges: false } : {}) })
   }
 
@@ -216,19 +265,6 @@ export class StudioStore {
     }
   }
 
-  // ------------------------------------------------------------ Brick Workshop (step 6)
-
-  /** Open the full-screen workshop on a brick ("See inside" or "+ New brick"). Leaves Play first. */
-  openWorkshop(brickId: string) {
-    if (this.state.runtime) this.stop()
-    this.set({ workshopBrickId: brickId, selectedBrickId: brickId })
-  }
-
-  /** "Done": back to the builder, exactly where the kid was. */
-  closeWorkshop() {
-    this.set({ workshopBrickId: null })
-  }
-
   // ------------------------------------------------------------ tiles (step 6)
 
   /** Set one tile cell (row 0 = bottom). Grows nothing: cells outside the layer are ignored. */
@@ -267,6 +303,77 @@ export class StudioStore {
     this.setWorkspace(id, workspace)
     this.set({ selectedBrickId: id, brushBrickId: id, brushTile: null })
     return id
+  }
+
+  /**
+   * + New brick: one step. Makes "My brick N" (an empty brick with a blank costume), opens it in Code and asks for its
+   * name to be selected, so typing replaces it. The Build brush is left alone: Select stays the default tool.
+   */
+  newBrick(make: (id: string, name: string) => { brick: Omit<BrickDef, 'id'>; workspace: unknown }): string {
+    const s = this.state
+    const name = nextBrickName(s.project.design.bricks.map((b) => b.name))
+    const made = make('fresh', name)
+    const brush = { brushBrickId: s.brushBrickId, brushTile: s.brushTile }
+    const id = this.addBrickFrom({ ...made.brick, name }, made.workspace)
+    this.set(brush)
+    if (s.mode === 'play') this.stop()
+    this.openCode(id)
+    this.set({ namingBrickId: id, editorTab: 'code' })
+    return id
+  }
+
+  /** "Start from…": give a brick another brick's blocks, costumes and sounds. Its id and name stay its own. */
+  startBrickFrom(brickId: string, made: { brick: Omit<BrickDef, 'id'>; workspace: unknown }) {
+    const current = this.brick(brickId)
+    if (!current || brickId === STAGE_ID) return
+    const { name: _name, ...rest } = made.brick as BrickDef
+    this.updateBrick(brickId, (b) => ({ ...rest, id: b.id, name: b.name }))
+    this.setWorkspace(brickId, made.workspace)
+    this.set({ editorResetRevision: this.state.editorResetRevision + 1, remixNotice: null })
+  }
+
+  // ------------------------------------------------------------ power bricks (studio/powers)
+
+  /** Snap a power onto a brick. Unsaved editor changes are kept first; the editor reloads to show the new scripts. */
+  snapPower(brickId: string, power: PowerBrick): SnappedPower | null {
+    const brick = this.brick(brickId)
+    if (!brick || !fitsPower(power, brick)) return null
+    this.flushEditor()
+    const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
+    this.applyPowerChange(brickId, project)
+    return snap
+  }
+
+  takeOffPower(brickId: string, snapId: string) {
+    this.flushEditor()
+    this.applyPowerChange(brickId, takeOffPowerFrom(this.state.project, brickId, snapId))
+  }
+
+  setPowerOn(brickId: string, snapId: string, on: boolean) {
+    this.flushEditor()
+    this.applyPowerChange(brickId, setPowerOnIn(this.state.project, brickId, snapId, on))
+  }
+
+  isPowerOn(brickId: string, snapId: string): boolean {
+    return isPowerOnIn(this.state.project, brickId, snapId)
+  }
+
+  private flushEditor() {
+    for (const listener of [...this.beforeRunListeners]) listener()
+  }
+
+  private applyPowerChange(brickId: string, project: StudioProject) {
+    if (project === this.state.project) return
+    const workspace = project.workspaces[brickId]
+    this.set({ project })
+    this.setWorkspace(brickId, workspace)
+    this.set({ editorResetRevision: this.state.editorResetRevision + 1 })
+  }
+
+  /** The project's own name (the header's title, and its name in My projects). */
+  renameProject(name: string) {
+    const clean = name.trim().slice(0, 80)
+    if (clean) this.setDesign({ ...this.state.project.design, name: clean })
   }
 
   renameBrick(brickId: string, name: string) {
@@ -381,26 +488,29 @@ export class StudioStore {
 
   /** Replace the whole project (load). Returns to Build. */
   load(project: StudioProject) {
+    this.codeVisited = false
     this.state.runtime?.stopAll()
-    this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, brushBrickId: initialBrush(project), brushTile: null, workshopBrickId: null, cardTab: 'sliders', sliderScope: 'all', previewPaused: false, pendingCodeChanges: false, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1, diagnostics: {} })
+    this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, brushBrickId: null, brushTile: null, codeSolo: false, namingBrickId: null, cardTab: 'sliders', sliderScope: 'all', previewPaused: false, pendingCodeChanges: false, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1, diagnostics: {} })
     for (const l of [...this.loadListeners]) l()
   }
 }
 
-/** Runtime changes come from scripts/declarations, never view layout or live slider starting values. */
+/**
+ * Runtime changes come from scripts/declarations, never view layout or live slider starting values. Order does not
+ * count either: the editor's automatic tidy on open rearranges scripts without changing what they do. Nor does the
+ * order of keys inside a block: a reopened save has them sorted, a fresh compile does not.
+ */
 function codeFingerprint(project: StudioProject): string {
+  const unordered = (items: readonly unknown[]) => items.map((item) => deterministicStringify(item, 0)).sort()
   return JSON.stringify([project.design.stage, ...project.design.bricks].map((brick) => ({
     id: brick.id,
-    scripts: brick.program.scripts,
-    procedures: brick.program.procedures,
+    scripts: unordered(brick.program.scripts),
+    procedures: unordered(brick.program.procedures),
     variables: brick.program.variables.map(({ id, name }) => ({ id, name })),
     lists: brick.program.lists.map(({ id, name }) => ({ id, name })),
   })))
 }
 
-function initialBrush(project: StudioProject): string | null {
-  return project.design.bricks.find((b) => b.grid?.char === 'G')?.id ?? project.design.bricks.find((b) => b.limit !== 1 && !b.isStage)?.id ?? null
-}
 
 function uniqueId(prefix: string, taken: Set<string>): string {
   for (let n = 1; ; n++) {

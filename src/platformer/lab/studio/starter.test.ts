@@ -215,10 +215,12 @@ describe('Starter level (starter.ts)', () => {
       expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_whenbump').map((x) => x.hat.fields)).toEqual([
         { SIDE: 'left', BRICK: '_any_' },
         { SIDE: 'right', BRICK: '_any_' },
+        { SIDE: 'left', BRICK: '_any_' },
+        { SIDE: 'right', BRICK: '_any_' },
       ])
-      // its own feel scripts are all still there
-      const names = hero.program.procedures.map((x) => x.proccode)
-      expect(names).toEqual(['read keys and walls', 'walk and run', 'read keys', 'feel the wall', 'walk', 'run meter', 'jump (hold to go higher)', 'fall and land', 'hit a wall'])
+      // its basics and feel scripts are all still there, and only the plumbing is a My Block to go inside
+      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(19)
+      expect(hero.program.procedures.map((x) => x.proccode)).toEqual(['move and collide'])
     })
 
     it('only the Hero and the Goal are one per level (limit 1)', () => {

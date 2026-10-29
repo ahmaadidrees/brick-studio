@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Blocks, CircleAlert, CircleCheck, LoaderCircle, Plus, Settings, Users } from 'lucide-react'
+import { Blocks, CircleAlert, CircleCheck, Library, LoaderCircle, Plus, Settings, Users } from 'lucide-react'
 import { createBrickStudioDocument } from '@brick-studio/core'
 import { Button, SegmentedControl } from '../../ui'
 import type { ClassroomCheckpoint, ClassroomStudent, ClassroomWorldMember } from '../../classroom/contracts'
@@ -16,10 +16,11 @@ import { FirstRun } from './FirstRun'
 import { StudentsTab } from './StudentsTab'
 import { WorldsTab } from './WorldsTab'
 import { SettingsTab } from './SettingsTab'
+import { ShelfTab } from './ShelfTab'
 import { createDemoClassPageClient, type DemoVariant } from './demoData'
 import './class.css'
 
-export type ClassTab = 'students' | 'worlds' | 'settings'
+export type ClassTab = 'students' | 'worlds' | 'shelf' | 'settings'
 
 type Props = {
   client?: ClassPageClient
@@ -42,7 +43,7 @@ function resolveClient(): ClassPageClient {
 
 /**
  * The teacher's page. First run is a three-step stepper; every day after it is
- * the class rail plus Students / Worlds / Settings. Non-teachers never see it:
+ * the class rail plus Students / Worlds / Shelf / Settings. Non-teachers never see it:
  * students go to their worlds and signed-out visitors to the teacher sign-in.
  */
 export default function ClassPage({ client = resolveClient(), navigate = href => window.location.replace(href) }: Props) {
@@ -209,6 +210,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
                 options={[
                   { value: 'students', label: 'Students', icon: <Users size={16} />, disabled: busy },
                   { value: 'worlds', label: 'Worlds', icon: <Blocks size={16} />, disabled: busy },
+                  { value: 'shelf', label: 'Shelf', icon: <Library size={16} />, disabled: busy },
                   { value: 'settings', label: 'Settings', icon: <Settings size={16} />, disabled: busy },
                 ]}
               />
@@ -239,7 +241,9 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
                         setSelectedWorld(restored); await refresh(); setNotice('World restored. Open it to see the recovered version.')
                       })}
                     />
-                    : <SettingsTab currentClass={currentClass} busy={busy} onPatch={onPatch} onCreateClass={onCreateClass} />}
+                    : tab === 'shelf'
+                      ? <ShelfTab key={currentClass.id} client={client} currentClass={currentClass} busy={busy} run={run} onNotice={setNotice} onError={setError} onPatch={onPatch} />
+                      : <SettingsTab currentClass={currentClass} busy={busy} onPatch={onPatch} onCreateClass={onCreateClass} />}
             </> : <p className="class-help" role="status">Pick a class from the list, or create one in Settings.</p>}
           </main>
         </div>}

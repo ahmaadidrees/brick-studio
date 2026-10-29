@@ -450,6 +450,9 @@ export function compileWorkspace(
 
     const type = block.type
 
+    // A script turned off in the editor (Blockly's disabled flag) is kept in the workspace but does not run.
+    if (isTurnedOff(block)) continue
+
     // Check for Hat blocks
     if (isHatOpcode(type)) {
       const hatOpcode = type as HatOpcode
@@ -502,3 +505,8 @@ export function compileWorkspace(
 
 /** Alias for compileWorkspace */
 export const compile = compileWorkspace
+
+/** Blockly saves a turned-off block as `enabled: false` (older) or with `disabledReasons` (Blockly 11+). */
+export function isTurnedOff(block: { enabled?: unknown; disabledReasons?: unknown }): boolean {
+  return block.enabled === false || (Array.isArray(block.disabledReasons) && block.disabledReasons.length > 0)
+}

@@ -6,10 +6,12 @@ import { browserClassroomClient, type ClassroomClient } from '../classroom/clien
 import type { ClassroomWorld } from '../classroom/contracts'
 import { createCloudLevel } from '../platformer/ui/cloudLevel'
 import { deleteDraft, listDrafts, loadDraft, saveDraft } from '../platformer/ui/drafts'
+import { MAX_HACKABLE_PROJECTS, deleteHackableProject, documentFromText, hackableHref, listHackableProjects, loadHackableText, newHackableId, saveHackableText } from '../platformer/lab/studio/persist/hackableProjects'
 import { kindOfLevel, type Project, type ProjectKind } from './projectFile'
 
 /*
- * Every project a person has, wherever it lives: on this computer (the 3D build in this browser and the 2D drafts) or
+ * Every project a person has, wherever it lives: on this computer (the 3D build in this browser, the 2D drafts and the
+ * Hackable Platformers) or
  * in their account. My projects lists them together; this module opens, moves, copies out and removes them, and turns
  * an imported file into a new project. Nothing here ever replaces a project without the caller asking first.
  */
@@ -27,15 +29,17 @@ export interface LocalProject {
   level?: LevelDesign
   /** The 3D build: how many bricks it has. */
   bricks?: number
+  /** Hackable Platformers: the picture the studio last took of the level. */
+  picture?: string
 }
 
 export const LOCAL_3D_ID = '3d'
 
 export const kindOfWorld = (world: Pick<ClassroomWorld, 'format' | 'kit'>): ProjectKind =>
-  world.format === '2d' ? (world.kit === 'race' ? 'race' : 'platformer') : '3d'
+  world.format === 'hackable' ? 'hackable' : world.format === '2d' ? (world.kit === 'race' ? 'race' : 'platformer') : '3d'
 
 export const projectHref = (world: Pick<ClassroomWorld, 'id' | 'format'>) =>
-  world.format === '2d' ? `/2d/build?world=${encodeURIComponent(world.id)}` : `/build?world=${encodeURIComponent(world.id)}`
+  world.format === 'hackable' ? hackableHref.world(world.id) : world.format === '2d' ? `/2d/build?world=${encodeURIComponent(world.id)}` : `/build?world=${encodeURIComponent(world.id)}`
 
 const storage = (): BrickStudioStorage | null => {
   try {
@@ -58,6 +62,10 @@ export function listLocalProjects(store = storage()): LocalProject[] {
     const level = loadDraft(d.id)
     return { where: 'local' as const, id: d.id, kind: level ? kindOfLevel(level) : 'platformer', title: d.title, updated: d.updated, href: `/2d/build?draft=${encodeURIComponent(d.id)}`, ...(level ? { level } : {}) }
   })
+  for (const h of listHackableProjects(store)) {
+    out.push({ where: 'local', id: h.id, kind: 'hackable', title: h.title, updated: h.updated, href: hackableHref.local(h.id), ...(h.picture ? { picture: h.picture } : {}) })
+  }
+  out.sort((a, b) => b.updated - a.updated)
   const three = local3d(store)
   if (three) out.push({ where: 'local', id: LOCAL_3D_ID, kind: '3d', title: 'My 3D build', updated: 0, href: '/build', bricks: three.bricks })
   return out
@@ -69,6 +77,11 @@ export function localProject(item: LocalProject, store = storage()): Project | n
     const three = local3d(store)
     return three ? { title: item.title, content: { kind: '3d', document: three.document } } : null
   }
+  if (item.kind === 'hackable') {
+    const text = loadHackableText(item.id, store)
+    const document = text ? documentFromText(text) : null
+    return document ? { title: item.title, content: { kind: 'hackable', document } } : null
+  }
   const level = loadDraft(item.id)
   return level ? { title: item.title, content: { kind: kindOfLevel(level), level } } : null
 }
@@ -76,6 +89,10 @@ export function localProject(item: LocalProject, store = storage()): Project | n
 /** An account project's content (one read of the whole document). */
 export async function accountProject(world: ClassroomWorld, client: ClassroomClient = browserClassroomClient): Promise<Project> {
   const full = await client.getWorld(world.id)
+  if (full.format === 'hackable') {
+    if (!full.document) throw new Error('This project could not be read.')
+    return { title: full.title, content: { kind: 'hackable', document: full.document as never } }
+  }
   if (full.format === '2d' || validatePlatformerDocument(full.document).ok) {
     const checked = validatePlatformerDocument(full.document)
     if (!checked.ok) throw new Error('This project could not be read.')
@@ -90,7 +107,9 @@ export async function createAccountProject(project: Project, client: ClassroomCl
   const { content } = project
   const world = content.kind === '3d'
     ? await client.createWorld({ title: project.title.slice(0, 80) || 'My 3D build', document: content.document })
-    : await createCloudLevel({ ...content.level, title: project.title })
+    : content.kind === 'hackable'
+      ? await client.createWorld({ title: project.title.slice(0, 80) || 'My platformer', document: content.document as never })
+      : await createCloudLevel({ ...content.level, title: project.title })
   return { world, href: projectHref(world) }
 }
 
@@ -106,7 +125,8 @@ export async function moveToAccount(item: LocalProject, client: ClassroomClient 
 export function removeLocalProject(item: LocalProject, store = storage()) {
   if (item.id === LOCAL_3D_ID) {
     if (store) clearLocalBrickStudioProject(store)
-  } else deleteDraft(item.id)
+  } else if (item.kind === 'hackable') deleteHackableProject(item.id, store)
+  else deleteDraft(item.id)
 }
 
 export type ImportOutcome =
@@ -134,6 +154,12 @@ export async function importProject(project: Project, opts: { signedIn: boolean;
       if (!store) return { ok: false, reason: 'error', message: 'This browser does not let pages save anything, so the build cannot be kept here.' }
       const saved = saveLocalBrickStudioProject(store, content.document)
       return saved.ok ? { ok: true, href: '/build', where: 'local' } : { ok: false, reason: 'error', message: saved.error.message }
+    }
+    if (content.kind === 'hackable') {
+      const id = newHackableId()
+      const kept = saveHackableText(id, project.title, JSON.stringify(content.document.save), store)
+      if (!kept.ok) return { ok: false, reason: 'error', message: kept.reason === 'full' ? `This computer already keeps ${MAX_HACKABLE_PROJECTS} Hackable Platformers. Remove one, or sign in to keep more in your account.` : 'This browser would not save the project.' }
+      return { ok: true, href: hackableHref.local(id), where: 'local' }
     }
     const saved = saveDraft(null, { ...content.level, title: project.title })
     if (!saved.ok) return { ok: false, reason: 'error', message: saved.reason === 'full' ? 'This computer already keeps 30 2D projects. Remove one, or sign in to keep more in your account.' : 'This browser would not save the project.' }

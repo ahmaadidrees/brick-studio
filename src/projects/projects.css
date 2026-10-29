@@ -55,6 +55,63 @@
   gap: var(--space-2);
 }
 
+/* The Hackable Platformer card: two blocks over the level picture, and a "New" tag. */
+.projects-kind-hackable .projects-kind-picture {
+  position: relative;
+}
+
+.projects-hack-blocks {
+  position: absolute;
+  left: 8%;
+  bottom: 12%;
+  display: grid;
+  justify-items: start;
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.25));
+}
+
+.projects-hack-block {
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #ff8c1a;
+  color: #fff;
+  font: 600 12px/1.2 var(--font-body, system-ui);
+  white-space: nowrap;
+}
+
+.projects-hack-block b {
+  font-weight: 600;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.15);
+}
+
+.projects-hack-block i {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #fff;
+  color: #333;
+  font-style: normal;
+  text-align: center;
+}
+
+.projects-hack-hat {
+  border-radius: 12px 12px 4px 4px;
+  background: #ffbf00;
+  color: #3d2c00;
+}
+
+.projects-new-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent, #2563eb);
+  color: var(--accent-contrast, #fff);
+  font: 700 11px/1.6 var(--font-body, system-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .projects-starters {
   display: grid;
   gap: var(--space-2);
@@ -99,6 +156,17 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+/* A card's picture fills the art box whatever shape it was taken at. */
+.worlds-card-art:has(> .projects-local-picture) {
+  position: relative;
+  overflow: hidden;
+}
+
+.worlds-card-art > .projects-local-picture {
+  position: absolute;
+  inset: 0;
 }
 
 .projects-local-picture {

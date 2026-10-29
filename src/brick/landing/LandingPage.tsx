@@ -1,6 +1,8 @@
 import {
   ArrowRight,
   Cloud,
+  Code2,
+  Library,
   Compass,
   Flag,
   FolderOpen,
@@ -47,6 +49,7 @@ export type LandingPageProps = {
 /** Every project, on this computer and in the account, plus the starters to play. */
 const PROJECTS_HREF = '/projects'
 const RACE_STARTER_HREF = '/2d/build?new=1&kit=race-starter'
+const HACKABLE_HREF = '/2d/hackable?new=1'
 
 type AccountIntent = 'join' | 'signin' | 'teacher'
 
@@ -117,6 +120,23 @@ function BrandPicture({ name, widths, width, height, alt, sizes, priority = fals
   )
 }
 
+/* ------------------------------------------------------------ hackable --- */
+
+/** A still from the Hackable Platformer: the Hero on a ledge it reached with Double jump (scripts/demo/record-hack.mjs). */
+function HackableStill() {
+  return (
+    <img
+      className="landing-hack-picture"
+      src={`${MEDIA_BASE}/hackable-ledge.jpg`}
+      alt="The Hero standing on a high ledge it reached with a Double jump power, in the Hackable Platformer"
+      width={960}
+      height={720}
+      loading="lazy"
+      decoding="async"
+    />
+  )
+}
+
 /* ------------------------------------------------------------ building --- */
 
 function SectionHeading({ eyebrow, title, lede, id }: { eyebrow?: string; title: ReactNode; lede?: ReactNode; id: string }) {
@@ -162,6 +182,16 @@ const FACTS = ['Runs right in the browser', 'Chromebooks, iPads and laptops', 'N
 
 const FAQ = [
   {
+    question: 'Do students need to know how to code?',
+    answer: (
+      <>
+        No. Everything works without opening the code: build, press Play, share. In the Hackable Platformer every
+        brick's code is there to open when they want it, in blocks like Scratch, and each script can be switched off
+        to see what it does.
+      </>
+    ),
+  },
+  {
     question: 'Do I need an account?',
     answer: (
       <>
@@ -206,6 +236,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
   const navId = useId()
   const waysId = useId()
   const friendsId = useId()
+  const hackId = useId()
   const codeId = useId()
   const teachersId = useId()
   const faqId = useId()
@@ -412,6 +443,29 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
           </ul>
         </section>
 
+        <section id="hackable" className="landing-section landing-hack" aria-labelledby={hackId}>
+          <div className="landing-hack-copy">
+            <span className="landing-eyebrow landing-hack-eyebrow">New · Hackable Platformer</span>
+            <h2 id={hackId}>Every brick has code inside.</h2>
+            <p>
+              Open any brick, even your Hero, and change how it works with blocks. Turn things on and off, snap on
+              powers like Double jump, or build a brick nobody else has.
+            </p>
+            <ol className="landing-hack-steps">
+              <li><b>Build it.</b> Bricks, springs, critters, a goal.</li>
+              <li><b>Open it up.</b> Every script has an On/Off switch.</li>
+              <li><b>Change how it plays.</b> Then press Play and try it.</li>
+            </ol>
+            <p className="landing-cta-row landing-cta-row-compact">
+              <CtaLink href={HACKABLE_HREF} variant="primary" icon={<Code2 size={18} />}>Try the Hackable Platformer</CtaLink>
+            </p>
+            <p className="landing-hack-note">No coding needed to start. The code is there when you want it.</p>
+          </div>
+          <div className="landing-hack-art">
+            <HackableStill />
+          </div>
+        </section>
+
         <section className="landing-section landing-friends" aria-labelledby={friendsId}>
           <div className="landing-friends-copy">
             <h2 id={friendsId}>Better with friends.</h2>
@@ -458,6 +512,11 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               <span className="landing-feature-icon landing-feature-icon-butter" aria-hidden="true"><SlidersHorizontal size={20} /></span>
               <h3>Controls you run</h3>
               <p>Close enrollment, close collaboration, set a temporary password, suspend or reactivate a student, and restore an earlier checkpoint of a shared world.</p>
+            </li>
+            <li>
+              <span className="landing-feature-icon landing-feature-icon-hack" aria-hidden="true"><Library size={20} /></span>
+              <h3>Kids learn to code because they want to</h3>
+              <p>A student who builds a new power can share it on the class shelf. You check it first; the shelf shows who made it and how many classmates use it.</p>
             </li>
           </ul>
           <div className="landing-teachers-grid">
@@ -512,6 +571,8 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               <dd>Pick a brick from the drawer and tap or click the plate to place it. Undo and redo sit in the toolbar. Explore switches to your character; walk and jump with the keyboard, or with touch controls on phones and tablets.</dd>
               <dt>Platformers and race tracks</dt>
               <dd>Choose New project, then Platformer or Race track. Pick bricks from the Bricks drawer and tap or click to place them, then press Play to run or race through what you made. Signed-in students find every project in My projects and share it with the class the same way.</dd>
+              <dt>Hackable Platformer</dt>
+              <dd>Choose New project, then Hackable Platformer. Build and Play work like a platformer; Code shows the blocks inside the brick you picked. Switch a script off to see what it does, or tap + Power to snap one on. Hackable Platformers save like other projects, but can't be played together in a room yet.</dd>
               <dt>Saving</dt>
               <dd>Signed-in students save to their account as they build, and every project is in My projects. Without an account, projects stay on this computer. Any project can be downloaded as a .brickgineers file and imported again later.</dd>
               <dt>Sharing</dt>

@@ -11,7 +11,7 @@ import type {
 import { boundsFor, opaqueRect, transformOf } from '../../core/geometry'
 import { getCameraZoom, snapToGrid, worldToScreen, type Camera, type Viewport } from './camera'
 import { parseGridCopyId, TILE_SIZE } from '../../core/contracts'
-import { cellCostumeIndex, drawCellOutline, gridBrickIndex, visibleCells } from './gridCells'
+import { SELECTED_OUTLINE, cellCostumeIndex, drawCellOutline, gridBrickIndex, visibleCells } from './gridCells'
 import { drawSky } from './sky'
 
 /** The Brickgineers look: cream outside the level, a sky-blue level. */
@@ -57,6 +57,8 @@ export interface RenderOptions {
   showGrid?: boolean
   gridSnap?: boolean
   selectedCopyId?: string | null
+  /** 0–1 through the one-time pulse when something is selected; 0 when not pulsing. */
+  selectPulse?: number
   hoverCopyId?: string | null
   brushBrickId?: string | null
   brushPreviewPos?: { x: number; y: number } | null
@@ -145,7 +147,7 @@ export function renderBuildMode(
     })
 
     if (isSelected || isHovered) {
-      drawCopyOutline(ctx, camera, viewport, copy, costume, isSelected)
+      drawCopyOutline(ctx, camera, viewport, copy, costume, isSelected, isSelected ? pulseGrow(opts.selectPulse) : 0)
     }
   }
 
@@ -154,7 +156,7 @@ export function renderBuildMode(
   // The selected (or hovered) cell
   for (const [id, selected] of [[opts.hoverCopyId, false], [opts.selectedCopyId, true]] as const) {
     const cell = id ? parseGridCopyId(id) : null
-    if (cell && design.tiles?.data[cell.row]?.[cell.col] && design.tiles.data[cell.row][cell.col] !== '.') drawCellOutline(ctx, camera, viewport, cell.col, cell.row, selected)
+    if (cell && design.tiles?.data[cell.row]?.[cell.col] && design.tiles.data[cell.row][cell.col] !== '.') drawCellOutline(ctx, camera, viewport, cell.col, cell.row, selected, selected ? pulseGrow(opts.selectPulse) : 0)
   }
   if (opts.tool === 'brush' && opts.brushBrickId && opts.brushPreviewPos) {
     const brick = design.bricks.find((b) => b.id === opts.brushBrickId)
@@ -404,6 +406,11 @@ function drawSprite(
   ctx.restore()
 }
 
+/** How far the outline swells at this point of the pulse: out and back once. */
+function pulseGrow(p = 0): number {
+  return p > 0 && p < 1 ? 6 * Math.sin(Math.PI * p) : 0
+}
+
 function drawCopyOutline(
   ctx: CanvasRenderingContext2D,
   camera: Camera,
@@ -411,6 +418,7 @@ function drawCopyOutline(
   copy: CopyPlacement,
   costume: Costume,
   isSelected: boolean,
+  grow = 0,
 ): void {
   const targetLike: Target = {
     id: copy.id,
@@ -442,19 +450,17 @@ function drawCopyOutline(
 
   ctx.save()
   if (isSelected) {
-    ctx.strokeStyle = '#5bb2ff'
-    ctx.lineWidth = 2
-    ctx.setLineDash([4, 3])
-    ctx.strokeRect(lX - 2, tY - 2, w + 4, h + 4)
+    ctx.strokeStyle = SELECTED_OUTLINE
+    ctx.lineWidth = 3
+    ctx.strokeRect(lX - 3 - grow, tY - 3 - grow, w + 6 + grow * 2, h + 6 + grow * 2)
 
     // Corner handle squares
-    ctx.setLineDash([])
     ctx.fillStyle = '#ffffff'
     const corners: [number, number][] = [
-      [lX - 4, tY - 4],
-      [rX - 2, tY - 4],
-      [lX - 4, bY - 2],
-      [rX - 2, bY - 2],
+      [lX - 5 - grow, tY - 5 - grow],
+      [rX - 1 + grow, tY - 5 - grow],
+      [lX - 5 - grow, bY - 1 + grow],
+      [rX - 1 + grow, bY - 1 + grow],
     ]
     for (const [cx, cy] of corners) {
       ctx.fillRect(cx, cy, 6, 6)

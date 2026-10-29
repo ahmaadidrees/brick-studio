@@ -368,6 +368,9 @@ export function createContinuousToolbox(
       cssConfig: { container: 'code-extension-category' },
       contents: [
         { kind: 'label', text: 'Platformer extension' },
+        { kind: 'block', type: 'platformer_everytick' },
+        { kind: 'block', type: 'platformer_whenland' },
+        { kind: 'block', type: 'platformer_whenleaveground' },
         { kind: 'block', type: 'platformer_whenbump' },
         { kind: 'sep' },
         { kind: 'block', type: 'platformer_setgravity' },
@@ -378,6 +381,12 @@ export function createContinuousToolbox(
         { kind: 'block', type: 'platformer_speed' },
         { kind: 'sep' },
         { kind: 'block', type: 'platformer_onground' },
+        { kind: 'label', text: 'Bricks that move themselves' },
+        { kind: 'block', type: 'platformer_setmover' },
+        { kind: 'block', type: 'platformer_moveuntilhit', inputs: { DISTANCE: numShadow(5) } },
+        { kind: 'block', type: 'platformer_hitsomething' },
+        { kind: 'block', type: 'platformer_tellhit' },
+        { kind: 'block', type: 'platformer_setonground' },
       ],
     },
   ]
