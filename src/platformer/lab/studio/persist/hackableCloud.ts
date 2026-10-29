@@ -3,7 +3,7 @@ import type { CloudSaveStatus } from '../../../../classroom/cloudAutosave'
 import type { ClassroomWorld } from '../../../../classroom/contracts'
 import type { StudioProject } from '../store'
 import { ACCOUNT_DOCUMENT_MAX_BYTES } from './hackableProjects'
-import { documentBytes, hackableDocument, projectFromDocument } from './hackableSave'
+import { checkedHackableDocument, projectFromDocument, type CheckedDocument } from './hackableSave'
 
 /*
  * Hackable Platformer projects in an account: ordinary classroom worlds whose document wraps the project's save, so
@@ -11,13 +11,23 @@ import { documentBytes, hackableDocument, projectFromDocument } from './hackable
  */
 
 const SAVE_DELAY_MS = 1200
-const TOO_BIG = 'This project is too big for your account. Save it as a file from the ⋯ menu so you do not lose it.'
+export const TOO_BIG = 'This project is too big for your account. Save it as a file from the ⋯ menu so you do not lose it.'
+/** The account never keeps a project that would not open again (the same promise as saving on this computer). */
+export const NOT_RIGHT = 'We could not save your last change because something in this project is not right. Your earlier save is safe. Try undoing your last change.'
 
 const titleOf = (project: StudioProject) => project.design.name.trim().slice(0, 80) || 'My platformer'
 
-export async function createHackableWorld(project: StudioProject, client: ClassroomClientSurface = browserClassroomClient): Promise<ClassroomWorld> {
-  if (documentBytes(project) > ACCOUNT_DOCUMENT_MAX_BYTES) throw new Error(TOO_BIG)
-  return client.createWorld({ title: titleOf(project), document: hackableDocument(project) as never })
+/** The document to send, or the kid's reason it cannot be sent. */
+function accountDocument(project: StudioProject): Extract<CheckedDocument, { ok: true }> {
+  const checked = checkedHackableDocument(project)
+  if (!checked.ok) throw new Error(NOT_RIGHT)
+  if (checked.bytes > ACCOUNT_DOCUMENT_MAX_BYTES) throw new Error(TOO_BIG)
+  return checked
+}
+
+export async function createHackableWorld(project: StudioProject, client: ClassroomClientSurface = browserClassroomClient, title = titleOf(project)): Promise<ClassroomWorld> {
+  const { document } = accountDocument(project)
+  return client.createWorld({ title: title.slice(0, 80), document: document as never })
 }
 
 /** Thrown when the world opens but holds another kind of project (the caller sends it to that kind's page). */
@@ -87,8 +97,8 @@ export class HackableCloudSaver {
     this.running = (async () => {
       try {
         if (this.client.getSession()?.user.id !== this.accountId) throw new Error('Your account changed. Sign in to the original account again to save. Your changes are still in this tab; save a file from the ⋯ menu before leaving.')
-        if (documentBytes(project) > ACCOUNT_DOCUMENT_MAX_BYTES) throw new Error(TOO_BIG)
-        const world = await this.client.saveWorld(this.world.id, { expectedRevision: this.world.revision, title: titleOf(project), document: hackableDocument(project) as never })
+        const { document } = accountDocument(project)
+        const world = await this.client.saveWorld(this.world.id, { expectedRevision: this.world.revision, title: titleOf(project), document: document as never })
         this.world = { ...this.world, ...world, document: undefined }
         this.error = ''
         this.set(this.pending ? 'pending' : 'saved')
@@ -96,7 +106,9 @@ export class HackableCloudSaver {
         this.pending ??= project
         this.error = error instanceof ClassroomError && error.code === 'revision_conflict'
           ? 'A newer version of this project was saved somewhere else. Reload to get it.'
-          : error instanceof Error ? error.message : 'Saving did not work. Your project is still here.'
+          : error instanceof ClassroomError && error.code === 'too_large'
+            ? TOO_BIG
+            : error instanceof Error ? error.message : 'Saving did not work. Your project is still here.'
         this.set('error')
       }
     })()
