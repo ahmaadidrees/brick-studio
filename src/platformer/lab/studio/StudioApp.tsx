@@ -367,9 +367,11 @@ function OpenProject({ opened }: { opened: Opened }) {
     let failures = 0
     let timer: ReturnType<typeof setTimeout> | undefined
     const tell = (message: string) => setStorageNotice({ id: 'account-pending', type: 'info', sticky: true, message, actions: [{ label: 'Try again', run: () => void attempt() }] })
+    let busy = false
     const attempt = async () => {
       clearTimeout(timer)
-      if (!live) return
+      // "Try again" while a try is still on its way waits for that one.
+      if (!live || busy) return
       if (browserClassroomClient.getSession()?.user.id !== pending.owner) {
         tell('This project is saved on this computer. Sign in to your account again to put it there too.')
         failures += 1
@@ -377,14 +379,17 @@ function OpenProject({ opened }: { opened: Opened }) {
         return
       }
       localFlush.current?.()
+      busy = true
       try {
         const world = await createHackableWorld(store.getState().project, browserClassroomClient, undefined, pending.id)
+        busy = false
         if (!live) return
         if (getStorageNotice()?.id === 'account-pending') clearStorageNotice()
         settle(hackableHref.world(world.id))
         // The account may hold the first version (made before its answer was lost): save what is on screen at once.
         setHome({ kind: 'account', world, saved: null, backup: localId })
       } catch (error) {
+        busy = false
         if (!live) return
         if ((error as { code?: string })?.code === 'world_limit' || !mayWorkLater(error)) {
           setPendingWorld(localId, undefined)
