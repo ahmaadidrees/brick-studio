@@ -27,6 +27,6 @@ describe('/2d/hackable?new=1 in the page', () => {
 
     // Later changes save under it as usual.
     await act(async () => { studio().addCopy('brick_coin', 420, 140); await new Promise((r) => setTimeout(r, 700)) })
-    expect(localStorage.getItem(`code-lab.project.v1:${entry.id}`)).toContain('"x": 420')
+    expect(localStorage.getItem(`code-lab.project.v1:${entry.id}`)).toContain('"x":420')
   })
 })
