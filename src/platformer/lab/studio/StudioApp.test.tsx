@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { browserClassroomClient, type ClassroomClientSurface } from '../../../classroom/client'
+import { ClassroomError, browserClassroomClient, type ClassroomClientSurface } from '../../../classroom/client'
 import type { ClassroomWorld } from '../../../classroom/contracts'
 import { exportProjectJson } from './persist/projectIo'
 import { HACKABLE_INDEX_KEY, listHackableProjects, projectKey } from './persist/hackableProjects'
 import { projectFromDocument } from './persist/hackableSave'
 import { createStarterProject } from './starter'
-import { designSignature, keepNewProject, makeOwnCopy, openStudioRoute } from './StudioApp'
+import { designSignature, keepNewProject, makeOwnCopy, notKeptMessage, openStudioRoute } from './StudioApp'
 
 beforeEach(() => localStorage.clear())
 
@@ -121,5 +121,41 @@ describe('what counts as the first change', () => {
     expect(designSignature(reordered)).toBe(designSignature(project.design))
     const moved = { ...project.design, copies: project.design.copies.map((c, i) => (i === 0 ? { ...c, x: c.x + 16 } : c)) }
     expect(designSignature(moved)).not.toBe(designSignature(project.design))
+  })
+})
+
+describe('a signed-in kid’s first save when the account does not answer', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it('is kept on this computer, remembering the account id it tried, so trying again never makes two', async () => {
+    const createWorld = vi.fn(async () => { throw new ClassroomError('Could not connect.', 0, 'unreachable') })
+    const kept = await keepNewProject(named('My platformer'), { getSession: () => ({ user: { id: 'me' } }), createWorld } as unknown as ClassroomClientSurface)
+    expect(kept.home.kind).toBe('local')
+    const tried = (createWorld.mock.calls[0] as unknown as [{ id: string }])[0].id
+    expect(tried).toMatch(/^[0-9a-f-]{36}$/)
+    expect(kept.home).toMatchObject({ pending: { id: tried, owner: 'me' } })
+    const [entry] = listHackableProjects()
+    expect(entry.pendingWorld).toEqual({ id: tried, owner: 'me' })
+  })
+
+  it('reopening it signed in to that account picks up where it left off; another account does not', async () => {
+    const createWorld = vi.fn(async () => { throw new ClassroomError('Could not connect.', 0, 'unreachable') })
+    const kept = await keepNewProject(named('Mine'), { getSession: () => ({ user: { id: 'me' } }), createWorld } as unknown as ClassroomClientSurface)
+    const id = kept.home.kind === 'local' ? kept.home.id : ''
+    vi.spyOn(browserClassroomClient, 'getSession').mockReturnValue({ user: { id: 'me' } } as never)
+    expect(await openStudioRoute({ draft: id, fresh: false })).toMatchObject({ kind: 'local', pending: { owner: 'me' } })
+    vi.spyOn(browserClassroomClient, 'getSession').mockReturnValue({ user: { id: 'someone-else' } } as never)
+    const other = await openStudioRoute({ draft: id, fresh: false })
+    expect(other.kind === 'local' && other.pending).toBeFalsy()
+  })
+
+  it('a guest whose browser has no room left hears that, not that the browser is broken', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('full', 'QuotaExceededError') })
+    const kept = await keepNewProject(named('My platformer'), { getSession: () => null } as unknown as ClassroomClientSurface)
+    setItem.mockRestore()
+    expect(kept.home.kind).toBe('unsaved')
+    expect(kept.notice?.message).toMatch(/no more room for projects on this computer/)
+    expect(kept.notice?.message).toMatch(/Save File/)
+    expect(notKeptMessage('space')).not.toMatch(/browser won/)
   })
 })
