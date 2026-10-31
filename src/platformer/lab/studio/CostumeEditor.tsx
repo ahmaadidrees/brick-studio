@@ -303,9 +303,23 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     if (mode.current === 'gesture') keepAnchor()
   }, [zoom])
 
+  // Fingers report their moves one at a time: the zoom and scroll follow once a frame, from where all of them are.
+  const gestureFrame = useRef(0)
   function moveGesture() {
+    if (!gestureFrame.current) gestureFrame.current = requestAnimationFrame(stepGesture)
+  }
+
+  function endGesture() {
+    cancelAnimationFrame(gestureFrame.current)
+    gestureFrame.current = 0
+    gesture.current = null
+  }
+  useEffect(() => () => cancelAnimationFrame(gestureFrame.current), [])
+
+  function stepGesture() {
+    gestureFrame.current = 0
     const g = gesture.current
-    if (!g) return
+    if (!g || mode.current !== 'gesture') return
     const [a, b = a] = [...pointers.current.values()]
     if (!a) return
     g.mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
@@ -313,12 +327,9 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
       pointers.current.size >= 2
         ? Math.max(1, Math.min(32, Math.round((g.startZoom * Math.hypot(a.x - b.x, a.y - b.y)) / g.startDist)))
         : zoomRef.current
-    if (nextZoom !== zoomRef.current) {
-      zoomRef.current = nextZoom
-      setZoom(nextZoom)
-    } else {
-      keepAnchor()
-    }
+    // zoomRef is the zoom on screen: a new one is anchored once it is laid out (the layout effect above)
+    if (nextZoom !== zoomRef.current) setZoom(nextZoom)
+    else keepAnchor()
   }
 
   /** Drop the stroke in progress without leaving a mark (a second finger landed, or the system took the touch). */
@@ -334,6 +345,47 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     strokeBefore.current = null
     dragStart.current = null
   }
+
+  // A second finger can land beside the editor (it is narrow on a portrait tablet): it still stops the stroke and pinches.
+  const outside = useRef(new Set<number>())
+  const gestureActions = useRef({ cancelStroke, startGesture, moveGesture, endGesture })
+  gestureActions.current = { cancelStroke, startGesture, moveGesture, endGesture }
+  useEffect(() => {
+    const ids = outside.current
+    const down = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch' || mode.current === 'idle') return
+      if (viewportRef.current?.contains(e.target as Node)) return
+      ids.add(e.pointerId)
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      gestureActions.current.cancelStroke()
+      mode.current = 'gesture'
+      gestureActions.current.startGesture()
+    }
+    const move = (e: PointerEvent) => {
+      if (!ids.has(e.pointerId)) return
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      gestureActions.current.moveGesture()
+    }
+    const up = (e: PointerEvent) => {
+      if (!ids.delete(e.pointerId)) return
+      pointers.current.delete(e.pointerId)
+      if (pointers.current.size > 0) gestureActions.current.startGesture()
+      else {
+        mode.current = 'idle'
+        gestureActions.current.endGesture()
+      }
+    }
+    document.addEventListener('pointerdown', down, true)
+    document.addEventListener('pointermove', move, true)
+    document.addEventListener('pointerup', up, true)
+    document.addEventListener('pointercancel', up, true)
+    return () => {
+      document.removeEventListener('pointerdown', down, true)
+      document.removeEventListener('pointermove', move, true)
+      document.removeEventListener('pointerup', up, true)
+      document.removeEventListener('pointercancel', up, true)
+    }
+  }, [])
 
   // ---------------------------------------------------------------- drawing
 
@@ -416,7 +468,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
       if (pointers.current.size > 0) startGesture()
       else {
         mode.current = 'idle'
-        gesture.current = null
+        endGesture()
       }
       return
     }
@@ -447,7 +499,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
       startGesture()
     } else {
       mode.current = 'idle'
-      gesture.current = null
+      endGesture()
     }
   }
 

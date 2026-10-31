@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { parse } from '../../core/save'
 import { CostumeEditor } from '../CostumeEditor'
@@ -180,7 +180,20 @@ describe('touch in the costume editor', () => {
     expect(screen.getByLabelText('Undo')).toBeDisabled()
   })
 
-  it('a pinch zooms the picture', () => {
+  it('a second finger that lands beside the editor still cancels the stroke', () => {
+    const store = stageEditor()
+    const canvas = screen.getByLabelText('Pixel art canvas')
+    fireEvent.pointerDown(canvas, { pointerId: 1, pointerType: 'touch', clientX: 3, clientY: 3 })
+    fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: 'touch', clientX: 30, clientY: 3 })
+    fireEvent.pointerDown(document.body, { pointerId: 2, pointerType: 'touch', clientX: 900, clientY: 3 })
+    fireEvent.pointerUp(document.body, { pointerId: 2, pointerType: 'touch', clientX: 900, clientY: 3 })
+    fireEvent.pointerUp(canvas, { pointerId: 1, pointerType: 'touch', clientX: 30, clientY: 3 })
+    expect(store.getState().project.design.stage.costumes).toEqual([])
+    paintAt(canvas)
+    expect(stageSky(store)).toBeTruthy()
+  })
+
+  it('a pinch zooms the picture', async () => {
     const store = new StudioStore(createStarterProject())
     const walker = store.getState().project.design.bricks.find((b) => b.costumes.length > 0 && !b.grid)!
     store.selectBrick(walker.id)
@@ -191,6 +204,8 @@ describe('touch in the costume editor', () => {
     fireEvent.pointerDown(canvas, { pointerId: 1, pointerType: 'touch', clientX: 100, clientY: 100 })
     fireEvent.pointerDown(canvas, { pointerId: 2, pointerType: 'touch', clientX: 140, clientY: 100 })
     fireEvent.pointerMove(canvas, { pointerId: 2, pointerType: 'touch', clientX: 180, clientY: 100 })
+    // The zoom follows once a frame
+    await act(() => new Promise<void>((done) => requestAnimationFrame(() => done())))
     expect(zoomOf()).toBe(Math.min(32, start * 2))
     fireEvent.pointerUp(canvas, { pointerId: 2, pointerType: 'touch' })
     fireEvent.pointerUp(canvas, { pointerId: 1, pointerType: 'touch' })
