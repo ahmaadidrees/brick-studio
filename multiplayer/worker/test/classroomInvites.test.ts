@@ -372,3 +372,32 @@ describe('durable recipient invitation state', () => {
     expect(JSON.stringify(db.world_members)).toBe(before);
   });
 });
+
+describe('creating a project with an id the app chose (a first save tried again)', () => {
+  const hackable = { format: 'brickgineers-hackable', version: 1, save: { schemaVersion: 1, design: { name: 'Lava run' }, workspaces: {} } };
+  const chosen = '66666666-6666-4666-8666-000000000001';
+
+  it('makes it once: asked again with the same id, the world already made is returned', async () => {
+    const { call, db } = backend(ava, { worlds: [] });
+    const first = await call('POST', 'worlds', { title: 'Lava run', document: hackable, id: chosen });
+    expect(first.status).toBe(201);
+    expect(first.body.world).toMatchObject({ id: chosen, format: 'hackable', title: 'Lava run' });
+    const again = await call('POST', 'worlds', { title: 'Lava run', document: hackable, id: chosen.toUpperCase() });
+    expect(again.status).toBe(200);
+    expect(again.body.world).toMatchObject({ id: chosen, format: 'hackable' });
+    expect(db.worlds.filter(row => row.id === chosen)).toHaveLength(1);
+    // Without an id, every create is a new world, as before.
+    expect((await call('POST', 'worlds', { title: 'Other', document: hackable })).status).toBe(201);
+    expect(db.worlds).toHaveLength(2);
+  });
+
+  it('never hands back someone else’s world, or a deleted one, and refuses an id that is not a UUID', async () => {
+    const { call, db } = backend(ben, { worlds: [world({ id: chosen })] });
+    expect((await call('POST', 'worlds', { title: 'Mine', document: hackable, id: chosen })).body.code).toBe('world_exists');
+    expect((await call('POST', 'worlds', { title: 'Mine', document: hackable, id: 'not-a-uuid' })).status).toBe(400);
+    expect((await call('POST', 'worlds', { title: 'Mine', document: hackable, id: 42 })).status).toBe(400);
+    const own = backend(ava, { worlds: [world({ id: chosen, deleted_at: '2026-10-30T10:00:00Z' })] });
+    expect((await own.call('POST', 'worlds', { title: 'Again', document: hackable, id: chosen })).body.code).toBe('world_exists');
+    expect(db.worlds).toHaveLength(1);
+  });
+});
