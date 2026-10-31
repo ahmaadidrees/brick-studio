@@ -29,6 +29,18 @@ export interface HackableEntry {
   updated: number
   /** A small picture of the level (a JPEG data URL), when the studio has taken one. */
   picture?: string
+  /**
+   * Kept here because the account did not answer when it was first saved: the account world it becomes, made with
+   * this id (so trying again never makes a second copy), for the account that made it.
+   */
+  pendingWorld?: PendingWorld
+}
+
+export interface PendingWorld {
+  /** The account world id chosen on this computer (a UUID). */
+  id: string
+  /** The account the project belongs to. */
+  owner: string
 }
 
 export interface HackableDocument {
@@ -94,6 +106,78 @@ function storedIds(store: HackableStorage): string[] {
   return ids
 }
 
+/** True when a storage write failed because the browser's space for this site is full (not because saving is off). */
+export function isQuotaError(err: unknown): boolean {
+  if (!err) return false
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException) {
+    return (
+      err.name === 'QuotaExceededError' ||
+      err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      err.code === 22 ||
+      err.code === 1014
+    )
+  }
+  if (typeof err === 'object' && err !== null) {
+    const errorRecord = err as Record<string, unknown>
+    if (errorRecord.name === 'QuotaExceededError' || errorRecord.code === 22) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Saves written before 2026-10-31 were indented JSON, about 3.5 times the size of the same save written compactly
+ * (a starter project: 596,000 characters against 166,000), so a guest's browser filled after about 8 projects. Each
+ * such save is rewritten compactly: the same JSON, so nothing in it changes. A save that is not JSON, or that changed
+ * while it was being read, is left as it is. Returns how many characters were freed.
+ */
+export function compactHackableSaves(store = storage()): number {
+  if (!store) return 0
+  let freed = 0
+  for (const id of storedIds(store)) {
+    const key = projectKey(id)
+    let text: string | null = null
+    try { text = store.getItem(key) } catch { continue }
+    if (!text || !text.includes('\n')) continue
+    let compact: string
+    try { compact = JSON.stringify(JSON.parse(text)) } catch { continue }
+    if (compact.length >= text.length) continue
+    try {
+      // Only over the very text read just now (another tab may have saved since).
+      if (store.getItem(key) !== text) continue
+      store.setItem(key, compact)
+      freed += text.length - compact.length
+    } catch { /* full or blocked: the save stays as it was */ }
+  }
+  return freed
+}
+
+/** About what one more project takes (a starter project is about 166,000 characters, plus its picture). */
+export const NEW_PROJECT_ROOM_CHARS = 200_000
+
+/**
+ * Whether this browser has room to keep `chars` more characters: 'room', 'full' (its space for this site is used up,
+ * even after older saves were made smaller) or 'blocked' (saving is turned off).
+ */
+export function roomFor(chars = NEW_PROJECT_ROOM_CHARS, store = storage()): 'room' | 'full' | 'blocked' {
+  if (!store) return 'blocked'
+  const probe = 'code-lab.room-check'
+  const tryWrite = (): 'room' | 'full' | 'blocked' => {
+    try {
+      store.setItem(probe, 'x'.repeat(chars))
+      return 'room'
+    } catch (err) {
+      return isQuotaError(err) ? 'full' : 'blocked'
+    } finally {
+      try { store.removeItem(probe) } catch { /* blocked */ }
+    }
+  }
+  const first = tryWrite()
+  if (first !== 'full' || compactHackableSaves(store) === 0) return first
+  return tryWrite()
+}
+
 function writeIndex(store: HackableStorage, list: HackableEntry[]): boolean {
   try {
     store.setItem(HACKABLE_INDEX_KEY, JSON.stringify(list))
@@ -136,19 +220,59 @@ export function loadHackableText(id: string, store = storage()): string | null {
   }
 }
 
-export type HackableSaveResult = { ok: true } | { ok: false; reason: 'full' | 'storage' }
+/**
+ * Why a project was not kept: 'full' (this browser already keeps MAX_HACKABLE_PROJECTS), 'space' (its space for this
+ * site is used up) or 'storage' (saving is turned off, or failed some other way).
+ */
+export type HackableSaveResult = { ok: true } | { ok: false; reason: 'full' | 'space' | 'storage' }
+
+/**
+ * Write one save; when the browser's space is full, older saves are made smaller (compactHackableSaves) and it is
+ * tried once more. Throws what the last write threw.
+ */
+export function writeHackableText(key: string, text: string, store: HackableStorage): void {
+  try {
+    store.setItem(key, text)
+  } catch (err) {
+    if (!isQuotaError(err) || compactHackableSaves(store) === 0) throw err
+    store.setItem(key, text)
+  }
+}
 
 /** Keep a project's save text and list it (a new id is refused, never squeezed in, once the browser keeps the most). */
-export function saveHackableText(id: string, title: string, text: string, store = storage(), picture?: string): HackableSaveResult {
+export function saveHackableText(id: string, title: string, text: string, store = storage(), picture?: string, pendingWorld?: PendingWorld): HackableSaveResult {
   if (!store) return { ok: false, reason: 'storage' }
   const list = listHackableProjects(store)
   if (!list.some((e) => e.id === id) && list.length >= MAX_HACKABLE_PROJECTS) return { ok: false, reason: 'full' }
   try {
-    store.setItem(projectKey(id), text)
-  } catch {
-    return { ok: false, reason: 'storage' }
+    writeHackableText(projectKey(id), text, store)
+  } catch (err) {
+    return { ok: false, reason: isQuotaError(err) ? 'space' : 'storage' }
   }
+  if (pendingWorld) setPendingWorld(id, pendingWorld, store)
   return touchHackableEntry(id, title, store, picture) ? { ok: true } : { ok: false, reason: 'storage' }
+}
+
+/** Mark (or, with undefined, unmark) a project as waiting to become the account world `pending.id`. */
+export function setPendingWorld(id: string, pending: PendingWorld | undefined, store = storage()): boolean {
+  if (!store) return false
+  const list = listHackableProjects(store)
+  const at = list.findIndex((e) => e.id === id)
+  if (at < 0) {
+    if (!pending) return true
+    list.unshift({ id, title: NEW_PROJECT_NAME, updated: Date.now(), pendingWorld: pending })
+  } else {
+    const { pendingWorld: _old, ...rest } = list[at]
+    list[at] = pending ? { ...rest, pendingWorld: pending } : rest
+  }
+  return writeIndex(store, list)
+}
+
+/** The account world this project is waiting to become, if any. */
+export function pendingWorldOf(id: string, store = storage()): PendingWorld | undefined {
+  if (!store) return undefined
+  const pending = listHackableProjects(store).find((e) => e.id === id)?.pendingWorld
+  return pending && typeof pending.id === 'string' && typeof pending.owner === 'string' ? pending : undefined
 }
 
 /** After the studio saved a project under projectKey(id): put it first in the list with its name and picture. */
@@ -157,8 +281,9 @@ export function touchHackableEntry(id: string, title: string, store = storage(),
   const list = listHackableProjects(store)
   const at = list.findIndex((e) => e.id === id)
   const kept = at >= 0 ? list[at].picture : undefined
+  const pending = at >= 0 ? list[at].pendingWorld : undefined
   const shown = picture ?? kept
-  const entry: HackableEntry = { id, title: title.trim().slice(0, 80) || NEW_PROJECT_NAME, updated: Date.now(), ...(shown ? { picture: shown } : {}) }
+  const entry: HackableEntry = { id, title: title.trim().slice(0, 80) || NEW_PROJECT_NAME, updated: Date.now(), ...(shown ? { picture: shown } : {}), ...(pending ? { pendingWorld: pending } : {}) }
   if (at >= 0) list.splice(at, 1)
   return writeIndex(store, [entry, ...list])
 }
