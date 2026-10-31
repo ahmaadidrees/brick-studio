@@ -16,7 +16,7 @@ export function paletteDragScrolls(delta: { x: number; y: number }, heldMs: numb
 }
 
 interface GestureInternals {
-  flyout: { isScrollable(): boolean } | null
+  flyout: object | null
   currentDragDeltaXY: { x: number; y: number }
   calledUpdateIsDragging: boolean
   updateIsDragging(e: PointerEvent): void
@@ -41,7 +41,9 @@ export function installTouchPaletteScroll(): void {
   }
   proto.updateIsDragging = function (this: GestureInternals, e: PointerEvent) {
     const down = this.__paletteDown
-    if (this.flyout && down && down.pointerType !== 'mouse' && this.flyout.isScrollable()
+    // A palette that fits without scrolling still swallows the swipe (Blockly then moves nothing): a block only comes
+    // out on a sideways drag or after a press.
+    if (this.flyout && down && down.pointerType !== 'mouse'
       && paletteDragScrolls(this.currentDragDeltaXY, e.timeStamp - down.at)) {
       this.calledUpdateIsDragging = true
       this.updateIsDraggingWorkspace()

@@ -468,6 +468,18 @@
   -webkit-user-select: none;
 }
 
+/* Narrow screens (a Duo, a small tablet held upright): the costume list becomes a row above the editor, so the
+   picture keeps most of the height instead of sharing it with a 200px column. */
+@media (max-width: 767px) {
+  .costume-editor-layout { flex-direction: column; }
+  .costume-sidebar { width: auto; border-right: 0; border-bottom: 1px solid #282c37; flex-direction: row; align-items: center; }
+  .costume-sidebar-header { border-bottom: 0; padding: 6px 8px; gap: 8px; }
+  .costume-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 6px 8px; }
+  .costume-list > * { flex: 0 0 auto; }
+  .costume-toolbar { padding: 6px 8px; gap: 6px; }
+  .costume-viewport { padding: 8px; min-height: 200px; }
+}
+
 .pixel-canvas-wrapper {
   position: relative;
   /* Centered while it fits; once zoomed bigger than the view every edge can still be scrolled to. */

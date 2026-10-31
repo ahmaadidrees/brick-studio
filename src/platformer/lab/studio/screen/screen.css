@@ -275,6 +275,10 @@
   .cl-level-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
   .cl-tile { min-height: 70px; }
   .cl-stage-bar .cl-seg-sm button { padding: 0 7px; }
+  /* Painting a costume or picking sounds needs the room more than the small level does: Code's column takes the whole
+     height until the kid goes back to the Code tab. */
+  .cl-shell[data-screen='code']:has(.cl-slot-code :is(.costume-editor-layout, .sound-panel-container)) { --cl-code-top: calc(-1 * var(--cl-gap)); }
+  .cl-shell[data-screen='code']:has(.cl-slot-code :is(.costume-editor-layout, .sound-panel-container)) :is(.cl-slot-stage, .cl-slot-level) { display: none; }
 }
 
 /* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
