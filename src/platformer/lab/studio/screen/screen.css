@@ -256,28 +256,52 @@
   .cl-slot-inspector[inert] { transform: translateY(40px); }
   .cl-slot-inspector > * { flex: 1 1 auto; }
   .cl-inspector { animation-name: cl-rise; }
-  .cl-fab { position: absolute; z-index: 13; left: 12px; bottom: 14px; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--cl-blue); color: #fff !important; font-weight: 800; font-size: 15px; box-shadow: 0 6px 18px rgba(62, 91, 217, .4); }
+  /* Build: Bricks, Erase and Undo get their own bar under the level, so they never sit on the Hero's start. */
+  .cl-phone[data-screen='build'] .cl-slot-stage { bottom: 64px; }
+  .cl-fabs { position: absolute; z-index: 13; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; height: 64px; padding: 0 10px calc(env(safe-area-inset-bottom)); box-sizing: border-box; background: var(--cl-panel); border-top: 1px solid var(--cl-line); animation: cl-fade 200ms ease-out 1; }
+  .cl-fab { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--cl-blue); color: #fff !important; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(62, 91, 217, .35); cursor: pointer; }
+  .cl-fab-tool { min-height: 46px; padding: 0 12px; font-size: 14px; }
+  .cl-fab-tool:disabled { opacity: .45; cursor: default; }
   .cl-sheet-close { position: absolute; z-index: 21; top: calc(38% - 46px); right: 10px; box-shadow: 0 2px 8px rgba(31, 35, 64, .2); display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--cl-panel); }
-  .cl-strip { bottom: 76px; }
+
+  /* Code on a Duo-size screen (540 px and up): the small level and its bricks side by side on top, the palette and
+     scripts under them. Narrower phones have no Code. */
+  .cl-shell { --cl-code-top: clamp(170px, 30vh, 300px); }
+  [data-screen='code'] .cl-slot-stage { top: var(--cl-gap); left: var(--cl-gap); right: calc(42% + var(--cl-gap) / 2); bottom: calc(100% - var(--cl-gap) - var(--cl-code-top)); }
+  [data-screen='code'] .cl-stage-frame { border-width: 1px; border-radius: 16px; }
+  .cl-slot-level { top: var(--cl-gap); right: var(--cl-gap); left: calc(58% + var(--cl-gap) / 2); bottom: calc(100% - var(--cl-gap) - var(--cl-code-top)); }
+  .cl-slot-code { top: calc(var(--cl-code-top) + 2 * var(--cl-gap)); left: var(--cl-gap); right: var(--cl-gap); bottom: var(--cl-gap); }
+  .cl-level { padding: 8px; gap: 6px; }
+  .cl-level-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+  .cl-tile { min-height: 70px; }
+  .cl-stage-bar .cl-seg-sm button { padding: 0 7px; }
 }
 
 /* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
 [data-screen='play'] .play-hint { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); animation: cl-rise-centered 240ms var(--cl-ease) 1; }
 [data-screen='play'] .stage-view-tools { animation: cl-fade 240ms ease-out 1; }
-/* Touch screens: the on-screen buttons say how to play, so the keyboard hint goes. */
-@media (pointer: coarse) { [data-screen='play'] .play-hint { display: none; } }
-/* A touch screen held upright: the buttons get their own strip under the level, like a handheld, so they never cover
-   the Hero (the level fills the rest; see followViewWidth). */
-@media (pointer: coarse) and (max-aspect-ratio: 4/5) {
-  [data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 212px); box-sizing: border-box; background: var(--cl-ink); }
+/* Touch screens (.cl-touch, StudioShell's useTouch): the on-screen buttons say how to play, so the keyboard hint goes. */
+.cl-touch[data-screen='play'] .play-hint { display: none; }
+/* The buttons get their own strip under the level, like a handheld, so they never cover the Hero or the ground it
+   stands on (the level fills the rest; see followViewWidth). Held sideways the pad and Jump fit in a shorter strip. */
+.cl-touch[data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 152px); box-sizing: border-box; background: var(--cl-ink); }
+/* A short screen held sideways has no height to spare: the pad and the buttons go either side of the level instead. */
+@media (max-height: 559px) and (min-aspect-ratio: 4/3) {
+  .cl-touch[data-screen='play'] .cl-slot-stage { padding: 0 calc(env(safe-area-inset-right) + 224px) 0 calc(env(safe-area-inset-left) + 224px); }
+  .cl-touch[data-screen='play'] .cl-power-keys { bottom: calc(env(safe-area-inset-bottom) + 136px); max-width: 200px; }
+}
+/* Held upright: a taller strip. */
+@media (max-aspect-ratio: 4/5) {
+  .cl-touch[data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 212px); }
 }
 /* Wide enough for Run beside Jump: a shorter strip. */
-@media (pointer: coarse) and (max-aspect-ratio: 4/5) and (min-width: 421px) {
-  [data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 160px); }
-  [data-screen='play'] .p2d-face { flex-direction: row; align-items: center; }
+@media (max-aspect-ratio: 4/5) and (min-width: 421px) {
+  .cl-touch[data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 160px); }
+  .cl-touch[data-screen='play'] .p2d-face { flex-direction: row; align-items: center; }
 }
-/* A phone in Play: one row of tools (no zoom; Fit and the camera choice are enough). */
-.cl-phone[data-screen='play'] .stage-view-group[aria-label='Zoom'] { display: none; }
+/* Play's camera always shows the Hero or the whole level (the camera buttons), so there is no zoom to change. */
+[data-screen='play'] .stage-view-group[aria-label='Zoom'] { display: none; }
+/* A phone in Play: one row of tools. */
 .cl-phone[data-screen='play'] .stage-view-tools { flex-wrap: nowrap; gap: 6px; padding: 6px; overflow-x: auto; scrollbar-width: none; }
 .cl-phone[data-screen='play'] .stage-view-btn { padding: 0 8px; font-size: 13px; white-space: nowrap; }
 /* ...and the coin count goes under that row instead of over Pause. */
@@ -327,3 +351,25 @@
 .cl-power-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 800; color: var(--cl-muted); }
 .cl-power-field input { min-height: 36px; padding: 0 10px; border: 1px solid var(--cl-line); border-radius: 9px; font: 700 14px Nunito, system-ui, sans-serif; color: var(--cl-ink); }
 .cl-power-error { background: #fff4d6; color: #7a4f00; }
+
+/* ---------------------------------------------------------------- a Duo (or any fold) opened flat
+   Two screens side by side with a hinge between them: nothing goes under the hinge. Build and Code put their panels on
+   the left screen and the level on the right one; Play's buttons, notes and cards sit on the right screen. */
+@media (horizontal-viewport-segments: 2) {
+  .cl-shell {
+    --cl-hinge-l: env(viewport-segment-right 0 0, 50vw);
+    --cl-hinge-r: env(viewport-segment-left 1 0, 50vw);
+    --cl-pane: calc(100vw - var(--cl-hinge-r));
+    --cl-right: calc(var(--cl-pane) - 2 * var(--cl-gap));
+  }
+  .cl-slot-drawer, .cl-slot-code, .cl-slot-inspector { left: var(--cl-gap); right: calc(100vw - var(--cl-hinge-l) + var(--cl-gap)); }
+  .cl-slot-inspector { z-index: 3; }
+  .cl-slot-inspector > * { flex: 1 1 auto; }
+  .cl-slot-stage, [data-inspecting='yes'] .cl-slot-stage { left: calc(var(--cl-hinge-r) + var(--cl-gap)); right: var(--cl-gap); }
+  [data-screen='play'] .cl-slot-stage { left: 0; right: 0; }
+  .cl-slot-stage .stage-view-tools { max-width: calc(var(--cl-pane) - 20px); }
+  .cl-toast { left: calc(var(--cl-hinge-r) + var(--cl-pane) / 2); max-width: calc(var(--cl-pane) - 32px); }
+  [data-screen='play'] :is(.play-hint, .play-hurt) { left: calc(var(--cl-hinge-r) + var(--cl-pane) / 2); max-width: calc(var(--cl-pane) - 32px); }
+  [data-screen='play'] .p2d-overlay { padding-left: calc(var(--cl-hinge-r) + 16px); }
+  [data-screen='play'] .p2d-card { width: min(460px, calc(var(--cl-pane) - 32px)); }
+}

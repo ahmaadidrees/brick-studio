@@ -539,3 +539,102 @@ describe('+ New brick: one step, then type its name', () => {
     expect((store.getState().project.workspaces[id] as { marker?: string }).marker).toMatch(/^fake_/)
   })
 })
+
+/** A screen that answers these media queries (everything else does not match). */
+function screenSize(matching: string[]) {
+  vi.stubGlobal('matchMedia', (query: string) => ({ matches: matching.includes(query), addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+}
+const DUO = ['(max-width: 767px)']
+const PHONE = ['(max-width: 767px)', '(max-width: 539px)']
+
+describe('small screens and touch', () => {
+  it('a Duo-size screen (540 px and up) keeps Code', () => {
+    screenSize(DUO)
+    const store = new StudioStore(createStarterProject())
+    render(<StudioShell store={store} />)
+    expect(screen.getByRole('radio', { name: 'Code' }).getAttribute('aria-disabled')).toBeNull()
+    mode('Code')
+    expect(store.getState().cardTab).toBe('code')
+    expect(screen.queryByText('Code needs a bigger screen')).toBeNull()
+  })
+
+  it('a phone keeps Undo and Erase in reach beside Bricks while the Bricks sheet is closed', () => {
+    screenSize(PHONE)
+    const store = new StudioStore(createStarterProject())
+    const history = builderSession(store).history
+    render(<StudioShell store={store} />)
+    const bar = screen.getByRole('toolbar', { name: 'Bricks and undo' })
+    expect(bar.closest('[inert]')).toBeNull()
+    const undo = within(bar).getByRole('button', { name: 'Undo' }) as HTMLButtonElement
+    expect(undo.disabled).toBe(true)
+
+    const count = () => store.getState().project.design.copies.length
+    const before = count()
+    const copy = store.getState().project.design.copies.find((c) => c.id !== 'copy_hero')!
+    act(() => {
+      history.push(removeCopyEdit(history, copy))
+      store.deleteCopy(copy.id)
+    })
+    expect(count()).toBe(before - 1)
+    expect(undo.disabled).toBe(false)
+    fireEvent.click(undo)
+    expect(count()).toBe(before)
+
+    const erase = within(bar).getByRole('button', { name: 'Erase' })
+    fireEvent.click(erase)
+    expect(erase.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('group', { name: 'Erasing' })).toBeTruthy()
+    fireEvent.click(erase)
+    expect(screen.queryByRole('group', { name: 'Erasing' })).toBeNull()
+
+    fireEvent.click(within(bar).getByRole('button', { name: /Bricks/ }))
+    expect(screen.queryByRole('toolbar', { name: 'Bricks and undo' })).toBeNull()
+  })
+
+  it('a big screen has no extra tools bar (Undo and Erase are in the drawer)', () => {
+    screenSize([])
+    render(<StudioShell store={new StudioStore(createStarterProject())} />)
+    expect(document.querySelector('.cl-fabs')).toBeNull()
+  })
+
+  it('Play shows the touch buttons on any touch screen, even one whose main pointer is a trackpad', () => {
+    screenSize(['(any-pointer: coarse)'])
+    render(<StudioShell store={new StudioStore(createStarterProject())} />)
+    mode('Play')
+    expect(screen.getByRole('button', { name: 'Jump' })).toBeTruthy()
+    expect(document.querySelector('.cl-shell')!.classList.contains('cl-touch')).toBe(true)
+  })
+
+  it('Play shows the touch buttons after the first touch on a screen that reports none', () => {
+    screenSize([])
+    render(<StudioShell store={new StudioStore(createStarterProject())} />)
+    mode('Play')
+    expect(screen.queryByRole('button', { name: 'Jump' })).toBeNull()
+    const mouse = new Event('pointerdown', { bubbles: true })
+    Object.defineProperty(mouse, 'pointerType', { value: 'mouse' })
+    act(() => { window.dispatchEvent(mouse) })
+    expect(screen.queryByRole('button', { name: 'Jump' })).toBeNull()
+    const finger = new Event('pointerdown', { bubbles: true })
+    Object.defineProperty(finger, 'pointerType', { value: 'touch' })
+    act(() => { window.dispatchEvent(finger) })
+    expect(screen.getByRole('button', { name: 'Jump' })).toBeTruthy()
+  })
+
+  it("Play's camera keeps following the Hero after a drag or a wheel on the level, and Build's view does not move", () => {
+    screenSize([])
+    const store = new StudioStore(createStarterProject())
+    render(<StudioShell store={store} />)
+    const buildCam = builderSession(store).camera
+    mode('Play')
+    const follow = screen.getByRole('button', { name: 'Follow the Hero' })
+    expect(follow.getAttribute('aria-pressed')).toBe('true')
+    // Empty sky near the top of the level, then a drag well past the slip threshold.
+    fireEvent.pointerDown(canvasOf(), { button: 0, clientX: 240, clientY: 20 })
+    fireEvent.pointerMove(canvasOf(), { clientX: 120, clientY: 60 })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    fireEvent.wheel(canvasOf(), { deltaX: 80, deltaY: 0 })
+    expect(follow.getAttribute('aria-pressed')).toBe('true')
+    mode('Build')
+    expect(builderSession(store).camera).toEqual(buildCam)
+  })
+})
