@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listHackableProjects } from './persist/hackableProjects'
 import type { StudioStore } from './store'
@@ -20,9 +20,9 @@ describe('/2d/hackable?new=1 in the page', () => {
     expect(window.location.search).toBe('?new=1')
 
     await act(async () => { studio().addCopy('brick_coin', 400, 140) })
-    await act(async () => { await new Promise((r) => setTimeout(r, 20)) })
+    // The first keep is quick but not instant; wait for it rather than a fixed delay (a loaded machine can miss 20 ms).
+    await waitFor(() => expect(listHackableProjects()[0]?.title).toBe('My platformer'))
     const [entry] = listHackableProjects()
-    expect(entry?.title).toBe('My platformer')
     expect(window.location.search).toBe(`?draft=${entry.id}`)
 
     // Later changes save under it as usual.
