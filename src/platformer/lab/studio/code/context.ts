@@ -104,51 +104,58 @@ export function withCardContext<T>(extras: CardExtras, fn: () => T): T {
   }
 }
 
+/** What the open editor knows right now, ahead of the saved project: its own variable map. */
+export interface LiveEditor {
+  /** The open workspace's variables (type '' for variables, 'list' for lists). */
+  variables?: () => Array<{ id: string; name: string; type: string }>
+  onVariableMenu?: EditorContext['onVariableMenu']
+}
+
 /**
  * Builds an EditorContext instance for Blockly block definitions and dropdowns
  * based on the current StudioStore state.
+ *
+ * Variables and lists are read when a menu asks, not when the editor opens: a variable made a moment ago (here, or
+ * shared from the Stage) is in the menus at once. The open workspace's own variable map comes first, so a rename shows
+ * before it is saved.
  */
-export function buildEditorContext(store: StudioStore): EditorContext {
+export function buildEditorContext(store: StudioStore, live: LiveEditor = {}): EditorContext {
   const state = store.getState()
   const brickId = state.selectedBrickId
   const isStage = brickId === STAGE_ID
   const brick = store.brick(brickId)
   const stage = store.brick(STAGE_ID)
 
+  const collect = <T extends { id: string; name: string }>(type: '' | 'list', own: (b: typeof brick) => T[] | undefined): T[] => {
+    const current = store.getState().project.design
+    const self = brickId === STAGE_ID ? current.stage : current.bricks.find((b) => b.id === brickId)
+    const shared = isStage ? [] : (own(current.stage) ?? [])
+    const mine = (live.variables?.() ?? []).filter((v) => v.type === type)
+    const liveNames = new Map(mine.map((v) => [v.id, v.name]))
+    const seen = new Set<string>()
+    const out: T[] = []
+    for (const v of [...(own(self) ?? []), ...shared]) {
+      if (seen.has(v.id)) continue
+      seen.add(v.id)
+      const name = liveNames.get(v.id)
+      out.push(name !== undefined && name !== v.name ? { ...v, name } : v)
+    }
+    for (const v of mine) {
+      if (seen.has(v.id)) continue
+      seen.add(v.id)
+      out.push({ id: v.id, name: v.name } as T)
+    }
+    return out
+  }
   // 1. Variables: this brick's variables + stage's variables (globals)
-  const brickVars = brick?.program?.variables ?? []
-  const stageVars = isStage ? [] : (stage?.program?.variables ?? [])
-  const seenVarIds = new Set<string>()
-  const variables: VariableItem[] = []
-
-  for (const v of [...brickVars, ...stageVars]) {
-    if (!seenVarIds.has(v.id)) {
-      seenVarIds.add(v.id)
-      variables.push({
-        id: v.id,
-        name: v.name,
-        value: v.value,
-        showInBuild: v.showInBuild,
-      })
-    }
-  }
-
+  const variables = (): VariableItem[] => collect('', (b) => b?.program?.variables).map((v) => ({
+    id: v.id,
+    name: v.name,
+    value: v.value,
+    showInBuild: v.showInBuild,
+  }))
   // 2. Lists: this brick's lists + stage's lists (globals)
-  const brickLists = brick?.program?.lists ?? []
-  const stageLists = isStage ? [] : (stage?.program?.lists ?? [])
-  const seenListIds = new Set<string>()
-  const lists: ListItem[] = []
-
-  for (const l of [...brickLists, ...stageLists]) {
-    if (!seenListIds.has(l.id)) {
-      seenListIds.add(l.id)
-      lists.push({
-        id: l.id,
-        name: l.name,
-        value: l.value,
-      })
-    }
-  }
+  const lists = (): ListItem[] => collect('list', (b) => b?.program?.lists).map((l) => ({ id: l.id, name: l.name, value: l.value }))
 
   // 3. Broadcast messages across every brick's workspace
   const workspaceMessages = extractBroadcastMessages(state.project.workspaces)
@@ -166,13 +173,14 @@ export function buildEditorContext(store: StudioStore): EditorContext {
   const backdrops = (stage?.costumes ?? []).map((c) => c.name)
 
   return {
-    getVariables: () => (cardExtras ? [...variables, ...cardExtras.variables] : variables),
-    getLists: () => lists,
+    getVariables: () => (cardExtras ? [...variables(), ...cardExtras.variables] : variables()),
+    getLists: () => lists(),
     getMessages: () => (cardExtras ? [...messages, ...cardExtras.messages] : messages),
     getBricks: () => (cardExtras ? [...brickNames, ...cardExtras.bricks] : brickNames),
     getCostumes: () => costumes,
     getSounds: () => sounds,
     getBackdrops: () => backdrops,
     isStage,
+    ...(live.onVariableMenu ? { onVariableMenu: live.onVariableMenu } : {}),
   }
 }

@@ -15,6 +15,8 @@ import {
   getTargetOptions,
   getEditorContext,
   getVariableOptions,
+  VARIABLE_MENU_DELETE,
+  VARIABLE_MENU_RENAME,
   type EditorContext,
   type MenuOption,
 } from './context'
@@ -47,7 +49,12 @@ export function isHatOpcode(opcode: string): opcode is HatOpcode {
  * wired to dynamic dropdown options provided by `context`.
  */
 export function createBlockDefinitions(context?: EditorContext): Array<Record<string, unknown>> {
-  const varOptions = () => getVariableOptions(context)
+  // Called by the field itself (Blockly calls a menu generator as the field's method), so the Delete entry can name the
+  // variable the menu shows.
+  const varOptions = function (this: { getValue?: () => unknown } | undefined) {
+    const current = typeof this?.getValue === 'function' ? this.getValue() : null
+    return getVariableOptions(context, typeof current === 'string' ? current : null)
+  }
   const listOptions = () => getListOptions(context)
   const msgOptions = () => getMessageOptions(context)
   const costumeOptions = () => getCostumeOptions(context)
@@ -1286,6 +1293,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       category: 'variables',
       colour: CATEGORY_COLORS.variables,
       output: null,
+      extensions: [VARIABLE_MENU_EXTENSION],
       tooltip: '',
     },
     {
@@ -1299,6 +1307,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.variables,
       previousStatement: null,
       nextStatement: null,
+      extensions: [VARIABLE_MENU_EXTENSION],
       tooltip: '',
     },
     {
@@ -1312,6 +1321,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.variables,
       previousStatement: null,
       nextStatement: null,
+      extensions: [VARIABLE_MENU_EXTENSION],
       tooltip: '',
     },
     {
@@ -1322,6 +1332,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.variables,
       previousStatement: null,
       nextStatement: null,
+      extensions: [VARIABLE_MENU_EXTENSION],
       tooltip: '',
     },
     {
@@ -1332,6 +1343,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.variables,
       previousStatement: null,
       nextStatement: null,
+      extensions: [VARIABLE_MENU_EXTENSION],
       tooltip: '',
     },
     {
@@ -1799,7 +1811,27 @@ const procedureStateMixin = {
   },
 }
 
+/** The variable menu's Rename and Delete entries run the host's handler; the block keeps its variable. */
+const VARIABLE_MENU_EXTENSION = 'variable_menu_actions'
+function variableMenuActions(this: Blockly.Block): void {
+  const field = this.getField('VARIABLE')
+  if (!field) return
+  field.setValidator((value: unknown) => {
+    if (value !== VARIABLE_MENU_RENAME && value !== VARIABLE_MENU_DELETE) return value as string
+    const handler = getEditorContext().onVariableMenu
+    const shown = field.getValue()
+    if (handler && typeof shown === 'string') {
+      // After the menu closes, so a dialog can take the keyboard.
+      setTimeout(() => handler(value === VARIABLE_MENU_RENAME ? 'rename' : 'delete', shown), 0)
+    }
+    return null
+  })
+}
+
 export function registerEditorBlocks(context?: EditorContext): void {
+  if (!Blockly.Extensions.isRegistered(VARIABLE_MENU_EXTENSION)) {
+    Blockly.Extensions.register(VARIABLE_MENU_EXTENSION, variableMenuActions)
+  }
   if (!Blockly.Extensions.isRegistered(PROCEDURE_STATE_MUTATOR)) {
     Blockly.Extensions.registerMutator(PROCEDURE_STATE_MUTATOR, procedureStateMixin)
   }
