@@ -20,6 +20,7 @@ import { DockedEditorToolbar } from './code/DockedEditorToolbar'
 import { focusedMyBlocksFlyout } from './code/focusedPalette'
 import { LayerBar } from './code/LayerBar'
 import { installTouchPaletteScroll } from './code/touchFlyout'
+import { fillEmptySlots, refillUnpluggedSlot, slotShadowsFromToolbox } from './code/slotShadows'
 import { PlainScratchCard } from './code/PlainScratchCard'
 import {
   applyView,
@@ -160,6 +161,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
 
     // 4. Configure continuous toolbox (filter Motion if stage selected)
     const toolboxDef = createContinuousToolbox(ctx, { isStage })
+    const slotShadows = slotShadowsFromToolbox(toolboxDef)
+    const variableValue = (id: string) => ctx.getVariables?.().find((v) => v.id === id)?.value
 
     // 5. Inject Blockly workspace
     const ws = Blockly.inject(container, {
@@ -259,6 +262,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       }
     }
 
+    // Slots emptied before this fix (a reporter pulled out) get a number to type into again.
+    if (!loadBlockedRef.current) fillEmptySlots(ws, slotShadows)
+
     if (docked) ws.getToolbox()?.clearSelection()
     foldLongDefinitions(ws)
     ws.getToolbox()?.refreshSelection() // calls for the definitions that just loaded
@@ -295,6 +301,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     const changeListener = (event: Blockly.Events.Abstract) => {
       // Layered view upkeep (labels, the My Blocks shelf, a definition deleted while drilled in)
       if (!event.isUiEvent && event.type !== Blockly.Events.FINISHED_LOADING) {
+        // A reporter pulled out of a slot leaves a number to type into (the variable's own number, if it had one).
+        refillUnpluggedSlot(ws, event, slotShadows, variableValue)
         renderLabels(ws)
         syncDefinitions()
         if (event.type === Blockly.Events.BLOCK_CREATE && (event as Blockly.Events.BlockCreate).ids?.length) {
