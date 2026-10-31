@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -57,6 +57,13 @@ const PALETTE_COLORS = [
   '#8c624a',
 ]
 
+function sameImage(a: PixelImage, b: PixelImage): boolean {
+  if (a === b) return true
+  if (a.width !== b.width || a.height !== b.height) return false
+  for (let i = 0; i < a.data.length; i++) if (a.data[i] !== b.data[i]) return false
+  return true
+}
+
 export function CostumeEditor({ store }: { store: StudioStore }) {
   const selectedBrickId = useStudio(store, (s) => s.selectedBrickId)
   const isStage = selectedBrickId === STAGE_ID
@@ -104,31 +111,49 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
   const [center, setCenter] = useState<{ x: number; y: number }>({ x: 16, y: 16 })
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
   const historyRef = useRef<EditHistory>(new EditHistory(40))
-  const isDrawing = useRef(false)
   const dragStart = useRef<{ x: number; y: number } | null>(null)
   const isDraggingCenter = useRef(false)
+  const centerBefore = useRef<{ x: number; y: number } | null>(null)
   const currentCostumeRef = useRef<Costume | null>(null)
+  // Fingers (and the mouse) on the canvas area. One pointer draws; a second one turns the touch into pinch-zoom and pan.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const mode = useRef<'idle' | 'draw' | 'gesture'>('idle')
+  const strokeBefore = useRef<PixelImage | null>(null)
+  const gesture = useRef<{ startDist: number; startZoom: number; anchor: { x: number; y: number }; mid: { x: number; y: number } } | null>(null)
+  const zoomRef = useRef(zoom)
+  zoomRef.current = zoom
+  // Which costume the editor holds, and the picture it last loaded or saved: a store change to that costume made
+  // anywhere else reloads it, while the editor's own saves keep its undo history.
+  const loaded = useRef<{ key: string; asset: string | undefined } | null>(null)
 
   // Clamp active index
   const safeIndex = Math.max(0, Math.min(activeCostumeIndex, Math.max(0, costumes.length - 1)))
   const currentCostume = costumes[safeIndex] ?? null
   currentCostumeRef.current = currentCostume
+  const costumeKey = `${selectedBrickId}#${safeIndex}#${currentCostume?.name ?? ''}`
 
-  // Load costume into pixel editor when selection or costume changes
+  function syncHistoryButtons() {
+    setCanUndo(historyRef.current.canUndo())
+    setCanRedo(historyRef.current.canRedo())
+  }
+
+  // Load the costume into the pixel editor when another costume is picked, or when this one changes outside the editor
   useEffect(() => {
     if (!currentCostume) return
+    const sameCostume = loaded.current?.key === costumeKey
+    if (sameCostume && loaded.current?.asset === currentCostume.asset) return
+    loaded.current = { key: costumeKey, asset: currentCostume.asset }
     const img = costumeToPixelImage(currentCostume)
-    const newCenter = {
+    setPixelImg(img)
+    setCenter({
       x: currentCostume.rotationCenterX ?? img.width / 2,
       y: currentCostume.rotationCenterY ?? img.height / 2,
-    }
-    setPixelImg(img)
-    setCenter(newCenter)
+    })
     historyRef.current.clear()
-    historyRef.current.push(img, newCenter)
-    setCanUndo(false)
-    setCanRedo(false)
+    syncHistoryButtons()
+    if (sameCostume) return
 
     // Set appropriate initial zoom
     if (isStage) {
@@ -136,32 +161,45 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     } else {
       setZoom(img.width <= 32 ? 14 : img.width <= 64 ? 8 : 4)
     }
-  }, [currentCostume?.asset, currentCostume?.name, isStage])
+  }, [costumeKey, currentCostume?.asset, isStage])
 
-  // Save current image and center to the store
+  /** Save an image and center to the store. Returns false (and puts the last saved picture back) if it is too big. */
   const commitChanges = useCallback(
-    (newImg: PixelImage, newCenter: { x: number; y: number }) => {
+    (newImg: PixelImage, newCenter: { x: number; y: number }): boolean => {
       const current = currentCostumeRef.current
-      if (!current) return
+      if (!current) return false
       const updatedCostume = savePixelImageToCostume(current.name, newImg, newCenter)
       // A picture the save would refuse would stop every later change from saving: keep the last one that fits.
       if ((updatedCostume.asset?.length ?? 0) > DESIGN_LIMITS.maxAssetChars) {
-        const kept = costumeToPixelImage(current)
-        setPixelImg(kept)
-        historyRef.current.clear()
-        historyRef.current.push(kept, newCenter)
-        setCanUndo(false)
-        setCanRedo(false)
+        setPixelImg(costumeToPixelImage(current))
+        setCenter({ x: current.rotationCenterX ?? current.width / 2, y: current.rotationCenterY ?? current.height / 2 })
         setTooBig(true)
-        return
+        return false
       }
       setTooBig(false)
       const nextCostumes = [...costumes]
       nextCostumes[safeIndex] = updatedCostume
+      loaded.current = { key: costumeKey, asset: updatedCostume.asset }
       store.setCostumes(selectedBrickId, nextCostumes)
+      return true
     },
-    [costumes, safeIndex, selectedBrickId, store]
+    [costumes, safeIndex, selectedBrickId, store, costumeKey]
   )
+
+  /** Save one finished edit, remembering the picture before it so Undo can bring it back. */
+  function applyEdit(
+    nextImg: PixelImage,
+    nextCenter: { x: number; y: number },
+    beforeImg: PixelImage,
+    beforeCenter: { x: number; y: number }
+  ) {
+    setPixelImg(nextImg)
+    setCenter(nextCenter)
+    // A click that changed nothing (the same color again) is not a step to undo
+    if (sameImage(nextImg, beforeImg) && nextCenter.x === beforeCenter.x && nextCenter.y === beforeCenter.y) return
+    if (commitChanges(nextImg, nextCenter)) historyRef.current.push(beforeImg, beforeCenter)
+    syncHistoryButtons()
+  }
 
   // Render to canvas
   const renderCanvas = useCallback(
@@ -212,8 +250,8 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     renderCanvas()
   }, [renderCanvas])
 
-  // Helper to convert pointer event coordinates to pixel coordinates
-  function getPixelCoords(e: ReactPointerEvent<HTMLCanvasElement>): { x: number; y: number } {
+  // Convert a pointer position to pixel coordinates on the picture
+  function getPixelCoords(e: { clientX: number; clientY: number }): { x: number; y: number } {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
     const rect = canvas.getBoundingClientRect()
@@ -227,34 +265,126 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     }
   }
 
-  // Pointer event handlers
-  function handlePointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId)
-    isDrawing.current = true
+  // ---------------------------------------------------------------- pinch-zoom and pan
+
+  function startGesture() {
+    const canvas = canvasRef.current
+    const pts = [...pointers.current.values()]
+    if (!canvas || pts.length === 0) {
+      gesture.current = null
+      return
+    }
+    const [a, b = a] = pts
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const rect = canvas.getBoundingClientRect()
+    const z = zoomRef.current
+    gesture.current = {
+      startDist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      startZoom: z,
+      anchor: { x: (mid.x - rect.left) / z, y: (mid.y - rect.top) / z },
+      mid,
+    }
+  }
+
+  /** Scroll so the picture point that was under the fingers is under them again. */
+  function keepAnchor() {
+    const g = gesture.current
+    const canvas = canvasRef.current
+    const view = viewportRef.current
+    if (!g || !canvas || !view) return
+    const rect = canvas.getBoundingClientRect()
+    const z = zoomRef.current
+    view.scrollLeft += rect.left + g.anchor.x * z - g.mid.x
+    view.scrollTop += rect.top + g.anchor.y * z - g.mid.y
+  }
+
+  // A pinch's zoom lands after React lays the canvas out at its new size: then put the fingers' point back.
+  useLayoutEffect(() => {
+    if (mode.current === 'gesture') keepAnchor()
+  }, [zoom])
+
+  function moveGesture() {
+    const g = gesture.current
+    if (!g) return
+    const [a, b = a] = [...pointers.current.values()]
+    if (!a) return
+    g.mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+    const nextZoom =
+      pointers.current.size >= 2
+        ? Math.max(1, Math.min(32, Math.round((g.startZoom * Math.hypot(a.x - b.x, a.y - b.y)) / g.startDist)))
+        : zoomRef.current
+    if (nextZoom !== zoomRef.current) {
+      zoomRef.current = nextZoom
+      setZoom(nextZoom)
+    } else {
+      keepAnchor()
+    }
+  }
+
+  /** Drop the stroke in progress without leaving a mark (a second finger landed, or the system took the touch). */
+  function cancelStroke() {
+    if (mode.current !== 'draw') return
+    const before = strokeBefore.current
+    if (before) {
+      setPixelImg(before)
+      renderCanvas(before)
+    } else {
+      renderCanvas()
+    }
+    strokeBefore.current = null
+    dragStart.current = null
+  }
+
+  // ---------------------------------------------------------------- drawing
+
+  function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // A pointer that is already gone cannot be captured; it still draws until it lifts.
+    }
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (mode.current === 'draw' || mode.current === 'gesture' || pointers.current.size > 1) {
+      // A second finger: no drawing, pinch-zoom and pan instead
+      cancelStroke()
+      mode.current = 'gesture'
+      startGesture()
+      return
+    }
+
+    const onCanvas = e.target === canvasRef.current
+    if (!onCanvas) {
+      // One finger beside the picture pans it
+      mode.current = 'gesture'
+      startGesture()
+      return
+    }
+
+    mode.current = 'draw'
+    strokeBefore.current = pixelImg
     const { x, y } = getPixelCoords(e)
     dragStart.current = { x, y }
 
-    const currentColor: ColorRGBA = tool === 'eraser' ? TRANSPARENT : hexToRgba(colorHex)
-
     if (tool === 'pencil' || tool === 'eraser') {
+      const currentColor: ColorRGBA = tool === 'eraser' ? TRANSPARENT : hexToRgba(colorHex)
       const nextImg = cloneImage(pixelImg)
       setPixel(nextImg, x, y, currentColor)
       setPixelImg(nextImg)
       renderCanvas(nextImg)
-    } else if (tool === 'fill') {
-      const nextImg = cloneImage(pixelImg)
-      floodFill(nextImg, x, y, currentColor)
-      setPixelImg(nextImg)
-      historyRef.current.push(nextImg, center)
-      setCanUndo(historyRef.current.canUndo())
-      setCanRedo(historyRef.current.canRedo())
-      commitChanges(nextImg, center)
-      isDrawing.current = false
     }
+    // Fill happens when the pointer lifts, so a pinch that starts with one finger never fills.
   }
 
-  function handlePointerMove(e: ReactPointerEvent<HTMLCanvasElement>) {
-    if (!isDrawing.current) return
+  function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!pointers.current.has(e.pointerId)) return
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (mode.current === 'gesture') {
+      moveGesture()
+      return
+    }
+    if (mode.current !== 'draw') return
     const { x, y } = getPixelCoords(e)
     const currentColor: ColorRGBA = tool === 'eraser' ? TRANSPARENT : hexToRgba(colorHex)
 
@@ -279,25 +409,46 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     }
   }
 
-  function handlePointerUp(e: ReactPointerEvent<HTMLCanvasElement>) {
-    if (!isDrawing.current) return
-    isDrawing.current = false
+  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!pointers.current.delete(e.pointerId)) return
+    if (mode.current === 'gesture') {
+      // The remaining fingers carry on panning; the last one lifting ends the gesture (it never starts a stroke).
+      if (pointers.current.size > 0) startGesture()
+      else {
+        mode.current = 'idle'
+        gesture.current = null
+      }
+      return
+    }
+    if (mode.current !== 'draw') return
+    mode.current = 'idle'
+    const before = strokeBefore.current ?? pixelImg
+    strokeBefore.current = null
     const { x, y } = getPixelCoords(e)
     const currentColor: ColorRGBA = tool === 'eraser' ? TRANSPARENT : hexToRgba(colorHex)
 
-    let finalImg = cloneImage(pixelImg)
+    const finalImg = cloneImage(pixelImg)
     if (tool === 'line' && dragStart.current) {
       drawLine(finalImg, dragStart.current.x, dragStart.current.y, x, y, currentColor)
     } else if (tool === 'rectangle' && dragStart.current) {
       drawRect(finalImg, dragStart.current.x, dragStart.current.y, x, y, currentColor, rectFilled)
+    } else if (tool === 'fill' && dragStart.current) {
+      floodFill(finalImg, dragStart.current.x, dragStart.current.y, currentColor)
     }
-
-    setPixelImg(finalImg)
-    historyRef.current.push(finalImg, center)
-    setCanUndo(historyRef.current.canUndo())
-    setCanRedo(historyRef.current.canRedo())
-    commitChanges(finalImg, center)
     dragStart.current = null
+    applyEdit(finalImg, center, before, center)
+  }
+
+  function handlePointerCancel(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!pointers.current.delete(e.pointerId)) return
+    cancelStroke()
+    if (pointers.current.size > 0) {
+      mode.current = 'gesture'
+      startGesture()
+    } else {
+      mode.current = 'idle'
+      gesture.current = null
+    }
   }
 
   // Rotation center drag handler
@@ -305,6 +456,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
     isDraggingCenter.current = true
+    centerBefore.current = center
   }
 
   function handleCenterPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -320,19 +472,23 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
   function handleCenterPointerUp() {
     if (!isDraggingCenter.current) return
     isDraggingCenter.current = false
-    historyRef.current.push(pixelImg, center)
-    setCanUndo(historyRef.current.canUndo())
-    setCanRedo(historyRef.current.canRedo())
-    commitChanges(pixelImg, center)
+    const before = centerBefore.current ?? center
+    centerBefore.current = null
+    if (before.x === center.x && before.y === center.y) return
+    applyEdit(pixelImg, center, pixelImg, before)
+  }
+
+  function handleCenterPointerCancel() {
+    if (!isDraggingCenter.current) return
+    isDraggingCenter.current = false
+    if (centerBefore.current) setCenter(centerBefore.current)
+    centerBefore.current = null
   }
 
   function handleResetCenter() {
     const defaultCenter = { x: pixelImg.width / 2, y: pixelImg.height / 2 }
-    setCenter(defaultCenter)
-    historyRef.current.push(pixelImg, defaultCenter)
-    setCanUndo(historyRef.current.canUndo())
-    setCanRedo(historyRef.current.canRedo())
-    commitChanges(pixelImg, defaultCenter)
+    if (defaultCenter.x === center.x && defaultCenter.y === center.y) return
+    applyEdit(pixelImg, defaultCenter, pixelImg, center)
   }
 
   // Undo / Redo
@@ -341,8 +497,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     if (!res) return
     setPixelImg(res.img)
     setCenter(res.center)
-    setCanUndo(historyRef.current.canUndo())
-    setCanRedo(historyRef.current.canRedo())
+    syncHistoryButtons()
     commitChanges(res.img, res.center)
   }
 
@@ -351,10 +506,29 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     if (!res) return
     setPixelImg(res.img)
     setCenter(res.center)
-    setCanUndo(historyRef.current.canUndo())
-    setCanRedo(historyRef.current.canRedo())
+    syncHistoryButtons()
     commitChanges(res.img, res.center)
   }
+
+  // Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z and Ctrl/Cmd+Y redo. Never while typing or while a name picker is open.
+  const keyActions = useRef({ undo: handleUndo, redo: handleRedo, busy: false })
+  keyActions.current = { undo: handleUndo, redo: handleRedo, busy: addingCostume || mode.current !== 'idle' }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key !== 'z' && key !== 'y') return
+      const el = e.target
+      if (el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      if (el instanceof Element && el.closest('[role="dialog"], .blocklyWidgetDiv, .blocklyDropDownDiv')) return
+      if (keyActions.current.busy) return
+      e.preventDefault()
+      if (key === 'y' || e.shiftKey) keyActions.current.redo()
+      else keyActions.current.undo()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Resizing image
   function handleResize(newWidth: number, newHeight: number) {
@@ -362,12 +536,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     const clampedH = Math.max(8, Math.min(128, newHeight))
     const resized = resizeImage(pixelImg, clampedW, clampedH, 'top-left')
     const newCenter = { x: clampedW / 2, y: clampedH / 2 }
-    setPixelImg(resized)
-    setCenter(newCenter)
-    historyRef.current.push(resized, newCenter)
-    setCanUndo(historyRef.current.canUndo())
-    setCanRedo(historyRef.current.canRedo())
-    commitChanges(resized, newCenter)
+    applyEdit(resized, newCenter, pixelImg, center)
   }
 
   // Costume list actions
@@ -675,14 +844,19 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
         )}
 
         {/* Canvas Viewport */}
-        <div className="costume-viewport">
+        <div
+          ref={viewportRef}
+          className="costume-viewport"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+        >
           <div className="pixel-canvas-wrapper">
             <canvas
               ref={canvasRef}
               className="pixel-canvas"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
+              style={{ width: pixelImg.width * zoom, height: pixelImg.height * zoom }}
               aria-label="Pixel art canvas"
             />
             {/* Rotation Center Crosshair Handle (bricks only) */}
@@ -696,6 +870,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
                 onPointerDown={handleCenterPointerDown}
                 onPointerMove={handleCenterPointerMove}
                 onPointerUp={handleCenterPointerUp}
+                onPointerCancel={handleCenterPointerCancel}
                 title="Drag to set rotation center"
                 aria-label="Rotation center handle"
               />

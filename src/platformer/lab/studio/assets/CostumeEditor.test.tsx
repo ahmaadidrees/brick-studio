@@ -82,10 +82,129 @@ describe('the Stage’s Costumes', () => {
     noisyFill.on = true
     fireEvent.click(screen.getByLabelText('Fill bucket tool'))
     fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 3, clientY: 3 })
+    fireEvent.pointerUp(canvas, { pointerId: 1, clientX: 3, clientY: 3 })
     noisyFill.on = false
 
     expect(store.getState().project.design.stage.costumes[0]).toBe(saved)
     expect(screen.getByRole('alert')).toHaveTextContent(/too much detail to save/)
     expect(saveProject(store.getState().project, memoryStorage())).toBe(true)
+  })
+})
+
+function stageSky(store: StudioStore) {
+  return store.getState().project.design.stage.costumes[0]?.asset
+}
+
+describe('undo and redo in the costume editor', () => {
+  it('the buttons take back and bring back strokes, fills and erases', () => {
+    const store = stageEditor()
+    const canvas = screen.getByLabelText('Pixel art canvas')
+    const undo = screen.getByLabelText('Undo')
+    const redo = screen.getByLabelText('Redo')
+    expect(undo).toBeDisabled()
+
+    paintAt(canvas)
+    const afterStroke = stageSky(store)
+    expect(undo).toBeEnabled()
+
+    fireEvent.click(screen.getByLabelText('Fill bucket tool'))
+    fireEvent.click(screen.getByLabelText('Color #4cae62'))
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 40, clientY: 40 })
+    fireEvent.pointerUp(canvas, { pointerId: 1, clientX: 40, clientY: 40 })
+    const afterFill = stageSky(store)
+    expect(afterFill).not.toBe(afterStroke)
+
+    fireEvent.click(screen.getByLabelText('Eraser tool'))
+    paintAt(canvas)
+    const afterErase = stageSky(store)
+    expect(afterErase).not.toBe(afterFill)
+
+    fireEvent.click(undo)
+    expect(stageSky(store)).toBe(afterFill)
+    fireEvent.click(undo)
+    expect(stageSky(store)).toBe(afterStroke)
+    expect(redo).toBeEnabled()
+    fireEvent.click(redo)
+    expect(stageSky(store)).toBe(afterFill)
+    fireEvent.click(redo)
+    expect(stageSky(store)).toBe(afterErase)
+    expect(redo).toBeDisabled()
+  })
+
+  it('Ctrl+Z undoes, Ctrl+Shift+Z and Ctrl+Y redo, and Cmd+Z works too', () => {
+    const store = stageEditor()
+    const canvas = screen.getByLabelText('Pixel art canvas')
+    paintAt(canvas)
+    const first = stageSky(store)
+    fireEvent.click(screen.getByLabelText('Color #3e83d7'))
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 10, clientY: 10 })
+    fireEvent.pointerUp(canvas, { pointerId: 1, clientX: 10, clientY: 10 })
+    const second = stageSky(store)
+
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true })
+    expect(stageSky(store)).toBe(first)
+    fireEvent.keyDown(window, { key: 'Z', ctrlKey: true, shiftKey: true })
+    expect(stageSky(store)).toBe(second)
+    fireEvent.keyDown(window, { key: 'z', metaKey: true })
+    expect(stageSky(store)).toBe(first)
+    fireEvent.keyDown(window, { key: 'y', ctrlKey: true })
+    expect(stageSky(store)).toBe(second)
+  })
+
+  it('a resize and a moved rotation point are undone too, on a brick', () => {
+    const store = new StudioStore(createStarterProject())
+    const walker = store.getState().project.design.bricks.find((b) => b.costumes.length > 0 && !b.grid)!
+    store.selectBrick(walker.id)
+    render(<CostumeEditor store={store} />)
+    const before = store.brick(walker.id)!.costumes[0]
+    fireEvent.click(screen.getByLabelText('16 by 16 pixels'))
+    expect(store.brick(walker.id)!.costumes[0].width).toBe(16)
+    fireEvent.click(screen.getByLabelText('Undo'))
+    expect(store.brick(walker.id)!.costumes[0]).toMatchObject({ width: before.width, height: before.height })
+  })
+})
+
+describe('touch in the costume editor', () => {
+  it('a second finger cancels the stroke: no mark is left and nothing is saved', () => {
+    const store = stageEditor()
+    const canvas = screen.getByLabelText('Pixel art canvas')
+    fireEvent.pointerDown(canvas, { pointerId: 1, pointerType: 'touch', clientX: 3, clientY: 3 })
+    fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: 'touch', clientX: 30, clientY: 3 })
+    fireEvent.pointerDown(canvas, { pointerId: 2, pointerType: 'touch', clientX: 90, clientY: 3 })
+    fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 3 })
+    fireEvent.pointerMove(canvas, { pointerId: 2, pointerType: 'touch', clientX: 120, clientY: 3 })
+    fireEvent.pointerUp(canvas, { pointerId: 2, pointerType: 'touch', clientX: 120, clientY: 3 })
+    fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: 'touch', clientX: 50, clientY: 50 })
+    fireEvent.pointerUp(canvas, { pointerId: 1, pointerType: 'touch', clientX: 50, clientY: 50 })
+    expect(store.getState().project.design.stage.costumes).toEqual([])
+    expect(screen.getByLabelText('Undo')).toBeDisabled()
+  })
+
+  it('a pinch zooms the picture', () => {
+    const store = new StudioStore(createStarterProject())
+    const walker = store.getState().project.design.bricks.find((b) => b.costumes.length > 0 && !b.grid)!
+    store.selectBrick(walker.id)
+    render(<CostumeEditor store={store} />)
+    const canvas = screen.getByLabelText('Pixel art canvas')
+    const zoomOf = () => Number(screen.getByText(/^\d+x$/).textContent!.replace('x', ''))
+    const start = zoomOf()
+    fireEvent.pointerDown(canvas, { pointerId: 1, pointerType: 'touch', clientX: 100, clientY: 100 })
+    fireEvent.pointerDown(canvas, { pointerId: 2, pointerType: 'touch', clientX: 140, clientY: 100 })
+    fireEvent.pointerMove(canvas, { pointerId: 2, pointerType: 'touch', clientX: 180, clientY: 100 })
+    expect(zoomOf()).toBe(Math.min(32, start * 2))
+    fireEvent.pointerUp(canvas, { pointerId: 2, pointerType: 'touch' })
+    fireEvent.pointerUp(canvas, { pointerId: 1, pointerType: 'touch' })
+    expect(store.brick(walker.id)!.costumes[0]).toBe(walker.costumes[0])
+  })
+
+  it('a touch the system cancels leaves no mark', () => {
+    const store = stageEditor()
+    const canvas = screen.getByLabelText('Pixel art canvas')
+    fireEvent.pointerDown(canvas, { pointerId: 1, pointerType: 'touch', clientX: 3, clientY: 3 })
+    fireEvent.pointerMove(canvas, { pointerId: 1, pointerType: 'touch', clientX: 30, clientY: 3 })
+    fireEvent.pointerCancel(canvas, { pointerId: 1, pointerType: 'touch' })
+    expect(store.getState().project.design.stage.costumes).toEqual([])
+    paintAt(canvas)
+    expect(stageSky(store)).toBeTruthy()
   })
 })
