@@ -191,6 +191,9 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
 
   /** Move or zoom the view from whatever is on screen now. Marks the view as the kid's own. */
   const updateView = (fn: (c: Camera) => Camera) => {
+    // Play's camera always follows the Hero or shows the whole level (the camera buttons): a click or a slip on the
+    // level never unhooks it, and Build's view stays where the kid left it.
+    if (sceneActive && mode === 'play') return
     const base = activeCamera()
     viewDirty.current = true
     session.viewDirty = true
