@@ -19,6 +19,7 @@ import { EditorToolbar } from './code/EditorToolbar'
 import { DockedEditorToolbar } from './code/DockedEditorToolbar'
 import { focusedMyBlocksFlyout } from './code/focusedPalette'
 import { LayerBar } from './code/LayerBar'
+import { installTouchPaletteScroll } from './code/touchFlyout'
 import { PlainScratchCard } from './code/PlainScratchCard'
 import {
   applyView,
@@ -151,6 +152,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
 
     // 3. Register plugins and block definitions
     registerToolboxPlugins()
+    installTouchPaletteScroll()
     const ctx = buildEditorContext(store)
     setEditorContext(ctx)
     registerEditorBlocks(ctx)
