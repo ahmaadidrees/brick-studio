@@ -577,7 +577,8 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     }
 
     if (sceneActive && runtime) {
-      if (mode === 'build') {
+      // Code's preview: a click goes to the game and the level keeps the keys; it never leaves Code.
+      if (mode === 'build' && !codeView) {
         const target = pickTarget(runtime.world, wx, wy)
         if (!target.isStage && target.copyId) store.selectCopy(target.copyId)
         else store.closeCard()

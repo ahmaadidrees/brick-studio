@@ -290,8 +290,8 @@ function CodeStageBar({ store }: { store: StudioStore }) {
   return <>
     {solo && <div className="cl-room-box cl-fade"><TestRoom store={store} brickId={brickId} bare restartKey={restartKey} /></div>}
     <div className="cl-stage-bar" role="toolbar" aria-label="Level preview">
-      {!solo && <button type="button" className="cl-btn cl-btn-sm cl-btn-icon" aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} onClick={() => paused ? store.startPreview() : store.pausePreview()}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}
-      <button type="button" className={`cl-btn cl-btn-sm cl-btn-icon${pending && !solo ? ' cl-btn-attn' : ''}`} aria-label="Restart" title={pending && !solo ? 'Restart to try your changes' : 'Restart'} onClick={() => solo ? setRestartKey((n) => n + 1) : store.restartPreview()}><RotateCcw size={16} /></button>
+      {!solo && <button type="button" className="cl-btn cl-btn-sm cl-btn-icon" aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} onMouseDown={(e) => e.preventDefault()} onClick={() => paused ? store.startPreview() : store.pausePreview()}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}
+      <button type="button" className={`cl-btn cl-btn-sm cl-btn-icon${pending && !solo ? ' cl-btn-attn' : ''}`} aria-label="Restart" title={pending && !solo ? 'Restart to try your changes' : 'Restart'} onMouseDown={(e) => e.preventDefault()} onClick={() => solo ? setRestartKey((n) => n + 1) : store.restartPreview()}><RotateCcw size={16} /></button>
       <span className="cl-tools-gap" />
       <div className="cl-seg cl-seg-sm" role="group" aria-label="What runs">
         <button type="button" aria-pressed={!solo} onClick={() => store.setCodeSolo(false)}>Whole level</button>
