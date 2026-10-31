@@ -1,4 +1,4 @@
-import { Box, Code2, Hammer, MoreHorizontal, Pause, Play, RotateCcw, X } from 'lucide-react'
+import { Box, Code2, Eraser, Hammer, MoreHorizontal, Pause, Play, RotateCcw, Undo2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { AppHeader } from '../../../../shell'
 import type { HeaderSaveStatus } from '../../../../shell/AppHeader'
@@ -27,8 +27,10 @@ const LEAVE_WAIT_MS = 5000
 const assignLocation = (href: string) => window.location.assign(href)
 const LOCAL_SAVE: HeaderSaveStatus = { source: { kind: 'local' } }
 const PHONE = '(max-width: 767px)'
-/** Touch screens get on-screen buttons in Play (the same test as the regular platformer). */
-const TOUCH = '(pointer: coarse)'
+/** Narrower than a Duo screen (540 px): the palette and scripts have no room, so Code is offered on bigger screens only. */
+const NO_CODE = '(max-width: 539px)'
+/** Any touch screen, including a touchscreen laptop whose main pointer is a trackpad. */
+const TOUCH = '(any-pointer: coarse)'
 export const CODE_NEEDS_ROOM = 'Code needs a bigger screen'
 
 const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode; key: string }> = [
@@ -63,7 +65,8 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const remixNotice = useStudio(store, (s) => s.remixNotice)
   const name = useStudio(store, (s) => s.project.design.name)
   const phone = useMedia(PHONE)
-  const touch = useMedia(TOUCH)
+  const noCode = useMedia(NO_CODE)
+  const touch = useTouch()
   const runtime = useStudio(store, (s) => s.runtime)
   const paused = useStudio(store, (s) => s.previewPaused)
   const session = builderSession(store)
@@ -101,11 +104,11 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
     return () => clearTimeout(t)
   }, [remixNotice, store])
   // A phone has no room for code: Code is offered on bigger screens only.
-  useEffect(() => { if (phone && screen === 'code') store.setScreen('build') }, [phone, screen, store])
+  useEffect(() => { if (noCode && screen === 'code') store.setScreen('build') }, [noCode, screen, store])
 
   const go = (next: StudioScreen) => {
     if (next === screen) return
-    if (next === 'code' && phone) return setNote(CODE_NEEDS_ROOM)
+    if (next === 'code' && noCode) return setNote(CODE_NEEDS_ROOM)
     // Play needs a Hero. Without one, say so kindly and stay put instead of starting a level where nothing moves.
     if (next === 'play' && !checkLevelForPlay(store.getState().project.design).hero) return setNote(NO_HERO_MESSAGE)
     setNote(null)
@@ -153,7 +156,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
   const inspecting = screen === 'build' && selectedCopyId !== null
   return (
-    <div className={`p2d-game p2d-studio cl-shell${phone ? ' cl-phone' : ''}`} data-screen={screen} data-inspecting={inspecting ? 'yes' : 'no'} data-sheet={sheet ? 'open' : 'closed'}>
+    <div className={`p2d-game p2d-studio cl-shell${phone ? ' cl-phone' : ''}${touch ? ' cl-touch' : ''}`} data-screen={screen} data-inspecting={inspecting ? 'yes' : 'no'} data-sheet={sheet ? 'open' : 'closed'}>
       <div className="p2d-header builder-header">
         <AppHeader
           variant="editor"
@@ -169,7 +172,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           onRequestMode={(m) => go(m === 'build' ? 'build' : 'play')}
           canExplore
           modeLock={{ locked: false }}
-          modeSwitch={<ModeTabs screen={screen} phone={phone} onChange={go} />}
+          modeSwitch={<ModeTabs screen={screen} noCode={noCode} onChange={go} />}
           onOpenHelp={() => {}}
           onGoHome={() => leave('/')}
           worldMenu={() => (
@@ -204,16 +207,28 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
         <div className="cl-slot cl-slot-stage">
           <div className="cl-stage-frame">
-            <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={phone ? undefined : () => go('code')} />
+            <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
             {screen === 'code' && <CodeStageBar store={store} />}
           </div>
           {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'play' && <PlayFeedback store={store} />}
           {screen === 'play' && touch && runtime && !paused && <PlayTouchControls runtime={runtime} />}
-          {screen === 'build' && phone && !sheet && (
-            <button type="button" className="cl-fab" onClick={() => setSheet(true)}><Box size={20} aria-hidden="true" /> Bricks</button>
-          )}
         </div>
+
+        {/* Phones and a Duo: the Bricks sheet is closed most of the time, so Undo and Erase stay out here in their own
+            bar under the level, where they never cover the Hero's start. */}
+        {screen === 'build' && phone && !sheet && (
+          <div className="cl-fabs" role="toolbar" aria-label="Bricks and undo">
+            <button type="button" className="cl-fab" onClick={() => setSheet(true)}><Box size={20} aria-hidden="true" /> Bricks</button>
+            <span className="cl-tools-gap" />
+            <button type="button" className="cl-tool cl-fab-tool" aria-pressed={erasing} onClick={() => { store.setBrush(null); setErasing(!erasing) }}>
+              <Eraser size={20} aria-hidden="true" /><span>Erase</span>
+            </button>
+            <button type="button" className="cl-tool cl-fab-tool" title="Undo" disabled={!history.canUndo} onClick={() => history.undo()}>
+              <Undo2 size={20} aria-hidden="true" /><span>Undo</span>
+            </button>
+          </div>
+        )}
 
         <div className="cl-slot cl-slot-inspector" inert={!inspecting ? true : undefined}>
           {inspecting && <Inspector store={store} history={history} compact={phone} />}
@@ -236,7 +251,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 }
 
 /** Build · Code · Play with a sliding highlight; one tab stop, arrow keys move (radiogroup, like SegmentedControl). */
-function ModeTabs({ screen, phone, onChange }: { screen: StudioScreen; phone: boolean; onChange: (s: StudioScreen) => void }) {
+function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: boolean; onChange: (s: StudioScreen) => void }) {
   const buttons = useRef<Array<HTMLButtonElement | null>>([])
   const at = SCREENS.findIndex((m) => m.id === screen)
   const move = (e: ReactKeyboardEvent, from: number) => {
@@ -244,7 +259,7 @@ function ModeTabs({ screen, phone, onChange }: { screen: StudioScreen; phone: bo
     if (!step) return
     e.preventDefault()
     let next = (from + step + SCREENS.length) % SCREENS.length
-    if (phone && SCREENS[next].id === 'code') next = (next + step + SCREENS.length) % SCREENS.length
+    if (noCode && SCREENS[next].id === 'code') next = (next + step + SCREENS.length) % SCREENS.length
     onChange(SCREENS[next].id)
     buttons.current[next]?.focus()
   }
@@ -252,7 +267,7 @@ function ModeTabs({ screen, phone, onChange }: { screen: StudioScreen; phone: bo
     <div className="cl-modes" role="radiogroup" aria-label="Studio mode">
       <span className="cl-modes-ind" aria-hidden="true" style={{ transform: `translateX(${at * 100}%)` }} />
       {SCREENS.map((m, i) => {
-        const off = phone && m.id === 'code'
+        const off = noCode && m.id === 'code'
         return (
           <button key={m.id} ref={(el) => { buttons.current[i] = el }} type="button" role="radio" aria-checked={m.id === screen} tabIndex={m.id === screen ? 0 : -1}
             aria-disabled={off || undefined} title={off ? CODE_NEEDS_ROOM : `${m.label} (${m.key})`}
@@ -285,6 +300,22 @@ function CodeStageBar({ store }: { store: StudioStore }) {
     </div>
     {pending && !solo && <span className="cl-stage-note cl-rise" role="status">Press Restart to try your changes</span>}
   </>
+}
+
+/**
+ * Play's on-screen buttons: on for any touch screen, and from the first touch on a screen that says it has none (a
+ * touchscreen Chromebook in laptop mode can report only its trackpad).
+ */
+function useTouch(): boolean {
+  const media = useMedia(TOUCH)
+  const [touched, setTouched] = useState(false)
+  useEffect(() => {
+    if (touched) return
+    const onDown = (e: PointerEvent) => { if (e.pointerType === 'touch') setTouched(true) }
+    window.addEventListener('pointerdown', onDown, true)
+    return () => window.removeEventListener('pointerdown', onDown, true)
+  }, [touched])
+  return media || touched
 }
 
 function useMedia(query: string): boolean {
