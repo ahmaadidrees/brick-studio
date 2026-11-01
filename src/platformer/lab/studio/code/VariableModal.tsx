@@ -162,13 +162,13 @@ export const VariableModal: React.FC<VariableModalProps> = ({
 
         {/* Scope Options */}
         <div className="code-modal-section">
-          <label className="code-modal-section-title">Scope</label>
+          <label className="code-modal-section-title">Who uses it</label>
           {isStage ? (
             <div className="code-modal-hint-box">
               <span>🌍 Stage variables and lists are shared for all bricks.</span>
             </div>
           ) : (
-            <div className="code-scope-options" role="radiogroup" aria-label="Variable scope">
+            <div className="code-scope-options" role="radiogroup" aria-label="Who uses it">
               <button
                 type="button"
                 className={`code-scope-card ${scope === 'brick' ? 'active' : ''}`}
@@ -197,7 +197,7 @@ export const VariableModal: React.FC<VariableModalProps> = ({
                   <strong>For all bricks (shared)</strong>
                 </div>
                 <p className="code-scope-desc">
-                  One global value shared across every brick and the stage.
+                  One value that every brick and the Stage share.
                 </p>
               </button>
             </div>

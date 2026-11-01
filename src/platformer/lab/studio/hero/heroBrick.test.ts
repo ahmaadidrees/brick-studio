@@ -377,7 +377,7 @@ describe('The Hero brick is built from open blocks', () => {
     expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right', 'left', 'right'])
   })
 
-  it('shows only four Hero knobs in Build; every other tuning number is a plain variable in the groups of "More tuning"', () => {
+  it('shows only four Hero knobs in Build; every other tuning number is a plain variable in the groups of "More sliders"', () => {
     const decls = heroVariables()
     for (const knob of HERO_KNOBS) {
       const decl = decls.find((d) => d.id === knob.id)!
@@ -385,7 +385,7 @@ describe('The Hero brick is built from open blocks', () => {
       expect(decl.value).toBe(knob.value)
       expect(knob.from.length).toBeGreaterThan(8)
     }
-    expect(HERO_BUILD_KNOB_IDS.map((id) => HERO_KNOBS.find((k) => k.id === id)!.name)).toEqual(['walk top speed', 'run top speed', 'jump standing', 'fall gravity'])
+    expect(HERO_BUILD_KNOB_IDS.map((id) => HERO_KNOBS.find((k) => k.id === id)!.name)).toEqual(['walk speed', 'run speed', 'jump power', 'gravity'])
     const shown = createHeroBrick().brick.program.variables.filter((v) => v.showInBuild)
     expect(shown.map((v) => v.id)).toEqual(['walk_top', 'run_top', 'jump_stand', 'fall_gravity'])
     // The working memory is not a knob either.

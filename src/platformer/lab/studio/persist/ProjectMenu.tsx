@@ -88,7 +88,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
           className="project-menu-btn"
           onClick={handleExport}
           aria-label="Save project to file"
-          title="Save project to file (.json)"
+          title="Save this project as a file on this computer"
         >
           <Download size={16} aria-hidden="true" />
           <span>Save File</span>
@@ -99,7 +99,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
           className="project-menu-btn"
           onClick={handleImportClick}
           aria-label="Open project from file"
-          title="Open a project file (.brickgineers or .json)"
+          title="Open a project file you saved"
         >
           <Upload size={16} aria-hidden="true" />
           <span>Open File</span>
@@ -118,11 +118,11 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
           type="button"
           className="project-menu-btn project-menu-btn-danger"
           onClick={() => setShowConfirmReset(true)}
-          aria-label="Reset project to starter"
-          title="Reset project to starter playground"
+          aria-label="Start over with the starter level"
+          title="Start over with the starter level"
         >
           <RotateCcw size={16} aria-hidden="true" />
-          <span>Reset</span>
+          <span>Start over</span>
         </button>
       </div>
 
@@ -158,7 +158,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
               className="project-menu-btn project-menu-btn-danger"
               onClick={handleResetToStarter}
             >
-              Reset
+              Start over
             </button>
           </div>
         </div>

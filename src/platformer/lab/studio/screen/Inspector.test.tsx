@@ -58,7 +58,7 @@ describe('Build inspector', () => {
     store.selectCopy('copy_hero')
     render(<Inspector store={store} />)
     expect(screen.getAllByRole('slider')).toHaveLength(4)
-    expect(screen.getByRole('button', { name: /More sliders for the Hero/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: /More sliders \(/ }).getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByRole('group', { name: 'Which ones change' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     expect(screen.queryByRole('button', { name: 'Remove this Hero' })).toBeNull()

@@ -77,7 +77,7 @@ export function SoundPanel({ store }: { store: StudioStore }) {
             <Volume2 size={40} style={{ opacity: 0.5, marginBottom: 8 }} aria-hidden="true" />
             <p style={{ margin: 0, fontSize: '0.95rem' }}>No sounds added yet.</p>
             <p style={{ margin: '4px 0 16px', fontSize: '0.85rem', color: '#687082' }}>
-              Add synthesized retro sounds from the library!
+              Pick a sound from the sound library.
             </p>
             <button
               type="button"
@@ -153,7 +153,7 @@ export function SoundPanel({ store }: { store: StudioStore }) {
                 <X size={16} aria-hidden="true" />
               </button>
             </div>
-            <p className="asset-modal-body">Click Play to preview, or Add to attach to your brick:</p>
+            <p className="asset-modal-body">Press Play to hear a sound. Press Add to give it to your brick.</p>
 
             <div className="sound-library-modal-grid">
               {library.map((item) => (
