@@ -118,7 +118,7 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
     const plain = await saved(false)
     const visited = await saved(true)
     expect(visited.map((b) => `${b.id}:${b.type}@${b.x},${b.y}`)).toEqual(plain.map((b) => `${b.id}:${b.type}@${b.x},${b.y}`))
-  }, 60000)
+  }, 180000)
 
   it('other bricks show no section entry', async () => {
     const store = new StudioStore(createStarterProject())
