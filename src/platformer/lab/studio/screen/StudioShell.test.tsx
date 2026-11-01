@@ -488,11 +488,14 @@ describe('one Hero, one Goal (limit 1)', () => {
   })
 })
 
-describe('+ New brick: one step, then type its name', () => {
-  it('New brick in the drawer makes "My brick 1", opens it in Code, and selects the name to type over', () => {
+describe('+ New brick in Code: one step, then type its name', () => {
+  const newInCode = () => fireEvent.click(within(screen.getByRole('region', { name: 'In this level' })).getByRole('button', { name: 'New brick' }))
+
+  it('New brick in "In this level" makes "My brick 1", keeps it in Code, and selects the name to type over', () => {
     const { store } = storeWithBrick()
     render(<StudioShell store={store} />)
-    fireEvent.click(within(screen.getByLabelText('Brick shapes')).getByRole('button', { name: 'New brick' }))
+    mode('Code')
+    newInCode()
     const s = store.getState()
     const made = s.project.design.bricks.find((b) => b.name === 'My brick 1')!
     expect(made).toBeTruthy()
@@ -513,9 +516,9 @@ describe('+ New brick: one step, then type its name', () => {
     const { store } = storeWithBrick()
     render(<StudioShell store={store} />)
     mode('Code')
-    fireEvent.click(within(screen.getByRole('region', { name: 'In this level' })).getByRole('button', { name: 'New brick' }))
+    newInCode()
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Brick name' }), { key: 'Enter' })
-    fireEvent.click(within(screen.getByRole('region', { name: 'In this level' })).getByRole('button', { name: 'New brick' }))
+    newInCode()
     const id = store.getState().selectedBrickId
     expect(store.brick(id)!.name).toBe('My brick 2')
     const name = screen.getByRole('textbox', { name: 'Brick name' })
@@ -528,7 +531,8 @@ describe('+ New brick: one step, then type its name', () => {
   it('"Start from…" gives the fresh brick a template\'s blocks and look, and it keeps its name', () => {
     const { store } = storeWithBrick()
     render(<StudioShell store={store} templates={[fakeTemplate]} />)
-    fireEvent.click(within(screen.getByLabelText('Brick shapes')).getByRole('button', { name: 'New brick' }))
+    mode('Code')
+    newInCode()
     const id = store.getState().selectedBrickId
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Brick name' }), { key: 'Escape' })
     const start = screen.getByRole('group', { name: 'Start from a brick that works' })

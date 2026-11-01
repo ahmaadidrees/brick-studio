@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { CloudSaveStatus } from '../classroom/cloudAutosave'
 import type { LiveConnectionState } from '../brick/liveProtocol'
@@ -81,5 +81,50 @@ describe('SaveStatus', () => {
     render(<SaveStatus source={{ kind: 'local', error: 'This browser is blocking storage.' }} />)
     expect(screen.getByRole('status')).toHaveTextContent('Couldn’t save')
     expect(screen.getByRole('status')).toHaveTextContent('This browser is blocking storage.')
+  })
+})
+
+describe('a draft that reports its own saves', () => {
+  it('says Saving… while a change waits, then Saved on this computer', () => {
+    expect(describeSaveStatus({ kind: 'local', state: 'saving' })).toMatchObject({ label: 'Saving…', tone: 'busy', busy: true })
+    expect(describeSaveStatus({ kind: 'local', state: 'saved' })).toMatchObject({ label: 'Saved on this computer', short: 'Saved', tone: 'saved' })
+    expect(describeSaveStatus({ kind: 'cloud', status: 'saved' }).short).toBe('Saved')
+  })
+
+  it('an error still wins over a state: never "Saved" when the write failed', () => {
+    expect(describeSaveStatus({ kind: 'local', error: 'Not saved', state: 'saved' }).label).toBe('Couldn’t save')
+  })
+})
+
+describe('SaveStatus with an explanation', () => {
+  const explained = () => render(<div><SaveStatus source={{ kind: 'local', state: 'saved' }} explain="Saved in this browser only." /><button type="button">Elsewhere</button></div>)
+
+  it('is a button that opens the words under it, and still announces its label', () => {
+    explained()
+    const pill = screen.getByRole('button', { name: /Saved on this computer/ })
+    expect(pill.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('status').textContent).toBe('Saved on this computer')
+    fireEvent.click(pill)
+    expect(pill.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('note').textContent).toContain('Saved in this browser only.')
+    fireEvent.click(pill)
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('closes with Escape or a tap somewhere else', () => {
+    explained()
+    const pill = screen.getByRole('button', { name: /Saved on this computer/ })
+    fireEvent.click(pill)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('note')).toBeNull()
+    fireEvent.click(pill)
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Elsewhere' }))
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('without one, it stays a plain status pill', () => {
+    render(<SaveStatus source={{ kind: 'local' }} />)
+    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.getByRole('status').textContent).toContain('On this computer only')
   })
 })

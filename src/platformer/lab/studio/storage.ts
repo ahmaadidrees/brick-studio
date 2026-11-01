@@ -273,6 +273,8 @@ export interface WatchAndSaveOptions {
   key?: string
   /** After each save that worked: the Hackable list updates its name, date and picture. */
   afterSave?: (project: StudioProject) => void
+  /** A save that did not work (the browser is full or blocked, or the project would not open again): the notice says why. */
+  onSaveFailed?: () => void
   /**
    * Another tab (or My projects) saved this project since this tab last read or wrote it, and this tab has changes of
    * its own: nothing more is written to `key` (that would throw the other work away). The caller keeps this tab's
@@ -335,7 +337,7 @@ export function watchAndSave(
     if (text !== null) {
       known = text
       options?.afterSave?.(project)
-    }
+    } else options?.onSaveFailed?.()
   }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null

@@ -69,6 +69,8 @@ export type HeaderLivePolicy = {
 export type HeaderSaveStatus = {
   source: SaveStatusSource
   detail?: string
+  /** Where the project lives and what to do, shown when the pill is clicked or tapped (it is a button then). */
+  explain?: string
 }
 
 export type AppHeaderEditorProps = CommonProps & {
@@ -244,7 +246,7 @@ function EditorHeader({
             </Button>
           )}
         </div>
-        <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} className="app-header-save" />
+        <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} explain={saveStatus.explain} className="app-header-save" />
       </div>
       <div className="app-header-tools" role="group" aria-label="World tools">
         {editorActions}
