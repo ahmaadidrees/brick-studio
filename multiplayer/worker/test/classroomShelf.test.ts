@@ -134,6 +134,40 @@ describe('the class shelf', () => {
     expect((await call(ana, 'POST', [], { name: 'x', payload: big })).status).toBe(413);
   });
 
+  it('checks the whole power, with the app\'s own rules, and keeps only a power\'s own fields', async () => {
+    const { call, items } = db();
+    const post = (payload: unknown) => call(ana, 'POST', [], { name: 'x', payload });
+    // a good power, with or without the optional game, goes on
+    expect((await post(power())).status).toBe(201);
+    expect((await post({ ...power(), game: 'platformer' })).status).toBe(201);
+    expect(items.map((row) => row.payload.game)).toEqual([undefined, 'platformer']);
+    // blocks the app does not have, anywhere in the power
+    const hidden = { type: 'platformer_everytick', id: 'a', next: { block: { type: 'control_if', inputs: { SUBSTACK: { block: { type: 'hack_teleport' } } } } } };
+    expect((await post({ ...power(), blocks: [hidden] })).body.code).toBe('unknown_blocks');
+    expect((await post({ ...power(), blocks: [{ type: 'controls_if' }] })).body.code).toBe('unknown_blocks');
+    // another game
+    expect((await post({ ...power(), game: 'race' })).body.code).toBe('other_game');
+    // shape and types
+    for (const bad of [
+      { ...power(), version: 2 },
+      { ...power(), credits: 'Ana' },
+      { ...power(), name: '' },
+      { ...power(), variables: [{ id: 'v', name: 'speed', value: { not: 'a value' } }] },
+      { ...power(), blocks: [{ type: 'motion_movesteps', inputs: { STEPS: 'ten' } }] },
+      // pictures and sounds (from anywhere) never ride along on a power
+      { ...power(), costumes: [{ name: 'cat', asset: 'https://example.com/cat.png' }] },
+      { ...power(), sounds: [{ name: 'boom', asset: 'data:audio/wav;base64,AAAA' }] },
+    ]) {
+      expect((await post(bad)).body.code).toBe('invalid_power');
+    }
+    // counts: too many scripts, or blocks nested too deep, even when small enough in bytes
+    expect((await post({ ...power(), blocks: Array.from({ length: 101 }, () => ({ type: 'looks_show' })) })).status).toBe(413);
+    let chain: Row = { type: 'looks_show' };
+    for (let i = 0; i < 80; i++) chain = { type: 'looks_hide', next: { block: chain } };
+    expect((await post({ ...power(), blocks: [chain] })).status).toBe(413);
+    expect(items).toHaveLength(2);
+  });
+
   it('with sharing between students off, students cannot share and only see their own; the teacher still can', async () => {
     const { call, items } = db({ students_can_share: false, shelf_needs_review: false });
     expect((await call(ana, 'POST', [], { name: 'Dash', payload: power('Dash') })).body.code).toBe('sharing_disabled');

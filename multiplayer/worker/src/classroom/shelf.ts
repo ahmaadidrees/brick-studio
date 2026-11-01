@@ -13,6 +13,7 @@
  * Classmates see a maker as first name and last initial (rosterDisplayName), never a username.
  */
 import type { ClassroomService, Caller } from './index';
+import { checkPowerPayload, type CheckedPower } from '../../../../src/platformer/lab/core/contentRules';
 
 type Row = Record<string, any>;
 type Fail = (status: number, code: string, message: string) => never;
@@ -35,15 +36,20 @@ export function shelfItemView(row: Row, caller: Caller) {
   };
 }
 
-/** The power file's own shape, checked again here: the Worker never trusts a client to have validated it. */
-function checkPayload(payload: unknown, fail: Fail): Row {
+/**
+ * The whole power file, checked again here with the app's own rules (src/platformer/lab/core/contentRules.ts: shape and
+ * types, `kind`, `game`, sizes, and every block type against the app's list of blocks): the Worker never trusts a client
+ * to have validated it. What is kept is only a power's own fields, so nothing else can ride along onto the shelf.
+ */
+function checkPayload(payload: unknown, fail: Fail): CheckedPower {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) fail(400, 'invalid_power', 'Send a power file.');
-  const p = payload as Row;
-  if (p.kind !== 'brickgineers-power' || p.version !== 1 || !Array.isArray(p.blocks) || !Array.isArray(p.variables) || !Array.isArray(p.credits)) fail(400, 'invalid_power', 'That is not a power file.');
-  if (p.fits !== 'brick' && p.fits !== 'stage') fail(400, 'invalid_power', 'That is not a power file.');
-  if (!p.blocks.every((b: unknown) => b && typeof b === 'object' && typeof (b as Row).type === 'string')) fail(400, 'invalid_power', 'That power file is damaged.');
-  if (new TextEncoder().encode(JSON.stringify(p)).byteLength > SHELF_PAYLOAD_MAX) fail(413, 'too_large', 'This power is too big for the shelf.');
-  return p;
+  if (new TextEncoder().encode(JSON.stringify(payload)).byteLength > SHELF_PAYLOAD_MAX) fail(413, 'too_large', 'This power is too big for the shelf.');
+  const check = checkPowerPayload(payload);
+  if (check.ok) return check.power;
+  if (check.refusal === 'too-big') fail(413, 'too_large', 'This power is too big for the shelf.');
+  if (check.refusal === 'other-game') fail(400, 'other_game', check.message);
+  if (check.refusal === 'unknown-blocks') fail(400, 'unknown_blocks', check.message);
+  return fail(400, 'invalid_power', check.refusal === 'not-power' ? 'That is not a power file.' : 'That power file is damaged.');
 }
 
 const text = (value: unknown, label: string, max: number, fail: Fail, required = true): string => {
