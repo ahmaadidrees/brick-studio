@@ -26,6 +26,7 @@ const JoinPage = lazy(page(() => import('./pages/join/JoinPage')))
 const WorldsPage = lazy(page(() => import('./pages/worlds/WorldsPage')))
 const ClassPage = lazy(page(() => import('./pages/class/ClassPage')))
 const ProjectorPage = lazy(page(() => import('./pages/class/ProjectorPage')))
+const HelpPage = lazy(page(() => import('./pages/help/HelpPage')))
 // The 2D side (docs/PLATFORMER.md): its own chunk, so the 3D studio and the landing page never load it.
 const PlatformerApp = lazy(page(() => import('./platformer/PlatformerApp')))
 const { route, canonicalPath } = resolveAppRoute(window.location)
@@ -50,6 +51,8 @@ const experience = route === 'teacher-callback'
       ? <ProjectorPage />
     : route === 'platformer'
       ? <PlatformerApp />
+    : route === 'help'
+      ? <HelpPage />
     : route === 'dev-ui' && UiGallery
       ? <UiGallery />
       : <main style={{ padding: '3rem', maxWidth: 640, margin: 'auto' }}><h1>We couldn't find that page</h1><p>Your saved builds are still available.</p><p><a href="/">Home</a> · <a href="/build">Open the studio</a></p></main>

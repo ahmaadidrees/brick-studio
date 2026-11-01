@@ -20,9 +20,9 @@ describe('semantics and structure', () => {
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/snap it together\.\s*then play it\./i)
-    expect(screen.getByText('Pick a brick, click to place it, press play. Making a 3D build, a platformer or a race track is that easy.')).toBeInTheDocument()
-    expect(screen.getAllByText(/No account needed to start\./)).toHaveLength(2)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/build it\.\s*play it\.\s*hack it\./i)
+    expect(screen.getByText('Snap bricks into 3D worlds, platformers and race tracks, then open any brick and change how it works with code blocks.')).toBeInTheDocument()
+    expect(screen.getAllByText(/No account needed to start\./)).toHaveLength(1)
     expect(screen.getByRole('list', { name: 'At a glance' }).children).toHaveLength(4)
   })
 
@@ -44,9 +44,11 @@ describe('semantics and structure', () => {
     expect(screen.getByRole('banner').querySelector('.brand-lockup .brand-wordmark')).toHaveTextContent(BRAND_NAME)
     expect(screen.getByRole('contentinfo').querySelector('.brand-lockup .brand-wordmark')).toHaveTextContent(BRAND_NAME)
     expect(container.textContent).not.toMatch(/Brick Studio/)
-    for (const link of screen.getAllByRole('link', { name: /^(Start building|Join a class|Teacher sign in|Try building first|Make a platformer|Make a race track)$/ })) {
-      expect(link.className).toMatch(/\bui-button\b/)
+    // On the light page the calls to action are src/ui buttons; the dark bands use the butter button.
+    for (const name of ['Teacher sign in', 'Try building first', 'Make a platformer', 'Make a race track', 'Open the code']) {
+      expect(within(screen.getByRole('main')).getAllByRole('link', { name }).some((link) => /\bui-button\b/.test(link.className))).toBe(true)
     }
+    expect(screen.getByRole('link', { name: 'Try the Hackable Platformer' }).className).toMatch(/\blanding-butter-button\b/)
     expect(screen.getByRole('button', { name: 'Menu' }).className).toMatch(/\bui-button\b/)
   })
 
@@ -71,22 +73,23 @@ describe('semantics and structure', () => {
     expect(within(form).getByRole('button', { name: 'Join' })).toHaveAttribute('type', 'submit')
   })
 
-  it('shows three ways to build, all in My projects: 3D builds, platformers and race tracks', () => {
+  it('shows three things to make, all in My projects, with the code inside platformers', () => {
     render(<LandingPage />)
     const ways = document.getElementById('two-ways')!
-    expect(within(ways).getByRole('heading', { level: 2 })).toHaveTextContent(/Three ways to build\.\s*One set of bricks\./)
+    expect(within(ways).getByRole('heading', { level: 2 })).toHaveTextContent(/Three things to make\.\s*One set of bricks\./)
     for (const name of ['3D builds', 'Platformers', 'Race tracks']) expect(within(ways).getByRole('heading', { level: 3, name })).toBeInTheDocument()
     expect(within(ways).getByRole('link', { name: 'Start building' })).toHaveAttribute('href', '/build')
     expect(within(ways).getByRole('link', { name: 'Make a platformer' })).toHaveAttribute('href', '/2d/build')
     expect(within(ways).getByRole('link', { name: 'Make a race track' })).toHaveAttribute('href', '/2d/build?new=1&kit=race-starter')
-    expect(within(ways).getByRole('link', { name: 'Try a starter' })).toHaveAttribute('href', '/projects')
+    expect(within(ways).getByRole('link', { name: 'Open the code' })).toHaveAttribute('href', '/2d/hackable?new=1')
+    expect(within(ways).getByText('Code inside')).toBeInTheDocument()
     expect(within(ways).getByRole('link', { name: 'Race a starter' })).toHaveAttribute('href', '/2d/play/speedway')
-    expect(within(ways).getByText(/live together in My projects/)).toBeInTheDocument()
+    expect(within(ways).getByText(/lives in My projects/)).toBeInTheDocument()
 
     const nav = screen.getByRole('navigation', { name: BRAND_NAME })
     expect(within(nav).getByRole('link', { name: 'What you can make' })).toHaveAttribute('href', '#two-ways')
     expect(within(nav).getByRole('link', { name: 'My projects' })).toHaveAttribute('href', '/projects')
-    expect(screen.getByText('Platformers and race tracks', { selector: 'dt' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help')
   })
 
   it('opens the New project picker from the hero', async () => {
@@ -109,7 +112,7 @@ describe('semantics and structure', () => {
   it('shows building together, and no characters yet', () => {
     render(<LandingPage />)
     expect(screen.getByRole('heading', { level: 2, name: 'Better with friends.' })).toBeInTheDocument()
-    expect(screen.getByText('Share the link with your crew')).toBeInTheDocument()
+    expect(screen.getByText(/share the link, and everyone builds and plays in the same world/i)).toBeInTheDocument()
     expect(screen.queryByText(/Nova|Pip|Fern/)).toBeNull()
   })
 })
@@ -128,15 +131,15 @@ describe('calls to action and anchors', () => {
 
     // The header's student entry is the shell's account chip (flows v2); the hero keeps its own link.
     const signins = screen.getAllByRole('link', { name: 'Student login' })
-    expect(signins).toHaveLength(1)
+    expect(signins).toHaveLength(2)
     for (const link of signins) expect(link).toHaveAttribute('href', '/join?mode=signin')
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/join?mode=signin')
-    expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/join?mode=teacher')
+    for (const link of screen.getAllByRole('link', { name: 'Teacher sign in' })) expect(link).toHaveAttribute('href', '/join?mode=teacher')
     expect(within(screen.getByRole('navigation', { name: BRAND_NAME })).getByRole('link', { name: 'Teacher login' })).toHaveAttribute('href', '/join?mode=teacher')
     // No account link detours through the 3D builder (`/build?classroom=…` loads it, then redirects).
     expect(document.querySelector('a[href*="classroom="]')).toBeNull()
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/build')
-    expect(screen.getByText('Continue with your teacher Google account. Email and password sign-in is also available.')).toBeInTheDocument()
+    expect(screen.getByText(/Sign in with your teacher Google account or email\./)).toBeInTheDocument()
   })
 
   it('routes every studio call to action through the studioHref contract; account links stay on the join page', () => {
@@ -145,7 +148,7 @@ describe('calls to action and anchors', () => {
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/studio')
     for (const link of screen.getAllByRole('link', { name: 'Join a class' })) expect(link).toHaveAttribute('href', '/join')
     for (const link of screen.getAllByRole('link', { name: 'Student login' })) expect(link).toHaveAttribute('href', '/join?mode=signin')
-    expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/join?mode=teacher')
+    for (const link of screen.getAllByRole('link', { name: 'Teacher sign in' })) expect(link).toHaveAttribute('href', '/join?mode=teacher')
   })
 
   it('resolves every in-page anchor to an element that exists', () => {
@@ -154,8 +157,9 @@ describe('calls to action and anchors', () => {
     expect(within(nav).getByRole('link', { name: 'For teachers' })).toHaveAttribute('href', '#teachers')
     expect(within(nav).queryByRole('link', { name: /explore worlds/i })).toBeNull()
     const footer = screen.getByRole('navigation', { name: 'Footer' })
-    expect(within(footer).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '#privacy')
-    expect(within(footer).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '#help')
+    expect(within(footer).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/help#privacy')
+    expect(within(footer).getByRole('link', { name: 'Help' })).toHaveAttribute('href', '/help')
+    expect(screen.getByRole('link', { name: 'How class controls work' })).toHaveAttribute('href', '/help#teachers')
 
     for (const link of container.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')) {
       const id = link.getAttribute('href')!.slice(1)
@@ -218,30 +222,35 @@ describe('mobile menu', () => {
   })
 })
 
-describe('factual FAQ, help and privacy', () => {
-  it('answers the three questions honestly', () => {
+describe('help moved to /help, and no fake claims', () => {
+  it('keeps the questions, help and privacy off the landing page and links to them', () => {
     render(<LandingPage />)
-    for (const question of ['Do I need an account?', 'Where is my work saved?', 'Can we build together?']) {
-      expect(screen.getByText(question)).toBeInTheDocument()
+    expect(screen.queryByText('Do I need an account?')).toBeNull()
+    expect(document.getElementById('privacy')).toBeNull()
+    for (const link of screen.getAllByRole('link', { name: 'Help' })) expect(link).toHaveAttribute('href', '/help')
+  })
+
+  it('sends an old /#privacy, /#help or /#faq link to its place on /help', () => {
+    const replace = vi.fn()
+    const location = window.location
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...location, hash: '#privacy', hostname: location.hostname, replace } })
+    try {
+      render(<LandingPage />)
+      expect(replace).toHaveBeenCalledWith('/help#privacy')
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: location })
     }
-    expect(screen.getByText(/your draft is saved in this browser/i)).toBeInTheDocument()
-    expect(screen.getByText(/a room expires about two hours after the last activity/i)).toBeInTheDocument()
-    expect(screen.getByText(/a teacher can close collaboration at any time; the work is kept/i)).toBeInTheDocument()
   })
 
   it('does not advertise teacher self-service registration or a public world gallery', () => {
     render(<LandingPage />)
-    expect(screen.getByText(/this page does not create new teacher accounts/i)).toBeInTheDocument()
+    expect(screen.getByText(/Teacher accounts are set up by the Brickgineers team for now/)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /create (a )?teacher account/i })).toBeNull()
     expect(screen.queryByRole('link', { name: /explore worlds/i })).toBeNull()
   })
 
-  it('has help and privacy sections with no domain text and no fake claims', () => {
+  it('has no domain text and no fake claims', () => {
     const { container } = render(<LandingPage />)
-    expect(screen.getByRole('heading', { name: 'Help' }).closest('#help')).not.toBeNull()
-    expect(screen.getByRole('heading', { name: 'Privacy' }).closest('#privacy')).not.toBeNull()
-    expect(screen.getByText(/it is not a full privacy policy/i)).toBeInTheDocument()
-
     const text = container.textContent ?? ''
     expect(text).not.toMatch(/\b[a-z0-9-]+\.(com|org|app|io|net|dev|edu)\b/i)
     expect(text).not.toMatch(/testimonial|★|⭐|rated|rating|trusted by|loved by|free forever|pricing|\$\d/i)
@@ -331,8 +340,7 @@ describe('bundle and asset boundaries', () => {
     expect(screen.getByRole('link', { name: 'Try the Hackable Platformer' })).toHaveAttribute('href', '/2d/hackable?new=1')
     expect(container.querySelector('.landing-hack-picture')).toHaveAttribute('src', '/brand/media/hackable-ledge.jpg')
     expect(container.querySelector('.landing-hack video')).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Kids learn to code because they want to' })).toBeInTheDocument()
-    expect(screen.getByText('Do students need to know how to code?')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Coding they want to do' })).toBeInTheDocument()
   })
 
   it('imports nothing heavy: no 3D, scene, store, or protocol modules', () => {
