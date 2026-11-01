@@ -26,6 +26,8 @@ import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
 const LEAVE_WAIT_MS = 5000
+/** How long the small-screen brick card ignores touches after it opens (longer than a tap's trailing click). */
+const INSPECTOR_SETTLE_MS = 400
 const assignLocation = (href: string) => window.location.assign(href)
 const LOCAL_SAVE: HeaderSaveStatus = { source: { kind: 'local' } }
 const PHONE = '(max-width: 767px)'
@@ -83,6 +85,16 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const [erasing, setErasingState] = useState(session.erasing)
   const setErasing = (on: boolean) => { session.erasing = on; setErasingState(on) }
   const [sheet, setSheet] = useState(false)
+  // On a small screen the brick card slides up under the finger that selected the brick. For a moment after it opens it
+  // ignores touches, so that same tap can't land on a slider and change it.
+  const [settling, setSettling] = useState(false)
+  const inspecting = screen === 'build' && selectedCopyId !== null
+  useEffect(() => {
+    if (!inspecting || !phone) return
+    setSettling(true)
+    const t = setTimeout(() => setSettling(false), INSPECTOR_SETTLE_MS)
+    return () => { clearTimeout(t); setSettling(false) }
+  }, [inspecting, phone])
   const [note, setNote] = useState<string | null>(null)
   const [help, setHelp] = useState(false)
   // Shown once per browser: remembered as soon as they show, so a reload does not bring them back (Help does).
@@ -162,7 +174,6 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
     return () => window.removeEventListener('keydown', onKey)
   }, [store, history, session])
 
-  const inspecting = screen === 'build' && selectedCopyId !== null
   return (
     <div className={`p2d-game p2d-studio cl-shell${phone ? ' cl-phone' : ''}${touch ? ' cl-touch' : ''}`} data-screen={screen} data-inspecting={inspecting ? 'yes' : 'no'} data-sheet={sheet ? 'open' : 'closed'}>
       <div className="p2d-header builder-header">
@@ -242,7 +253,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           </div>
         )}
 
-        <div className="cl-slot cl-slot-inspector" inert={!inspecting ? true : undefined}>
+        <div className={`cl-slot cl-slot-inspector${settling ? ' cl-settling' : ''}`} inert={!inspecting ? true : undefined}>
           {inspecting && <Inspector store={store} history={history} compact={phone} />}
         </div>
 

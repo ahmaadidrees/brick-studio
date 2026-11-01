@@ -139,7 +139,8 @@
   .app-header-tool .ui-button-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .app-header-tool.ui-button { position: relative; }
   .app-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
-  .app-header-title { max-width: 180px; }
+  /* The save pill gives way before the project name does: the name keeps a few letters. */
+  .app-header-title { min-width: 4.5em; max-width: 180px; }
 }
 
 /* ---- Phone: mark, title, save pill, mode switch, chip icon-only; tools in a second row ---- */

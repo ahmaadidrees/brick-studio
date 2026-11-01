@@ -43,6 +43,7 @@
 .cl-slot-inspector { top: var(--cl-gap); bottom: var(--cl-gap); right: var(--cl-gap); left: calc(100% - var(--cl-gap) - var(--cl-insp)); z-index: 2; }
 .cl-slot-inspector > * { flex: 0 1 auto; }
 .cl-slot-inspector[inert] { transform: translateX(28px); }
+.cl-slot-inspector.cl-settling { pointer-events: none; }
 
 /* Code */
 .cl-slot-code { top: var(--cl-gap); bottom: var(--cl-gap); left: var(--cl-gap); right: calc(var(--cl-right) + 2 * var(--cl-gap)); }

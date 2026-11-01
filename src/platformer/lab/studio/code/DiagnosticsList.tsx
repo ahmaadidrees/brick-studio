@@ -25,6 +25,13 @@ export function formatKidDiagnostic(diagnostic: Diagnostic): { title: string; hi
     }
   }
 
+  if (diagnostic.code === 'block.unknown') {
+    return {
+      title: 'This block can’t run',
+      hint: diagnostic.message,
+    }
+  }
+
   if (diagnostic.code === 'workspace.invalid_json' || diagnostic.code === 'workspace.invalid') {
     return {
       title: 'These blocks would not open',

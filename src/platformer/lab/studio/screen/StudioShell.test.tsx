@@ -148,6 +148,24 @@ describe('the shell: Build · Code · Play', () => {
     expect(store.getState().cardTab).toBe('sliders')
     expect(screen.getByText('Code needs a bigger screen')).toBeTruthy()
   })
+
+  it('on a small screen the brick card ignores touches for a moment after it opens, so the selecting tap cannot move a slider', () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+      const store = new StudioStore(createStarterProject())
+      render(<StudioShell store={store} />)
+      act(() => store.selectCopy('copy_walker_fast'))
+      expect(slot('inspector').classList.contains('cl-settling')).toBe(true)
+      act(() => { vi.advanceTimersByTime(400) })
+      expect(slot('inspector').classList.contains('cl-settling')).toBe(false)
+      // Choosing another brick while the card is open doesn't lock it again.
+      act(() => store.selectCopy(store.getState().project.design.copies.find((c) => c.id !== 'copy_walker_fast')!.id))
+      expect(slot('inspector').classList.contains('cl-settling')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('the Bricks drawer', () => {
