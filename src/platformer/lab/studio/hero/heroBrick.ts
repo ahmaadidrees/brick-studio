@@ -25,7 +25,7 @@
 import type { BrickDef, VariableDecl } from '../../core/contracts'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { costumeFromImage, imageFromRows } from '../pixels'
-import { labelData } from '../code/layers'
+import { labelData, readLabel } from '../code/layers'
 
 // -----------------------------------------------------------------------------
 // Art: a 16 x 16 hero whose opaque box is 12 wide x 14 tall, bottom aligned (the old player's collision box)
@@ -589,4 +589,21 @@ export function createHeroBrick(): { brick: BrickDef; workspace: WorkspaceJson; 
     workspace,
     diagnostics,
   }
+}
+
+/** The hats of the Hero's movement scripts: "every tick" and "when I bump". */
+export const HERO_MOVEMENT_HATS: readonly string[] = ['platformer_everytick', 'platformer_whenbump']
+
+let movementLabels: ReadonlySet<string> | undefined
+
+/**
+ * The labels of the Hero's movement scripts (the basics and feel scripts above), read from `createHeroWorkspace` itself so
+ * the list can never drift. The code editor folds the scripts with these labels into one "How I move" entry.
+ */
+export function heroMovementLabels(): ReadonlySet<string> {
+  if (!movementLabels) {
+    const tops = (createHeroWorkspace().blocks as { blocks: Array<{ type: string; data?: string }> }).blocks
+    movementLabels = new Set(tops.filter((b) => HERO_MOVEMENT_HATS.includes(b.type)).map((b) => readLabel(b.data)).filter(Boolean))
+  }
+  return movementLabels
 }
