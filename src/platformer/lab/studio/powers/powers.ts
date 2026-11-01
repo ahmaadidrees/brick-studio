@@ -465,7 +465,7 @@ function dash(): PowerBrick {
   return builtIn('dash', 'Dash', 'Press z for a quick burst of speed, then wait a moment before the next one.', [tick], [
     { id: 'wait', name: 'dash wait', value: 0 },
     { id: 'speed', name: 'dash speed', value: 14, showInBuild: true },
-    { id: 'cooldown', name: 'dash cooldown ticks', value: 20 },
+    { id: 'cooldown', name: 'dash rest time', value: 20 },
   ])
 }
 
@@ -477,7 +477,7 @@ function hop(): PowerBrick {
   ])
   return builtIn('hop', 'Hop', 'Every so often, jump. Snap it onto a Walker for a hopping enemy.', [tick], [
     { id: 'count', name: 'hop count', value: 0 },
-    { id: 'every', name: 'hop every ticks', value: 45 },
+    { id: 'every', name: 'hop wait time', value: 45 },
     { id: 'height', name: 'hop height', value: 8, showInBuild: true },
   ])
 }

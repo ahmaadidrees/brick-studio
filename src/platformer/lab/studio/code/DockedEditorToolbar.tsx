@@ -25,7 +25,7 @@ export function DockedEditorToolbar(props: Props) {
     <header className="code-editor-toolbar code-editor-toolbar-compact" role="toolbar" aria-label="Code Editor Toolbar">
       <button type="button" className="code-toolbar-icon-btn" disabled={!props.canUndo} onClick={props.onUndo} aria-label="Undo code" title="Undo code (Ctrl+Z)">↩ Undo</button>
       <button type="button" className="code-toolbar-icon-btn" disabled={!props.canRedo} onClick={props.onRedo} aria-label="Redo code" title="Redo code (Ctrl+Shift+Z)">↪ Redo</button>
-      {props.diagnosticsCount > 0 && <button type="button" className="code-diagnostics-badge-btn" aria-pressed={props.showDiagnostics} onClick={props.onToggleDiagnostics}>{props.diagnosticsCount} {props.diagnosticsCount === 1 ? 'notice' : 'notices'}</button>}
+      {props.diagnosticsCount > 0 && <button type="button" className="code-diagnostics-badge-btn" aria-pressed={props.showDiagnostics} onClick={props.onToggleDiagnostics} title={`${props.diagnosticsCount} ${props.diagnosticsCount === 1 ? 'block needs' : 'blocks need'} a look`}>{props.diagnosticsCount} to check</button>}
       <details ref={menu} className="code-view-options" onKeyDown={(event) => {
         if (event.key === 'Escape' && menu.current?.open) {
           event.stopPropagation()

@@ -13,8 +13,8 @@ export interface DiagnosticsListProps {
 export function formatKidDiagnostic(diagnostic: Diagnostic): { title: string; hint: string } {
   if (diagnostic.code === 'block.disconnected') {
     return {
-      title: "Block isn't connected",
-      hint: "Snap this block under a hat block like 'when ⚑ clicked' to make it run!",
+      title: 'This block is not snapped on',
+      hint: "Snap it under a top block like 'when ⚑ clicked' so it runs.",
     }
   }
 
@@ -27,21 +27,21 @@ export function formatKidDiagnostic(diagnostic: Diagnostic): { title: string; hi
 
   if (diagnostic.code === 'workspace.invalid_json' || diagnostic.code === 'workspace.invalid') {
     return {
-      title: 'Could not load blocks',
-      hint: 'Something went wrong loading this workspace.',
+      title: 'These blocks would not open',
+      hint: 'Something went wrong. Try Undo, or open the project again.',
     }
   }
 
   if (diagnostic.code === 'block.nameless_input') {
     return {
-      title: 'An input lost its name',
-      hint: 'Drag the input from the My Blocks list into this spot again.',
+      title: 'A slot lost its name',
+      hint: 'Drag it from the My Blocks list into this spot again.',
     }
   }
 
   // Fallback with clean wording
   return {
-    title: 'Block needs attention',
+    title: 'This block needs a look',
     hint: diagnostic.message,
   }
 }
@@ -54,12 +54,12 @@ export const DiagnosticsList: React.FC<DiagnosticsListProps> = ({
   if (!diagnostics || diagnostics.length === 0) return null
 
   return (
-    <div className="code-diagnostics-drawer" role="region" aria-label="Block diagnostics">
+    <div className="code-diagnostics-drawer" role="region" aria-label="Blocks to check">
       <div className="code-diagnostics-header">
         <div className="code-diagnostics-title-group">
           <span className="code-diagnostics-icon">⚠️</span>
           <strong>
-            {diagnostics.length} {diagnostics.length === 1 ? 'block needs' : 'blocks need'} attention
+            {diagnostics.length} {diagnostics.length === 1 ? 'block needs' : 'blocks need'} a look
           </strong>
         </div>
         {onDismiss && (
@@ -67,7 +67,7 @@ export const DiagnosticsList: React.FC<DiagnosticsListProps> = ({
             type="button"
             className="code-diagnostics-close"
             onClick={onDismiss}
-            aria-label="Hide notices"
+            aria-label="Hide this list"
           >
             ✕
           </button>
@@ -89,7 +89,7 @@ export const DiagnosticsList: React.FC<DiagnosticsListProps> = ({
                   onSelectBlock(d.blockId)
                 }
               }}
-              title={hasBlockId ? 'Click to highlight and jump to this block' : undefined}
+              title={hasBlockId ? 'Show me this block' : undefined}
             >
               <div className="code-diagnostic-badge">
                 {d.severity === 'error' ? '🛑' : '⚠️'}
@@ -99,7 +99,7 @@ export const DiagnosticsList: React.FC<DiagnosticsListProps> = ({
                 <span className="code-diagnostic-item-hint">{hint}</span>
               </div>
               {hasBlockId && (
-                <span className="code-diagnostic-jump-tag">Jump to block ➔</span>
+                <span className="code-diagnostic-jump-tag">Show me ➔</span>
               )}
             </button>
           )
