@@ -25,3 +25,29 @@ guest saving (reload, two tabs, 2,000 cap), and console errors. Account saving w
 Worker stub. Nothing was tried on real devices or Safari.
 
 Deploying needs the Worker first (the id-based create is backward-compatible), then the site. No migration.
+
+## Release, 2026-10-31
+
+Shipped with the owner's go ("Ship to prod"), from `claude/hackable-ux-int` 6a39a9b (PR #24).
+
+1. **Worker `brick-studio-multiplayer`:** `27e06ef6-8809-4c72-9e61-f6efa09b7f8c`. Rollback is `b91ebb87-7023-4031-b1fe-52fccbd41d7c`.
+   - `npm run test:worker` passed 253 of 253 first.
+   - Afterwards, `/classroom/classes/x/shelf` answered 401 `sign_in_required`.
+2. **Website:** `dpl_9LwqASAcw2GWy2FVTP3cjaTXmQGE`, on https://brickgineers.com and serving `index-Ue9Knn1h.js`. Rollback is
+   `dpl_2o3U5LrtXKLVYHuooFZq9Yh7Yjx5`.
+   - It was built locally with the production environment.
+   - `micro/` and `config.json` were copied unchanged from the 2026-10-29 output.
+   - The same files were first on the preview `virtual-legos-2fepbs7ll-…vercel.app`.
+3. **No migration.**
+
+To roll back, run `vercel promote dpl_2o3U5LrtXKLVYHuooFZq9Yh7Yjx5` and `wrangler rollback b91ebb87-…`. The old Worker ignores
+the new create id, so a rolled-back Worker can still be paired with this site.
+
+**Checks after the deploy** (signed out, 1366×768):
+- `/`, `/join`, `/class`, `/projects`, `/2d/build`, `/2d/hackable` and `/micro` all return 200.
+- `/2d/hackable?new=1` opens.
+- Two coins placed then got a `?draft=` address, and a reload of `/2d/hackable` kept them.
+- Play runs with Follow the Hero, and the +, − and Fit buttons are gone.
+- There were no console errors.
+
+**Not checked by Claude:** signed-in saving on production, and real Duos, iPads and Chromebooks.
