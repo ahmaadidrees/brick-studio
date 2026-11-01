@@ -192,3 +192,47 @@ export function followViewWidth(bounds: StageBounds, viewport: Viewport): number
   if (viewport.width <= 0 || viewport.height <= 0 || levelHeight <= 0) return DEFAULT_VIEW_WIDTH
   return Math.min(DEFAULT_VIEW_WIDTH, (viewport.width * levelHeight) / viewport.height)
 }
+
+/** Build's Fit shows the whole level when that is at least this many pixels per step (a 16-step tile is 12 px)... */
+export const BUILD_FIT_WHOLE_ZOOM = 0.75
+/** ...and otherwise zooms to this (a 16-step tile is 16 px), so a portrait screen doesn't get 6 px bricks. */
+export const BUILD_FIT_MIN_ZOOM = 1
+
+/**
+ * Build's Fit button: the whole level when that is readable; on a narrow (portrait) stage, the level's full height at
+ * a readable zoom instead, centred on `centerX` (the current view) and kept inside the level's left and right edges.
+ * It never zooms in further than the level's full height.
+ */
+export function buildFitCamera(bounds: StageBounds, viewport: Viewport, centerX?: number): Camera {
+  const fit = fitZoom(bounds, viewport)
+  if (fit >= BUILD_FIT_WHOLE_ZOOM) return fitCamera(bounds, viewport)
+  const levelH = bounds.top - bounds.bottom
+  const heightZoom = levelH > 0 && viewport.height > 0 ? viewport.height / levelH : fit
+  const zoom = Math.max(fit, Math.min(BUILD_FIT_MIN_ZOOM, heightZoom))
+  if (zoom <= fit || viewport.width <= 0) return fitCamera(bounds, viewport)
+  const viewWidth = viewport.width / zoom
+  const half = viewWidth / 2
+  const x = Math.min(bounds.right - half, Math.max(bounds.left + half, centerX ?? bounds.left + half))
+  return { x, y: (bounds.bottom + bounds.top) / 2, viewWidth }
+}
+
+/** Two fingers on the screen: where they are (canvas pixels) and how far apart. */
+export interface PinchPoint {
+  mid: [number, number]
+  dist: number
+}
+
+export function pinchPoint(a: [number, number], b: [number, number]): PinchPoint {
+  return { mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], dist: Math.hypot(b[0] - a[0], b[1] - a[1]) }
+}
+
+/**
+ * The camera after a two-finger gesture that started at `from` with camera `start` and is now at `to`: it zooms by how
+ * much the fingers spread around where they started, and pans with their midpoint, so the spot of the level that was
+ * between the fingers stays between them (1:1, like a photo).
+ */
+export function pinchCamera(start: Camera, viewport: Viewport, from: PinchPoint, to: PinchPoint): Camera {
+  const factor = from.dist > 1 && to.dist > 1 ? to.dist / from.dist : 1
+  const zoomed = zoomCameraAt(start, viewport, factor, from.mid)
+  return panCamera(zoomed, viewport, to.mid[0] - from.mid[0], to.mid[1] - from.mid[1])
+}

@@ -406,14 +406,13 @@ export function compileWorkspace(
       const name = typeof v.name === 'string' ? v.name : id
       if (!id) continue
 
+      // The workspace names the variable (a rename happens there); the context keeps its value and Build settings.
       if (v.type === 'list') {
-        if (!listMap.has(id)) {
-          listMap.set(id, { id, name, value: [] })
-        }
+        const known = listMap.get(id)
+        listMap.set(id, known ? { ...known, name } : { id, name, value: [] })
       } else {
-        if (!varMap.has(id)) {
-          varMap.set(id, { id, name, value: 0 })
-        }
+        const known = varMap.get(id)
+        varMap.set(id, known ? { ...known, name } : { id, name, value: 0 })
       }
     }
   }

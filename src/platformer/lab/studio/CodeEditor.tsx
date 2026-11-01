@@ -19,6 +19,11 @@ import { EditorToolbar } from './code/EditorToolbar'
 import { DockedEditorToolbar } from './code/DockedEditorToolbar'
 import { focusedMyBlocksFlyout } from './code/focusedPalette'
 import { LayerBar } from './code/LayerBar'
+import { installTouchPaletteScroll } from './code/touchFlyout'
+import { fillEmptySlots, refillUnpluggedSlot, slotShadowsFromToolbox } from './code/slotShadows'
+import { RenameVariableModal, VariableNoticeModal } from './code/VariableDialogs'
+import { refreshVariableFields, renameInWorkspace, variableNameProblem, variableUses, workspaceUsesVariable, type VariableKind } from './code/variables'
+import type { EditorContext } from '../core/editor/context'
 import { PlainScratchCard } from './code/PlainScratchCard'
 import {
   applyView,
@@ -36,6 +41,11 @@ import {
 import { back, drillInto, isTop, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
 import './code/code.css'
 import './code/light.css'
+
+/** The open palette (if any) redraws, so its variable menus and blocks are up to date. */
+function refreshPalette(ws: Blockly.WorkspaceSvg): void {
+  ws.getToolbox()?.refreshSelection()
+}
 
 export interface CodeEditorProps {
   store: StudioStore
@@ -78,6 +88,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
   const [varModalMode, setVarModalMode] = useState<'variable' | 'list' | null>(null)
   const [procModalOpen, setProcModalOpen] = useState<boolean>(false)
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true)
+  // The variable menu's Rename / Delete, and what the kid is asked or told about it.
+  const [renaming, setRenaming] = useState<{ id: string; name: string; kind: VariableKind } | null>(null)
+  const [variableNotice, setVariableNotice] = useState<{ title: string; message: string; confirm?: { text: string; run: () => void } } | null>(null)
+  const ctxRef = useRef<EditorContext | null>(null)
+  const variableMenuRef = useRef<(action: 'rename' | 'delete', id: string) => void>(() => {})
 
   // Layered view: top scripts, or drilled into a My Block definition. And the open "plain Scratch" card.
   const [view, setView] = useState<LayerState>(TOP_VIEW)
@@ -151,13 +166,25 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
 
     // 3. Register plugins and block definitions
     registerToolboxPlugins()
-    const ctx = buildEditorContext(store)
+    installTouchPaletteScroll()
+    // Menus read the open workspace's own variables, so a new or renamed variable shows at once.
+    const ctx = buildEditorContext(store, {
+      variables: () => {
+        const live = workspaceRef.current
+        if (!live || isDisposedRef.current) return []
+        return live.getVariableMap().getAllVariables().map((v) => ({ id: v.getId(), name: v.getName(), type: v.getType() }))
+      },
+      onVariableMenu: (action, id) => variableMenuRef.current(action, id),
+    })
+    ctxRef.current = ctx
     setEditorContext(ctx)
     registerEditorBlocks(ctx)
     attachAffordances()
 
     // 4. Configure continuous toolbox (filter Motion if stage selected)
     const toolboxDef = createContinuousToolbox(ctx, { isStage })
+    const slotShadows = slotShadowsFromToolbox(toolboxDef)
+    const variableValue = (id: string) => ctx.getVariables?.().find((v) => v.id === id)?.value
 
     // 5. Inject Blockly workspace
     const ws = Blockly.inject(container, {
@@ -257,6 +284,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       }
     }
 
+    // Slots emptied before this fix (a reporter pulled out) get a number to type into again.
+    if (!loadBlockedRef.current) fillEmptySlots(ws, slotShadows)
+
     if (docked) ws.getToolbox()?.clearSelection()
     foldLongDefinitions(ws)
     ws.getToolbox()?.refreshSelection() // calls for the definitions that just loaded
@@ -293,6 +323,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     const changeListener = (event: Blockly.Events.Abstract) => {
       // Layered view upkeep (labels, the My Blocks shelf, a definition deleted while drilled in)
       if (!event.isUiEvent && event.type !== Blockly.Events.FINISHED_LOADING) {
+        // A reporter pulled out of a slot leaves a number to type into (the variable's own number, if it had one).
+        refillUnpluggedSlot(ws, event, slotShadows, variableValue)
+        if (event.type === Blockly.Events.VAR_RENAME) refreshVariableFields(ws, (event as Blockly.Events.VarRename).varId ?? '')
+        if (event.type === Blockly.Events.VAR_CREATE || event.type === Blockly.Events.VAR_DELETE || event.type === Blockly.Events.VAR_RENAME) {
+          refreshPalette(ws)
+        }
         renderLabels(ws)
         syncDefinitions()
         if (event.type === Blockly.Events.BLOCK_CREATE && (event as Blockly.Events.BlockCreate).ids?.length) {
@@ -468,9 +504,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       }
     }
 
-    // Refresh context and definitions
-    const updatedCtx = buildEditorContext(store)
-    setEditorContext(updatedCtx)
+    // Menus read variables when they open; the open palette shows the new one now.
+    refreshPalette(ws)
   }
 
   // Handle list creation
@@ -508,8 +543,88 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       }
     }
 
-    const updatedCtx = buildEditorContext(store)
-    setEditorContext(updatedCtx)
+    refreshPalette(ws)
+  }
+
+  // ---------------------------------------------------------------- variable names, Rename and Delete
+
+  /** Names a new (or renamed) variable must not repeat: the ones its blocks can see, and for a shared one, every brick's. */
+  const namesInUse = (kind: VariableKind, scope: 'brick' | 'stage', exceptId?: string): string[] => {
+    const ctx = ctxRef.current
+    const items = (kind === 'list' ? ctx?.getLists?.() : ctx?.getVariables?.()) ?? []
+    const names = items.filter((v) => v.id !== exceptId).map((v) => v.name)
+    if (scope === 'stage' || isStage) {
+      const d = store.getState().project.design
+      for (const b of [d.stage, ...d.bricks]) {
+        for (const v of (kind === 'list' ? b.program.lists : b.program.variables) ?? []) if (v.id !== exceptId) names.push(v.name)
+      }
+    }
+    return names
+  }
+  const nameProblem = (kind: VariableKind) => (name: string, scope: 'brick' | 'stage') => variableNameProblem(name, namesInUse(kind, scope), kind)
+
+  const variableName = (id: string): string => ctxRef.current?.getVariables?.().find((v) => v.id === id)?.name ?? 'this variable'
+
+  /** Rename: in this brick's code, or a shared variable in the Stage's saved code. */
+  const renameVariable = (id: string, name: string) => {
+    const ws = workspaceRef.current
+    if (!ws || isDisposedRef.current) return
+    const own = ws.getVariableMap().getVariableById(id)
+    if (own) {
+      ws.getVariableMap().renameVariable(own, name)
+      saveWorkspaceNow(ws)
+    } else {
+      const renamed = renameInWorkspace(store.getState().project.workspaces[STAGE_ID], id, name)
+      if (renamed) store.setWorkspace(STAGE_ID, renamed)
+    }
+    refreshVariableFields(ws, id)
+    refreshPalette(ws)
+  }
+
+  /** Delete: the variable and every block that uses it, in one undo step. */
+  const deleteVariable = (id: string) => {
+    const ws = workspaceRef.current
+    if (!ws || isDisposedRef.current) return
+    const variable = ws.getVariableMap().getVariableById(id)
+    if (!variable) return
+    Blockly.Events.setGroup(true)
+    try {
+      for (const block of variableUses(ws, id)) if (!block.isDeadOrDying()) block.dispose(true)
+      ws.getVariableMap().deleteVariable(variable)
+    } finally {
+      Blockly.Events.setGroup(false)
+    }
+    saveWorkspaceNow(ws)
+    refreshPalette(ws)
+  }
+
+  variableMenuRef.current = (action, id) => {
+    const ws = workspaceRef.current
+    if (!ws || isDisposedRef.current || loadBlockedRef.current) return
+    const name = variableName(id)
+    if (action === 'rename') {
+      setRenaming({ id, name, kind: 'variable' })
+      return
+    }
+    if (!ws.getVariableMap().getVariableById(id)) {
+      setVariableNotice({ title: `“${name}” is shared`, message: `Every brick can use “${name}”. To delete it, open the Stage’s code.` })
+      return
+    }
+    if (isStage) {
+      const d = store.getState().project.design
+      const users = d.bricks.filter((b) => workspaceUsesVariable(store.getState().project.workspaces[b.id], id)).map((b) => b.name)
+      if (users.length) {
+        setVariableNotice({ title: `“${name}” is still in use`, message: `${users.length === 1 ? 'This brick uses' : 'These bricks use'} “${name}”: ${users.join(', ')}. Take it out of their code first.` })
+        return
+      }
+    }
+    const uses = variableUses(ws, id).length
+    if (uses === 0) return deleteVariable(id)
+    setVariableNotice({
+      title: `Delete “${name}”?`,
+      message: `${uses === 1 ? '1 block uses' : `${uses} blocks use`} “${name}”. ${uses === 1 ? 'It goes' : 'They go'} too. You can undo this.`,
+      confirm: { text: 'Delete', run: () => deleteVariable(id) },
+    })
   }
 
   // Handle custom block (procedure) creation
@@ -647,15 +762,30 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
 
       {card && <PlainScratchCard opcode={card.opcode} blockText={card.blockText} onClose={() => setCard(null)} />}
 
-      {/* Make a Variable / Make a List Dialog */}
-      <VariableModal
-        isOpen={varModalMode !== null}
+      {renaming && <RenameVariableModal
+        name={renaming.name}
+        problemFor={(name) => variableNameProblem(name, namesInUse(renaming.kind, isStage || !workspaceRef.current?.getVariableMap().getVariableById(renaming.id) ? 'stage' : 'brick', renaming.id), renaming.kind)}
+        onRename={(name) => { renameVariable(renaming.id, name); setRenaming(null) }}
+        onClose={() => setRenaming(null)}
+      />}
+      {variableNotice && <VariableNoticeModal
+        title={variableNotice.title}
+        message={variableNotice.message}
+        confirmText={variableNotice.confirm?.text}
+        onConfirm={variableNotice.confirm ? () => { variableNotice.confirm?.run(); setVariableNotice(null) } : undefined}
+        onClose={() => setVariableNotice(null)}
+      />}
+
+      {/* Make a Variable / Make a List Dialog (a fresh one each time it opens) */}
+      {varModalMode !== null && <VariableModal
+        isOpen
         mode={varModalMode ?? 'variable'}
         isStage={isStage}
         onClose={() => setVarModalMode(null)}
         onCreateVariable={handleCreateVariable}
         onCreateList={handleCreateList}
-      />
+        nameProblem={nameProblem(varModalMode === 'list' ? 'list' : 'variable')}
+      />}
 
       {/* Make a Block Dialog (Scratch-spirit custom blocks) */}
       <ProcedureModal

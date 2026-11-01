@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { MAX_VARIABLE_NAME } from './variables'
 import {
   VARIABLE_CATEGORIES,
   LIST_CATEGORIES,
@@ -13,6 +14,8 @@ export interface VariableModalProps {
   onClose: () => void
   onCreateVariable: (name: string, scope: 'brick' | 'stage', showInBuild: boolean) => void
   onCreateList: (name: string, scope: 'brick' | 'stage') => void
+  /** Why a name can't be used for this scope (empty, too long, already used), or null when it is fine. */
+  nameProblem?: (name: string, scope: 'brick' | 'stage') => string | null
 }
 
 export const VariableModal: React.FC<VariableModalProps> = ({
@@ -22,12 +25,18 @@ export const VariableModal: React.FC<VariableModalProps> = ({
   onClose,
   onCreateVariable,
   onCreateList,
+  nameProblem = () => null,
 }) => {
   const isVar = mode === 'variable'
   const categories = isVar ? VARIABLE_CATEGORIES : LIST_CATEGORIES
-  const defaultWord = isVar ? ALL_VARIABLE_WORDS[0] : ALL_LIST_WORDS[0]
 
-  const [selectedWord, setSelectedWord] = useState<string>(defaultWord)
+  // Kids type a name; the words below are suggestions that fill it in.
+  const [selectedWord, setSelectedWord] = useState<string>('')
+  const [tried, setTried] = useState<boolean>(false)
+  const nameInput = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    if (isOpen) nameInput.current?.focus()
+  }, [isOpen])
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [scope, setScope] = useState<'brick' | 'stage'>(isStage ? 'stage' : 'brick')
   const [showInBuild, setShowInBuild] = useState<boolean>(false)
@@ -41,13 +50,19 @@ export const VariableModal: React.FC<VariableModalProps> = ({
         : ALL_LIST_WORDS
       : categories.find((c) => c.id === activeCategory)?.words ?? []
 
+  const effectiveScope = isStage ? 'stage' : scope
+  const problem = nameProblem(selectedWord, effectiveScope)
+  // "Type a name first" waits until the kid tries to create; a name already used shows at once.
+  const shownProblem = problem && (tried || selectedWord.trim() !== '') ? problem : null
+
   const handleCreate = () => {
-    if (!selectedWord) return
-    const effectiveScope = isStage ? 'stage' : scope
+    setTried(true)
+    if (problem) return
+    const name = selectedWord.trim()
     if (isVar) {
-      onCreateVariable(selectedWord, effectiveScope, effectiveScope === 'brick' && showInBuild)
+      onCreateVariable(name, effectiveScope, effectiveScope === 'brick' && showInBuild)
     } else {
-      onCreateList(selectedWord, effectiveScope)
+      onCreateList(name, effectiveScope)
     }
     onClose()
   }
@@ -81,13 +96,25 @@ export const VariableModal: React.FC<VariableModalProps> = ({
           </button>
         </div>
 
-        {/* Selected Word Preview */}
-        <div className="code-modal-preview-box">
-          <span className="code-modal-preview-label">Selected name:</span>
-          <span className="code-modal-preview-chip">
-            {selectedWord || 'None picked'}
-          </span>
-        </div>
+        {/* The name: typed, or filled in from a word below */}
+        <form className="code-modal-section code-name-section" onSubmit={(e) => { e.preventDefault(); handleCreate() }}>
+          <label className="code-modal-section-title" htmlFor="variable-name-input">Name</label>
+          <input
+            id="variable-name-input"
+            ref={nameInput}
+            className="code-name-input"
+            value={selectedWord}
+            maxLength={MAX_VARIABLE_NAME}
+            placeholder={isVar ? 'Type a name, like lives' : 'Type a name, like treasure'}
+            autoComplete="off"
+            spellCheck={false}
+            aria-invalid={!!shownProblem}
+            aria-describedby={shownProblem ? 'variable-name-problem' : undefined}
+            onChange={(e) => setSelectedWord(e.target.value)}
+          />
+          {shownProblem && <p id="variable-name-problem" className="code-name-problem" role="status">{shownProblem}</p>}
+          <p className="code-name-hint">Or pick a word:</p>
+        </form>
 
         {/* Category Filter Pills */}
         <div className="code-word-category-tabs" role="tablist" aria-label="Word categories">
@@ -117,7 +144,7 @@ export const VariableModal: React.FC<VariableModalProps> = ({
         {/* Word Grid */}
         <div className="code-words-grid" role="group" aria-label="Pick a word">
           {displayedWords.map((word) => {
-            const isSelected = selectedWord === word
+            const isSelected = selectedWord.trim().toLowerCase() === word.toLowerCase()
             return (
               <button
                 key={word}
@@ -210,6 +237,7 @@ export const VariableModal: React.FC<VariableModalProps> = ({
             type="button"
             className="code-btn-primary"
             style={{ backgroundColor: isVar ? '#ff8c1a' : '#ff661a' }}
+            disabled={!!shownProblem}
             onClick={handleCreate}
           >
             Create {isVar ? 'Variable' : 'List'}

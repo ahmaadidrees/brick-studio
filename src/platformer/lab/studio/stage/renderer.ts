@@ -98,15 +98,15 @@ export function renderBuildMode(
   ctx.fillStyle = SKY
   ctx.fillRect(lX, tY, lvlW, lvlH)
 
-  // Stage backdrop if present, otherwise the Brickgineers day sky and hills
+  // The Brickgineers day sky and hills, then the Stage backdrop over them: its clear parts show the scenery, and a fully
+  // painted backdrop covers it.
+  drawSky(ctx, bounds, camera, viewport)
   const backdrop = design.stage.costumes[0]
   if (backdrop?.asset) {
     const img = imageCache.getImage(backdrop.asset)
     if (img) {
       ctx.drawImage(img, lX, tY, lvlW, lvlH)
     }
-  } else {
-    drawSky(ctx, bounds, camera, viewport)
   }
 
   // Grid lines
@@ -209,6 +209,8 @@ export function renderPlayMode(
   ctx.fillStyle = SKY
   ctx.fillRect(lX, tY, lvlW, lvlH)
 
+  // Day sky and hills first; the Stage's costume goes over them (clear parts show the scenery).
+  drawSky(ctx, bounds, camera, viewport)
   const stageBrick = world.bricks[world.stage.brickId]
   const stageCostume = stageBrick?.costumes[world.stage.costumeIndex]
   if (stageCostume?.asset) {
@@ -216,8 +218,6 @@ export function renderPlayMode(
     if (img) {
       ctx.drawImage(img, lX, tY, lvlW, lvlH)
     }
-  } else {
-    drawSky(ctx, bounds, camera, viewport)
   }
 
   // 3. Targets in draw order (world.targets). Grid cells are ordinary targets (step 7), drawn like any copy.

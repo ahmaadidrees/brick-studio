@@ -90,3 +90,8 @@
 .code-light .code-script-switch:hover rect { stroke-width: 2.5; }
 .code-light .code-script-switch:focus-visible { outline: none; }
 .code-light .code-script-switch:focus-visible rect { stroke: #ffd43b; stroke-width: 3; }
+.code-light .code-name-input { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
+.code-light .code-name-input:focus { border-color: var(--cl-blue); }
+.code-light .code-name-input[aria-invalid='true'] { border-color: #f59e0b; }
+.code-light .code-name-hint { color: var(--cl-muted); }
+.code-light .code-btn-primary.code-btn-danger { background: #dc2626; border-color: #dc2626; }

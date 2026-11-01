@@ -5,8 +5,8 @@ import { createStarterProject } from '../starter'
 import { exportProjectJson } from './projectIo'
 import { HackableCloudSaver } from './hackableCloud'
 import {
-  ACCOUNT_DOCUMENT_MAX_BYTES, HACKABLE_INDEX_KEY, LEGACY_ID, LEGACY_KEY, MAX_HACKABLE_PROJECTS, deleteHackableProject, listHackableProjects,
-  loadHackableText, newHackableId, projectKey, saveHackableText, touchHackableEntry,
+  ACCOUNT_DOCUMENT_MAX_BYTES, HACKABLE_INDEX_KEY, LEGACY_ID, LEGACY_KEY, MAX_HACKABLE_PROJECTS, NEW_PROJECT_ROOM_CHARS, compactHackableSaves, deleteHackableProject,
+  listHackableProjects, loadHackableText, newHackableId, pendingWorldOf, projectKey, roomFor, saveHackableText, setPendingWorld, touchHackableEntry,
 } from './hackableProjects'
 import { documentBytes, hackableDocument, projectFromDocument, projectFromText, saveHackableProject } from './hackableSave'
 
@@ -135,5 +135,70 @@ describe('Hackable Platformer projects in an account', () => {
     expect(saver.error).toMatch(/newer version/)
     expect(saver.dirty).toBe(true)
     vi.useRealTimers()
+  })
+})
+
+describe('room for projects in this browser', () => {
+  const named = (name: string) => ({ ...createStarterProject(), design: { ...createStarterProject().design, name } })
+
+  /** A browser that keeps at most `limit` characters in all (keys and values), like the real ~5 million. */
+  function smallBrowser(limit: number) {
+    const map = new Map<string, string>()
+    const used = () => [...map].reduce((n, [k, v]) => n + k.length + v.length, 0)
+    return {
+      map,
+      get length() { return map.size },
+      key: (i: number) => [...map.keys()][i] ?? null,
+      getItem: (k: string) => map.get(k) ?? null,
+      removeItem: (k: string) => { map.delete(k) },
+      setItem: (k: string, v: string) => {
+        const before = map.get(k)
+        if (used() - (before ? k.length + before.length : 0) + k.length + v.length > limit) throw new DOMException('full', 'QuotaExceededError')
+        map.set(k, String(v))
+      },
+    }
+  }
+
+  it('keeps a starter project in about 166,000 characters, not 596,000', () => {
+    saveHackableProject('h1', createStarterProject())
+    const kept = localStorage.getItem(projectKey('h1'))!
+    expect(kept.length).toBeLessThan(200_000)
+    expect(projectFromText(kept)).not.toBeNull()
+  })
+
+  it('makes older indented saves compact without changing them, and leaves alone what is not JSON', () => {
+    const pretty = exportProjectJson(named('Old one'))
+    localStorage.setItem(projectKey('old'), pretty)
+    localStorage.setItem(projectKey('broken'), '{ not json\n')
+    const freed = compactHackableSaves()
+    expect(freed).toBeGreaterThan(pretty.length / 2)
+    const after = localStorage.getItem(projectKey('old'))!
+    expect(JSON.parse(after)).toEqual(JSON.parse(pretty))
+    expect(projectFromText(after)?.design.name).toBe('Old one')
+    expect(localStorage.getItem(projectKey('broken'))).toBe('{ not json\n')
+    expect(compactHackableSaves()).toBe(0)
+  })
+
+  it('when the browser is full, makes older saves smaller and saves after all; says “space” only when that is not enough', () => {
+    const browser = smallBrowser(1_400_000)
+    for (const id of ['a', 'b']) browser.map.set(projectKey(id), exportProjectJson(named(id)))
+    // Two indented starters (about 1.2 million) leave no room for a third as they are.
+    expect(saveHackableProject('c', named('c'), browser)).toEqual({ ok: true })
+    expect(listHackableProjects(browser).map((e) => e.id).sort()).toEqual(['a', 'b', 'c'])
+    for (const id of ['a', 'b', 'c']) expect(projectFromText(browser.getItem(projectKey(id))!)?.design.name).toBe(id)
+    const tiny = smallBrowser(100_000)
+    expect(saveHackableProject('d', named('d'), tiny)).toEqual({ ok: false, reason: 'space' })
+    expect(roomFor(NEW_PROJECT_ROOM_CHARS, tiny)).toBe('full')
+    expect(roomFor(NEW_PROJECT_ROOM_CHARS, smallBrowser(1_000_000))).toBe('room')
+  })
+
+  it('remembers the account world a project is waiting to become, through later saves, until it is cleared', () => {
+    saveHackableProject('p1', named('Waiting'), undefined, undefined, { id: 'world-uuid', owner: 'me' })
+    expect(pendingWorldOf('p1')).toEqual({ id: 'world-uuid', owner: 'me' })
+    touchHackableEntry('p1', 'Waiting, renamed')
+    expect(pendingWorldOf('p1')).toEqual({ id: 'world-uuid', owner: 'me' })
+    setPendingWorld('p1', undefined)
+    expect(pendingWorldOf('p1')).toBeUndefined()
+    expect(listHackableProjects()[0].title).toBe('Waiting, renamed')
   })
 })

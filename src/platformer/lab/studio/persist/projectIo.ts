@@ -31,6 +31,14 @@ export function exportProjectJson(project: StudioProject): string {
 }
 
 /**
+ * The project as kept in this browser: the same JSON as exportProjectJson, written compactly. Indented, a starter
+ * project took about 596,000 characters; compact, about 166,000 (a browser keeps about 5 million for the whole site).
+ */
+export function projectStorageText(project: StudioProject): string {
+  return JSON.stringify(JSON.parse(exportProjectJson(project)))
+}
+
+/**
  * Initiates a browser download of the project as a `.json` file.
  */
 export function exportProjectFile(project: StudioProject, filename?: string): void {

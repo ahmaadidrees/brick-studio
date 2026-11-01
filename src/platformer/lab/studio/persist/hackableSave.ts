@@ -1,7 +1,7 @@
 import { upgradeUntouchedHero } from '../remix'
 import type { StudioProject } from '../store'
-import { HACKABLE_FORMAT, isHackableDocument, saveHackableText, type HackableDocument, type HackableSaveResult, type HackableStorage } from './hackableProjects'
-import { exportProjectJson } from './projectIo'
+import { HACKABLE_FORMAT, isHackableDocument, saveHackableText, type HackableDocument, type HackableSaveResult, type HackableStorage, type PendingWorld } from './hackableProjects'
+import { exportProjectJson, projectStorageText } from './projectIo'
 import { openableSaveText, parseSaveText } from './repairSave'
 
 /* Opening and writing Hackable Platformer projects: the part of hackableProjects.ts that needs the game's own parser. */
@@ -63,6 +63,6 @@ export function documentBytes(project: StudioProject): number {
   return accountBytes(hackableDocument(project))
 }
 
-export function saveHackableProject(id: string, project: StudioProject, store?: HackableStorage | null, picture?: string): HackableSaveResult {
-  return saveHackableText(id, project.design.name, exportProjectJson(project), store ?? undefined, picture)
+export function saveHackableProject(id: string, project: StudioProject, store?: HackableStorage | null, picture?: string, pendingWorld?: PendingWorld): HackableSaveResult {
+  return saveHackableText(id, project.design.name, projectStorageText(project), store ?? undefined, picture, pendingWorld)
 }

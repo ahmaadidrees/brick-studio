@@ -1109,3 +1109,15 @@
 .code-editor-root-docked .layer-crumb { min-height: 28px; padding: 0 9px; font-size: 12px; }
 .code-editor-root-docked .layer-here { font-size: 12px; }
 .code-editor-root-docked .code-diagnostics-drawer { left: 100px; right: 12px; }
+
+/* Variables: a typed name (Make a Variable, Rename), and the small ask/tell dialogs. */
+.code-modal-card-small { max-width: 420px; }
+.code-name-section { border-top: 0; }
+.code-name-input { box-sizing: border-box; width: 100%; height: 44px; margin-top: 6px; padding: 0 12px; border: 2px solid #363e52; border-radius: 10px; background: #12151d; color: #f1f5f9; font: inherit; font-size: 16px; font-weight: 700; }
+.code-name-input:focus { outline: none; border-color: #ff8c1a; }
+.code-name-input[aria-invalid='true'] { border-color: #f59e0b; }
+.code-name-problem { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff4d6; color: #7a4f00; font-size: 13px; font-weight: 700; line-height: 1.4; }
+.code-name-hint { margin: 10px 0 0; color: #94a3b8; font-size: 13px; font-weight: 700; }
+.code-notice-text { margin: 0; font-size: 15px; line-height: 1.5; }
+.code-btn-primary:disabled { opacity: .5; cursor: default; filter: none; }
+.code-btn-primary.code-btn-danger { background-color: #dc2626; }
