@@ -83,7 +83,10 @@ const engine = (pxPerFrame: number): number => Math.round(pxPerFrame * 256) / 25
 
 export interface HeroKnob {
   id: string
+  /** The variable's name, in plain words: the slider shows it and the blocks show it. */
   name: string
+  /** One line under the slider: what the number does, for a kid. */
+  hint: string
   value: number
   /** The conversion, in words, from the feel.ts value. */
   from: string
@@ -92,53 +95,53 @@ export interface HeroKnob {
 /** Every tunable number, as a named local variable. Only HERO_BUILD_KNOB_IDS are shown in Build (`showInBuild`). */
 export const HERO_KNOBS: readonly HeroKnob[] = [
   // Running
-  { id: 'walk_top', name: 'walk top speed', value: 1.5 * SPEED, from: 'walkMax 1.5 px/frame x 2' },
-  { id: 'run_top', name: 'run top speed', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
-  { id: 'p_top', name: 'p speed', value: 3.5 * SPEED, from: 'pMax 3.5 px/frame x 2' },
-  { id: 'walk_push', name: 'walk push', value: engine(0.0547) * ACCEL, from: 'walkAccel 0.0547 (14/256) px/frame^2 x 4' },
-  { id: 'run_push', name: 'run push', value: engine(0.0625) * ACCEL, from: 'runAccel 0.0625 (16/256) px/frame^2 x 4' },
-  { id: 'air_push', name: 'air push', value: engine(0.0547) * ACCEL, from: 'airAccel 0.0547 (14/256) px/frame^2 x 4' },
-  { id: 'friction', name: 'friction', value: engine(0.0547) * ACCEL, from: 'releaseDecel 0.0547 (14/256) px/frame^2 x 4' },
-  { id: 'skid', name: 'skid', value: engine(0.125) * ACCEL, from: 'skidDecel 0.125 (32/256) px/frame^2 x 4' },
-  { id: 'air_turn', name: 'air turn', value: engine(0.0938) * ACCEL, from: 'airTurn 0.0938 (24/256) px/frame^2 x 4' },
-  { id: 'meter_slack', name: 'meter slack', value: engine(0.0625) * SPEED, from: 'the 0.0625 px/frame under run top speed that still fills the meter x 2' },
-  { id: 'meter_fill', name: 'meter fill ticks', value: 8 * TICKS, from: 'pFillFrames 8 frames / 2' },
-  { id: 'meter_drain', name: 'meter drain ticks', value: 24 * TICKS, from: 'pDrainFrames 24 frames / 2' },
-  { id: 'meter_full', name: 'meter full', value: 7, from: 'P_SEGMENTS 7 (a count, same in both)' },
+  { id: 'walk_top', name: 'walk speed', hint: 'How fast I walk.', value: 1.5 * SPEED, from: 'walkMax 1.5 px/frame x 2' },
+  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold x.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
+  { id: 'p_top', name: 'full run speed', hint: 'My fastest run, once the run meter is full.', value: 3.5 * SPEED, from: 'pMax 3.5 px/frame x 2' },
+  { id: 'walk_push', name: 'walk speed-up', hint: 'How quickly I get up to walking speed.', value: engine(0.0547) * ACCEL, from: 'walkAccel 0.0547 (14/256) px/frame^2 x 4' },
+  { id: 'run_push', name: 'run speed-up', hint: 'How quickly I get up to running speed.', value: engine(0.0625) * ACCEL, from: 'runAccel 0.0625 (16/256) px/frame^2 x 4' },
+  { id: 'air_push', name: 'air steering', hint: 'How much I can steer while I am in the air.', value: engine(0.0547) * ACCEL, from: 'airAccel 0.0547 (14/256) px/frame^2 x 4' },
+  { id: 'friction', name: 'slow down', hint: 'How quickly I stop when you let go of the arrows.', value: engine(0.0547) * ACCEL, from: 'releaseDecel 0.0547 (14/256) px/frame^2 x 4' },
+  { id: 'skid', name: 'turn around', hint: 'How quickly I slow down to turn around on the ground.', value: engine(0.125) * ACCEL, from: 'skidDecel 0.125 (32/256) px/frame^2 x 4' },
+  { id: 'air_turn', name: 'turn in the air', hint: 'How quickly I turn around in the air.', value: engine(0.0938) * ACCEL, from: 'airTurn 0.0938 (24/256) px/frame^2 x 4' },
+  { id: 'meter_slack', name: 'meter wiggle room', hint: 'How far under run speed still fills the run meter.', value: engine(0.0625) * SPEED, from: 'the 0.0625 px/frame under run top speed that still fills the meter x 2' },
+  { id: 'meter_fill', name: 'meter fill time', hint: 'How long each bar of the run meter takes to fill. 30 is one second.', value: 8 * TICKS, from: 'pFillFrames 8 frames / 2' },
+  { id: 'meter_drain', name: 'meter empty time', hint: 'How long each bar takes to empty when I stop running. 30 is one second.', value: 24 * TICKS, from: 'pDrainFrames 24 frames / 2' },
+  { id: 'meter_full', name: 'meter bars', hint: 'How many bars fill the run meter.', value: 7, from: 'P_SEGMENTS 7 (a count, same in both)' },
   // Jumping
   // A tick is two old frames, and the old Hero moved after each frame's gravity. Over a tick it covers the speed we
   // hold now plus a quarter of that gravity (the first frame's pull is already in). Adding that quarter to the jump
   // speed makes every rising tick cover the same distance as the two old frames it replaces.
-  { id: 'jump_stand', name: 'jump standing', value: 4.0 * SPEED + (engine(0.125) * ACCEL) / 4, from: 'jump0 4.0 px/frame x 2, plus a quarter of float gravity slow (tick correction)' },
-  { id: 'jump_walk', name: 'jump walking', value: 4.25 * SPEED + (engine(0.125) * ACCEL) / 4, from: 'jump1 4.25 px/frame x 2, plus a quarter of float gravity slow (tick correction)' },
-  { id: 'jump_run', name: 'jump running', value: 4.75 * SPEED + (engine(0.135) * ACCEL) / 4, from: 'jump2 4.75 px/frame x 2, plus a quarter of float gravity fast (tick correction)' },
-  { id: 'jump_p', name: 'jump at p speed', value: 5.0 * SPEED + (engine(0.135) * ACCEL) / 4, from: 'jump3 5.0 px/frame x 2, plus a quarter of float gravity fast (tick correction)' },
-  { id: 'walk_jump_from', name: 'walking jump from', value: 1 * SPEED, from: 'speed 1 px/frame (player.ts tier 1) x 2' },
-  { id: 'run_jump_from', name: 'running jump from', value: 2.25 * SPEED, from: 'speed 2.25 px/frame (player.ts tier 2) x 2' },
-  { id: 'p_jump_from', name: 'p jump from', value: 3.25 * SPEED, from: 'speed 3.25 px/frame (player.ts tier 3) x 2' },
-  { id: 'hold_slow', name: 'float gravity slow', value: engine(0.125) * ACCEL, from: 'holdSlow 0.125 (32/256) px/frame^2 x 4' },
-  { id: 'hold_fast', name: 'float gravity fast', value: engine(0.135) * ACCEL, from: 'holdFast 0.135 (35/256) px/frame^2 x 4' },
-  { id: 'fall_gravity', name: 'fall gravity', value: engine(0.375) * ACCEL, from: 'fallGravity 0.375 (96/256) px/frame^2 x 4' },
-  { id: 'max_fall', name: 'top fall speed', value: 4.25 * SPEED, from: 'maxFall 4.25 px/frame x 2' },
-  { id: 'late_ticks', name: 'late jump ticks', value: 3, from: 'coyoteFrames 4: the old Hero allows a late jump up to 3 frames (1.5 ticks) after the ledge; 3 here allows 2 ticks' },
-  { id: 'early_ticks', name: 'early jump ticks', value: 3, from: 'bufferFrames 5: the old Hero counts a press up to 4 frames (2 ticks) before landing; 3 here counts 2 ticks' },
+  { id: 'jump_stand', name: 'jump power', hint: 'How high I jump.', value: 4.0 * SPEED + (engine(0.125) * ACCEL) / 4, from: 'jump0 4.0 px/frame x 2, plus a quarter of float gravity slow (tick correction)' },
+  { id: 'jump_walk', name: 'walk jump power', hint: 'How high I jump while I walk.', value: 4.25 * SPEED + (engine(0.125) * ACCEL) / 4, from: 'jump1 4.25 px/frame x 2, plus a quarter of float gravity slow (tick correction)' },
+  { id: 'jump_run', name: 'run jump power', hint: 'How high I jump while I run.', value: 4.75 * SPEED + (engine(0.135) * ACCEL) / 4, from: 'jump2 4.75 px/frame x 2, plus a quarter of float gravity fast (tick correction)' },
+  { id: 'jump_p', name: 'full run jump power', hint: 'How high I jump when the run meter is full.', value: 5.0 * SPEED + (engine(0.135) * ACCEL) / 4, from: 'jump3 5.0 px/frame x 2, plus a quarter of float gravity fast (tick correction)' },
+  { id: 'walk_jump_from', name: 'speed for walk jump', hint: 'How fast I must go to get the walk jump.', value: 1 * SPEED, from: 'speed 1 px/frame (player.ts tier 1) x 2' },
+  { id: 'run_jump_from', name: 'speed for run jump', hint: 'How fast I must go to get the run jump.', value: 2.25 * SPEED, from: 'speed 2.25 px/frame (player.ts tier 2) x 2' },
+  { id: 'p_jump_from', name: 'speed for full run jump', hint: 'How fast I must go to get the full run jump.', value: 3.25 * SPEED, from: 'speed 3.25 px/frame (player.ts tier 3) x 2' },
+  { id: 'hold_slow', name: 'float gravity', hint: 'Lighter gravity while I go up and you hold space.', value: engine(0.125) * ACCEL, from: 'holdSlow 0.125 (32/256) px/frame^2 x 4' },
+  { id: 'hold_fast', name: 'run float gravity', hint: 'The same, for a jump from a run.', value: engine(0.135) * ACCEL, from: 'holdFast 0.135 (35/256) px/frame^2 x 4' },
+  { id: 'fall_gravity', name: 'gravity', hint: 'How hard I get pulled down.', value: engine(0.375) * ACCEL, from: 'fallGravity 0.375 (96/256) px/frame^2 x 4' },
+  { id: 'max_fall', name: 'top fall speed', hint: 'The fastest I can fall.', value: 4.25 * SPEED, from: 'maxFall 4.25 px/frame x 2' },
+  { id: 'late_ticks', name: 'late jump time', hint: 'How long after I run off a ledge I can still jump. 30 is one second.', value: 3, from: 'coyoteFrames 4: the old Hero allows a late jump up to 3 frames (1.5 ticks) after the ledge; 3 here allows 2 ticks' },
+  { id: 'early_ticks', name: 'early jump time', hint: 'How long before I land a jump press still counts. 30 is one second.', value: 3, from: 'bufferFrames 5: the old Hero counts a press up to 4 frames (2 ticks) before landing; 3 here counts 2 ticks' },
   // Walls
-  { id: 'wall_slide', name: 'wall slide speed', value: 1.0 * SPEED, from: 'wallSlideMax 1.0 px/frame x 2' },
-  { id: 'wall_shed', name: 'wall shed', value: 0.75 * SPEED, from: 'least fall speed shed per frame while grabbing a wall, 0.75 px/frame x 2' },
-  { id: 'wall_push', name: 'wall jump push', value: 2.0 * SPEED, from: 'wallJumpX 2.0 px/frame x 2' },
-  { id: 'wall_up', name: 'wall jump up', value: 4.0 * SPEED, from: 'wallJumpY 4.0 px/frame x 2' },
-  { id: 'wall_lock_ticks', name: 'wall jump lock ticks', value: 5, from: 'wallJumpLock 9 frames / 2 = 4.5, rounded up' },
-  { id: 'wall_late_ticks', name: 'wall late ticks', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
+  { id: 'wall_slide', name: 'wall slide speed', hint: 'How fast I slide down a wall.', value: 1.0 * SPEED, from: 'wallSlideMax 1.0 px/frame x 2' },
+  { id: 'wall_shed', name: 'wall grab slowdown', hint: 'How much speed I lose when I grab a wall.', value: 0.75 * SPEED, from: 'least fall speed shed per frame while grabbing a wall, 0.75 px/frame x 2' },
+  { id: 'wall_push', name: 'wall jump sideways', hint: 'How hard a wall jump pushes me away from the wall.', value: 2.0 * SPEED, from: 'wallJumpX 2.0 px/frame x 2' },
+  { id: 'wall_up', name: 'wall jump up', hint: 'How high a wall jump sends me.', value: 4.0 * SPEED, from: 'wallJumpY 4.0 px/frame x 2' },
+  { id: 'wall_lock_ticks', name: 'wall jump no-steer time', hint: 'How long after a wall jump I can\'t steer back to the wall. 30 is one second.', value: 5, from: 'wallJumpLock 9 frames / 2 = 4.5, rounded up' },
+  { id: 'wall_late_ticks', name: 'wall late jump time', hint: 'How long after I leave a wall I can still wall jump. 30 is one second.', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
 ]
 
 /**
  * The only Hero knobs shown in Build and on top of the workshop's Knobs card: walk speed, run speed, jump power,
- * gravity. Every other tuning number stays a normal variable in the code, grouped under "More tuning".
- * ("jump power" is the standing jump; the walking, running and p-speed jumps are under Jumping.)
+ * gravity. Every other tuning number stays a normal variable in the code, grouped under "More sliders".
+ * ("jump power" is the standing jump; the walk, run and full run jumps are under Jumping.)
  */
 export const HERO_BUILD_KNOB_IDS: readonly string[] = ['walk_top', 'run_top', 'jump_stand', 'fall_gravity']
 
-/** The rest of the tuning numbers, in the groups the workshop's "More tuning" section shows. Every non-build knob appears once. */
+/** The rest of the tuning numbers, in the groups the "More sliders" section shows. Every non-build knob appears once. */
 export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobIds: readonly string[] }> = [
   { id: 'walking', label: 'Walking', knobIds: ['walk_push', 'friction', 'skid', 'air_push', 'air_turn'] },
   { id: 'running', label: 'Running', knobIds: ['p_top', 'run_push', 'meter_slack', 'meter_fill', 'meter_drain', 'meter_full'] },
@@ -151,7 +154,7 @@ export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobId
   { id: 'walls', label: 'Walls', knobIds: ['wall_slide', 'wall_shed', 'wall_push', 'wall_up', 'wall_lock_ticks', 'wall_late_ticks'] },
 ]
 
-/** How many tuning numbers are tucked under "More tuning". */
+/** How many tuning numbers are tucked under "More sliders". */
 export const HERO_MORE_TUNING_COUNT = HERO_KNOB_GROUPS.reduce((n, g) => n + g.knobIds.length, 0)
 
 /**
@@ -169,30 +172,75 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'way', name: 'way' }, // sign of x speed
   { id: 'speed', name: 'speed' }, // |x speed|, then the new speed
   { id: 'cap', name: 'top speed now' },
-  { id: 'push', name: 'push now' },
-  { id: 'meter', name: 'run meter' }, // 0..7; 7 = p speed
+  { id: 'push', name: 'speed-up now' },
+  { id: 'meter', name: 'run meter' }, // 0..7; 7 = full run speed
   { id: 'meter_timer', name: 'meter timer' },
   { id: 'coyote', name: 'late jump left' },
   { id: 'buffer', name: 'early jump left' },
   { id: 'space_down', name: 'space was down' },
   { id: 'jumping', name: 'jumping' }, // 1 from takeoff until the Hero stops rising
   { id: 'hold', name: 'float gravity now' },
-  { id: 'p_jump', name: 'p jump' }, // 1 when the jump started with a full run meter
+  { id: 'p_jump', name: 'full run jump' }, // 1 when the jump started with a full run meter
   { id: 'wall_hit', name: 'wall hit' }, // set by the bump hats: +1 wall on the right, -1 on the left
   { id: 'wall_side', name: 'wall side' }, // the wall we are sliding on right now
   { id: 'wall_last', name: 'last wall side' },
-  { id: 'wall_late', name: 'wall late left' },
-  { id: 'wall_lock', name: 'wall lock left' },
-  { id: 'wall_lock_side', name: 'wall lock side' },
-  { id: 'limit', name: 'fall limit now' },
-  { id: 'excess', name: 'fall excess' },
+  { id: 'wall_late', name: 'wall late jump left' },
+  { id: 'wall_lock', name: 'no-steer time left' },
+  { id: 'wall_lock_side', name: 'no-steer side' },
+  { id: 'limit', name: 'top fall speed now' },
+  { id: 'excess', name: 'extra fall speed' },
   { id: 'pressed', name: 'space just pressed' },
-  { id: 'jump_now', name: 'jump now' }, // the takeoff speed this tick (the feel scripts can raise it)
+  { id: 'jump_now', name: 'jump power now' }, // the takeoff speed this tick (the feel scripts can raise it)
   { id: 'float_now', name: 'float gravity for this jump' },
   { id: 'gravity_now', name: 'gravity now' },
   { id: 'start_x', name: 'start x' }, // where I start this level (where I first stand): getting hurt sends me back here
   { id: 'start_y', name: 'start y' },
 ]
+
+/**
+ * The names the Hero's variables had before they were put in plain words (2026-11-01), for every variable whose name
+ * changed. A saved Hero still holding exactly these, with untouched blocks, moves to the new names when it opens
+ * (`upgradeUntouchedHero` in remix.ts); a Hero a kid changed keeps them, and its sliders still show the plain words.
+ */
+export const HERO_OLD_VARIABLE_NAMES: Readonly<Record<string, string>> = {
+  walk_top: 'walk top speed',
+  run_top: 'run top speed',
+  p_top: 'p speed',
+  walk_push: 'walk push',
+  run_push: 'run push',
+  air_push: 'air push',
+  friction: 'friction',
+  skid: 'skid',
+  air_turn: 'air turn',
+  meter_slack: 'meter slack',
+  meter_fill: 'meter fill ticks',
+  meter_drain: 'meter drain ticks',
+  meter_full: 'meter full',
+  jump_stand: 'jump standing',
+  jump_walk: 'jump walking',
+  jump_run: 'jump running',
+  jump_p: 'jump at p speed',
+  walk_jump_from: 'walking jump from',
+  run_jump_from: 'running jump from',
+  p_jump_from: 'p jump from',
+  hold_slow: 'float gravity slow',
+  hold_fast: 'float gravity fast',
+  fall_gravity: 'fall gravity',
+  late_ticks: 'late jump ticks',
+  early_ticks: 'early jump ticks',
+  wall_shed: 'wall shed',
+  wall_push: 'wall jump push',
+  wall_lock_ticks: 'wall jump lock ticks',
+  wall_late_ticks: 'wall late ticks',
+  push: 'push now',
+  p_jump: 'p jump',
+  wall_late: 'wall late left',
+  wall_lock: 'wall lock left',
+  wall_lock_side: 'wall lock side',
+  limit: 'fall limit now',
+  excess: 'fall excess',
+  jump_now: 'jump now',
+}
 
 export function heroVariables(): VariableDecl[] {
   return [
@@ -512,7 +560,7 @@ export function createHeroWorkspace(): WorkspaceJson {
     when(not(eq(v('wall_side'), 0)), [
       set('limit', v('wall_slide')),
       when(lt(ySpeed(), sub(0, v('limit'))), [
-        // half the extra fall speed, but at least "wall shed", and never slower than the slide speed
+        // half the extra fall speed, but at least "wall grab slowdown", and never slower than the slide speed
         set('excess', sub(0, ySpeed())),
         set('speed', div(sub(v('excess'), v('limit')), 2)),
         when(lt(v('speed'), v('wall_shed')), [set('speed', v('wall_shed'))]),

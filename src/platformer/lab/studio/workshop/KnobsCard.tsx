@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import type { VariableDecl } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
-import { formatKnob, knobList, sliderRange } from './knobs'
+import { formatKnob, knobList, knobWords, sliderRange } from './knobs'
 import './workshop.css'
 
 /**
  * The brick's Build knobs as sliders (changing one sets the variable's starting value, so every copy follows). The Hero
- * shows just four, then a collapsed "More tuning (N)" section with every other tuning number, grouped.
+ * shows just four, then a collapsed "More sliders (N)" section with every other tuning number, grouped, each with a
+ * one-line hint.
  */
 export function KnobsCard({ store, brickId, compact = false }: { store: StudioStore; brickId: string; compact?: boolean }) {
   const brick = useStudio(store, (s) => (brickId === s.project.design.stage.id ? s.project.design.stage : s.project.design.bricks.find((b) => b.id === brickId)))
@@ -16,9 +17,11 @@ export function KnobsCard({ store, brickId, compact = false }: { store: StudioSt
   const slider = (v: VariableDecl) => {
     const value = v.value as number
     const r = sliderRange(v)
+    const { label, hint } = knobWords(v)
     return (
       <li key={v.id} className="ws-knob">
-        <label htmlFor={`knob-${v.id}`}>{v.name}</label>
+        <label htmlFor={`knob-${v.id}`}>{label}</label>
+        {hint && <small id={`knob-${v.id}-hint`} className="ws-knob-hint">{hint}</small>}
         <input
           id={`knob-${v.id}`}
           type="range"
@@ -26,7 +29,8 @@ export function KnobsCard({ store, brickId, compact = false }: { store: StudioSt
           max={r.max}
           step={r.step}
           value={value}
-          aria-label={v.name}
+          aria-label={label}
+          aria-describedby={hint ? `knob-${v.id}-hint` : undefined}
           onChange={(e) => store.setBrickSlider(brickId, v.id, Number(e.target.value))}
         />
         <output>{formatKnob(value)}</output>
@@ -47,7 +51,7 @@ export function KnobsCard({ store, brickId, compact = false }: { store: StudioSt
       {moreCount > 0 && (
         <div className="ws-more">
           <button type="button" className="ws-more-toggle" aria-expanded={moreOpen} aria-controls="ws-more-tuning" onClick={() => setMoreOpen((o) => !o)}>
-            <span aria-hidden="true">{moreOpen ? '▾' : '▸'}</span> More sliders for the Hero ({moreCount})
+            <span aria-hidden="true">{moreOpen ? '▾' : '▸'}</span> More sliders ({moreCount})
           </button>
           {moreOpen && (
             <div id="ws-more-tuning" className="ws-more-body">

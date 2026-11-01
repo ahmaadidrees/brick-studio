@@ -1,5 +1,5 @@
 import type { VariableDecl } from '../../core/contracts'
-import { HERO_KNOB_GROUPS, HERO_KNOBS } from '../hero/heroBrick'
+import { HERO_KNOB_GROUPS, HERO_KNOBS, HERO_OLD_VARIABLE_NAMES } from '../hero/heroBrick'
 
 /** Slider ranges for Knobs: picked from the variable's current value. */
 export interface KnobRange {
@@ -34,13 +34,13 @@ export function formatKnob(value: number): string {
 
 /**
  * What the Knobs card lists for a brick: its `showInBuild` number variables on top, then (for the Hero) the rest of the
- * tuning numbers under "More tuning", grouped Walking / Running / Jumping / Falling / Walls (HERO_KNOB_GROUPS). Another
+ * tuning numbers under "More sliders", grouped Walking / Running / Jumping / Falling / Walls (HERO_KNOB_GROUPS). Another
  * brick has no "more" group.
  */
 export interface KnobList {
   main: VariableDecl[]
   groups: Array<{ id: string; label: string; knobs: VariableDecl[] }>
-  /** How many sliders sit under "More tuning". */
+  /** How many sliders sit under "More sliders". */
   moreCount: number
 }
 
@@ -70,4 +70,15 @@ export function sliderRange(v: VariableDecl): KnobRange {
   const start = knobRange(knobStart(v))
   const current = v.value as number
   return { min: Math.min(start.min, current), max: Math.max(start.max, current), step: start.step }
+}
+
+/**
+ * The words next to a slider. A Hero tuning number shows its plain name and a one-line hint, also when the kid's Hero
+ * still calls it by its old name in the code ("p speed"); then the hint says so. Any other variable, or one the kid
+ * renamed, shows its own name.
+ */
+export function knobWords(v: VariableDecl): { label: string; hint?: string } {
+  const hero = HERO_KNOBS.find((k) => k.id === v.id)
+  if (!hero || (v.name !== hero.name && v.name !== HERO_OLD_VARIABLE_NAMES[v.id])) return { label: v.name }
+  return { label: hero.name, hint: v.name === hero.name ? hero.hint : `${hero.hint} In the code it is called “${v.name}”.` }
 }
