@@ -386,6 +386,8 @@
 }
 /* The chip keeps its words; the project's name gives up room first (its full name is in the tooltip and My projects). */
 .cl-shell .builder-header .app-header-save.ui-save-status-wrap { flex: none; }
+/* Its explanation opens over a save banner (z-index 60) too: the kid just asked for it. */
+.cl-shell .builder-header:has(.ui-save-status-pop) { z-index: 61; }
 /* The save chip (a button that says where the project lives) comes back as an icon on a Duo-size screen; a narrower
    phone has no room for it next to Help, so Help's "Saving and sharing" says it there. */
 @media (min-width: 540px) and (max-width: 767px) {

@@ -108,7 +108,8 @@ export function SaveStatus({ source, detail, compact = false, autoCompact = fals
   const inner = <>
     <span className="ui-save-status-icon" aria-hidden="true">{iconFor(source, busy)}</span>
     <span className={compact ? 'sr-only' : 'ui-save-status-text'}>
-      <span className="ui-save-status-label">{short ? <>{short}<span className="ui-save-status-where">{label.slice(short.length)}</span></> : label}</span>
+      {/* An explained pill (a button named by its label) can drop the "where" words in a tight header. */}
+      <span className="ui-save-status-label">{explain && short ? <>{short}<span className="ui-save-status-where">{label.slice(short.length)}</span></> : label}</span>
       {detailText && !compact && <span className="ui-save-status-detail">{detailText}</span>}
     </span>
   </>
