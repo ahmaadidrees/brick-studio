@@ -40,6 +40,7 @@ import {
   setWorkspaceHandlers,
   tidyIfOverlapping,
   undoState,
+  untrackHidden,
 } from './code/affordances'
 import { back, currentProccode, currentSection, drillInto, isTop, openSection, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
 import { sectionEntries, sectionsForBrick, sectionTitle, type SectionEntry } from './code/sections'
@@ -339,6 +340,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       renderLabels(ws)
       syncDefinitions()
       showLayer(ws, viewRef.current)
+      // Blockly re-adds the loaded blocks to its connection lookup 1 ms after loading: take the hidden ones out again.
+      setTimeout(() => {
+        if (!isDisposedRef.current && workspaceRef.current === ws) untrackHidden(ws, viewRef.current, tracker.sectionOf)
+      }, 2)
     }
     setUndoable({ canUndo: false, canRedo: false })
     syncDefinitions()
@@ -378,6 +383,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
           if (kept !== viewRef.current) queueMicrotask(() => navigateRef.current(kept))
         }
       }
+      // Nothing may snap into a stack that is out of view (Blockly re-adds loaded blocks to its lookup a moment later).
+      if (event.type === Blockly.Events.BLOCK_DRAG && (event as Blockly.Events.BlockDrag).isStart) untrackHidden(ws, viewRef.current, tracker.sectionOf)
       const u = undoState(ws)
       setUndoable((prev) => (prev.canUndo === u.canUndo && prev.canRedo === u.canRedo ? prev : u))
       // Skip UI events

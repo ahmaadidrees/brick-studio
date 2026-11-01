@@ -278,6 +278,14 @@ export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf
   } finally { Blockly.Events.enable() }
 }
 
+/**
+ * Take hidden stacks out of Blockly's connection lookup again. Blockly adds every loaded or pasted block back a moment
+ * later (a 1 ms timeout), which can land after the view was applied, so the editor calls this when a drag starts.
+ */
+export function untrackHidden(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
+  for (const block of ws.getTopBlocks(false)) if (!isShownIn(block, state, sectionOf)) block.setConnectionTracking(false)
+}
+
 /** Long programs open with their definitions folded; drilling into one expands it locally. */
 export function foldLongDefinitions(ws: Blockly.Workspace): boolean {
   if (ws.getAllBlocks(false).length <= 30) return false
