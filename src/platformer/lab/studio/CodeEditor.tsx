@@ -28,17 +28,22 @@ import { PlainScratchCard } from './code/PlainScratchCard'
 import {
   applyView,
   attachAffordances,
+  cleanUpShown,
   focusView,
   foldLongDefinitions,
   hasDefinition,
   isShownIn,
   listDefinitions,
+  PackedLayout,
   renderLabels,
+  SectionTracker,
   setWorkspaceHandlers,
   tidyIfOverlapping,
   undoState,
+  untrackHidden,
 } from './code/affordances'
-import { back, drillInto, isTop, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
+import { back, currentProccode, currentSection, drillInto, isTop, openSection, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
+import { sectionEntries, sectionsForBrick, sectionTitle, type SectionEntry } from './code/sections'
 import './code/code.css'
 import './code/light.css'
 
@@ -98,6 +103,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
   const [view, setView] = useState<LayerState>(TOP_VIEW)
   const viewRef = useRef<LayerState>(TOP_VIEW)
   const [definitions, setDefinitions] = useState<string[]>([])
+  // A brick's folded sections ("How I move") and which script is in which; the packed drawing of the layer on screen.
+  const sectionsRef = useRef<SectionTracker>(new SectionTracker([]))
+  const layoutRef = useRef<PackedLayout | null>(null)
+  const [sections, setSections] = useState<SectionEntry[]>([])
   const [undoable, setUndoable] = useState({ canUndo: false, canRedo: false })
   const [card, setCard] = useState<{ opcode: string; blockText: string } | null>(null)
 
@@ -109,6 +118,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     ? (brick?.program?.variables ?? []).filter((v) => v.showInBuild).length
     : 0
 
+  // What the editor saves: the workspace, with any stack drawn packed (PackedLayout) at its saved place.
+  const serialize = (ws: Blockly.WorkspaceSvg) => {
+    const json = Blockly.serialization.workspaces.save(ws)
+    return layoutRef.current?.workspace === ws ? layoutRef.current.toSaved(json) : json
+  }
+
   // Flush any pending debounced save
   const flushSave = () => {
     if (saveTimeoutRef.current) {
@@ -117,8 +132,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       const ws = workspaceRef.current
       if (workspaceResetRevisionRef.current !== store.getState().editorResetRevision) return
       if (ws && !isDisposedRef.current && !loadBlockedRef.current) {
-        const json = Blockly.serialization.workspaces.save(ws)
-        store.setWorkspace(workspaceBrickIdRef.current, json)
+        store.setWorkspace(workspaceBrickIdRef.current, serialize(ws))
       }
     }
   }
@@ -130,20 +144,30 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       saveTimeoutRef.current = null
     }
     if (loadBlockedRef.current || workspaceResetRevisionRef.current !== store.getState().editorResetRevision) return
-    const json = Blockly.serialization.workspaces.save(ws)
-    store.setWorkspace(workspaceBrickIdRef.current, json)
+    store.setWorkspace(workspaceBrickIdRef.current, serialize(ws))
   }
 
-  // Show a layer: drill into a definition, go back, or return to the top. Nothing here changes the saved code.
+  // Draw a layer: only its stacks shown; a brick with sections draws its top view or a section packed together.
+  const showLayer = (ws: Blockly.WorkspaceSvg, layer: LayerState) => {
+    const { sectionOf, sections: brickSections } = sectionsRef.current
+    const layout = layoutRef.current?.workspace === ws ? layoutRef.current : null
+    layout?.unpack()
+    applyView(ws, layer, sectionOf)
+    if (layout && brickSections.length && currentProccode(layer) === null) {
+      layout.pack(ws.getTopBlocks(false).filter((b) => isShownIn(b, layer, sectionOf)))
+    }
+    focusView(ws, layer, sectionOf)
+  }
+
+  // Show a layer: open a section, drill into a definition, go back, or return to the top. Nothing here changes the saved code.
   const navigate = (next: LayerState) => {
     const ws = workspaceRef.current
     if (!ws || isDisposedRef.current) return
-    const valid = pruneMissing(next, (code) => hasDefinition(ws, code))
+    const valid = pruneMissing(next, (code) => hasDefinition(ws, code), (id) => sectionsRef.current.sections.some((s) => s.id === id))
     viewRef.current = valid
     setView(valid)
     Blockly.hideChaff()
-    applyView(ws, valid)
-    focusView(ws, valid)
+    showLayer(ws, valid)
   }
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
@@ -292,10 +316,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     ws.getToolbox()?.refreshSelection() // calls for the definitions that just loaded
     if (docked) ws.getToolbox()?.clearSelection()
 
-    // 8b. Layered view: scripts on top, My Block definitions out of the way; magnifiers open definitions and cards
+    // 8b. Layered view: scripts on top, My Block definitions and sections out of the way; magnifiers open definitions and cards
     viewRef.current = TOP_VIEW
     setView(TOP_VIEW)
     setCard(null)
+    const tracker = new SectionTracker(isStage ? [] : sectionsForBrick(store.brick(selectedBrickId)))
+    sectionsRef.current = tracker
+    layoutRef.current = new PackedLayout(ws)
     setWorkspaceHandlers(ws, {
       drill: (code) => navigateRef.current(drillInto(viewRef.current, code)),
       explain: (opcode, blockText) => setCard({ opcode, blockText }),
@@ -303,19 +330,24 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     const syncDefinitions = () => {
       const codes = listDefinitions(ws).map((d) => d.proccode)
       setDefinitions((prev) => (prev.join('\n') === codes.join('\n') ? prev : codes))
+      const entries = sectionEntries(tracker.sections, ws.getTopBlocks(false).map(tracker.sectionOf))
+      setSections((prev) => (JSON.stringify(prev) === JSON.stringify(entries) ? prev : entries))
     }
     const showTopView = () => {
       if (isDisposedRef.current || workspaceRef.current !== ws) return
       // Rendered sizes are known now: if scripts or labels overlap, arrange them like Scratch's "Clean up".
-      if (tidyIfOverlapping(ws)) saveWorkspaceNow(ws)
+      if (tidyIfOverlapping(ws, tracker.sectionOf)) saveWorkspaceNow(ws)
       renderLabels(ws)
       syncDefinitions()
-      applyView(ws, viewRef.current)
-      focusView(ws, viewRef.current)
+      showLayer(ws, viewRef.current)
+      // Blockly re-adds the loaded blocks to its connection lookup 1 ms after loading: take the hidden ones out again.
+      setTimeout(() => {
+        if (!isDisposedRef.current && workspaceRef.current === ws) untrackHidden(ws, viewRef.current, tracker.sectionOf)
+      }, 2)
     }
     setUndoable({ canUndo: false, canRedo: false })
     syncDefinitions()
-    applyView(ws, TOP_VIEW)
+    applyView(ws, TOP_VIEW, tracker.sectionOf)
     renderLabels(ws)
     Promise.resolve(Blockly.renderManagement.finishQueuedRenders()).then(showTopView, showTopView)
 
@@ -329,17 +361,30 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
         if (event.type === Blockly.Events.VAR_CREATE || event.type === Blockly.Events.VAR_DELETE || event.type === Blockly.Events.VAR_RENAME) {
           refreshPalette(ws)
         }
+        // A script made, or pulled out of another, while a section is open stays in that section for this visit.
+        if (event.type === Blockly.Events.BLOCK_CREATE || event.type === Blockly.Events.BLOCK_MOVE) {
+          const id = (event as Blockly.Events.BlockBase).blockId ?? ''
+          const moved = ws.getBlockById(id)
+          if (moved && !moved.getParent()) {
+            if (event.type === Blockly.Events.BLOCK_CREATE || (event as Blockly.Events.BlockMove).oldParentId) tracker.pin(id, currentSection(viewRef.current))
+          } else if (moved) {
+            tracker.pin(id, null)
+            layoutRef.current?.forget(id)
+          }
+        }
         renderLabels(ws)
         syncDefinitions()
         if (event.type === Blockly.Events.BLOCK_CREATE && (event as Blockly.Events.BlockCreate).ids?.length) {
           const created = ws.getBlockById((event as Blockly.Events.BlockCreate).blockId ?? '')
-          if (created?.type === 'procedures_definition') applyView(ws, viewRef.current)
+          if (created?.type === 'procedures_definition') applyView(ws, viewRef.current, tracker.sectionOf)
         }
         if (event.type === Blockly.Events.BLOCK_DELETE && viewRef.current.stack.length) {
           const kept = pruneMissing(viewRef.current, (code) => hasDefinition(ws, code))
           if (kept !== viewRef.current) queueMicrotask(() => navigateRef.current(kept))
         }
       }
+      // Nothing may snap into a stack that is out of view (Blockly re-adds loaded blocks to its lookup a moment later).
+      if (event.type === Blockly.Events.BLOCK_DRAG && (event as Blockly.Events.BlockDrag).isStart) untrackHidden(ws, viewRef.current, tracker.sectionOf)
       const u = undoState(ws)
       setUndoable((prev) => (prev.canUndo === u.canUndo && prev.canRedo === u.canRedo ? prev : u))
       // Skip UI events
@@ -356,8 +401,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       saveTimeoutRef.current = setTimeout(() => {
         saveTimeoutRef.current = null
         if (!isDisposedRef.current && !loadBlockedRef.current && workspaceResetRevisionRef.current === store.getState().editorResetRevision) {
-          const json = Blockly.serialization.workspaces.save(ws)
-          store.setWorkspace(workspaceBrickIdRef.current, json)
+          store.setWorkspace(workspaceBrickIdRef.current, serialize(ws))
         }
       }, 300)
     }
@@ -448,10 +492,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     const block = ws.getBlockById(blockId)
     if (!block) return
 
-    // The block may sit in a definition that is out of the way: show the layer it lives in first.
+    // The block may sit in a definition or a section that is out of the way: show the layer it lives in first.
     const root = block.getRootBlock()
-    if (!isShownIn(root, viewRef.current)) {
-      navigate(root.type === 'procedures_definition' ? drillInto(TOP_VIEW, (root as unknown as { extraState_?: { proccode?: string } }).extraState_?.proccode ?? '') : TOP_VIEW)
+    const { sectionOf } = sectionsRef.current
+    if (!isShownIn(root, viewRef.current, sectionOf)) {
+      const section = sectionOf(root)
+      navigate(root.type === 'procedures_definition'
+        ? drillInto(TOP_VIEW, (root as unknown as { extraState_?: { proccode?: string } }).extraState_?.proccode ?? '')
+        : section ? openSection(section) : TOP_VIEW)
     }
     block.select()
     if ('scrollBoundsIntoView' in ws) {
@@ -663,7 +711,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
   // Workspace controls
   const handleCleanUp = () => {
     const ws = workspaceRef.current
-    if (ws && !isDisposedRef.current) ws.cleanUp()
+    if (!ws || isDisposedRef.current) return
+    // With sections, Blockly's own cleanUp would also line up the folded scripts and leave gaps where they sit.
+    if (sectionsRef.current.sections.length) cleanUpShown(ws, viewRef.current, sectionsRef.current.sectionOf)
+    else ws.cleanUp()
   }
 
   const handleUndo = () => {
@@ -689,8 +740,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
   const handleResetZoom = () => {
     const ws = workspaceRef.current
     if (ws && !isDisposedRef.current) {
-      // Hidden procedure bodies must not pull the current code out of view.
-      focusView(ws, viewRef.current)
+      // Hidden procedure bodies and sections must not pull the current code out of view.
+      focusView(ws, viewRef.current, sectionsRef.current.sectionOf)
     }
   }
 
@@ -728,14 +779,17 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
         onResetZoom={handleResetZoom}
       />}
 
-      {/* My Blocks shelf (top view) or breadcrumb + Back (inside a My Block) */}
-      {(!docked || !isTop(view)) && <LayerBar
+      {/* Sections and the My Blocks shelf (top view), or breadcrumb + Back (in a section or a My Block). Docked, My Blocks are in the palette. */}
+      {(!docked || !isTop(view) || sections.length > 0) && <LayerBar
         brickName={targetName}
         state={view}
-        definitions={definitions}
+        definitions={docked ? [] : definitions}
+        sections={sections}
+        sectionTitle={(id) => sectionTitle(sectionsRef.current.sections, id)}
         onChange={navigate}
         onBack={() => navigate(back(viewRef.current))}
         onOpen={(code) => navigate(drillInto(viewRef.current, code))}
+        onOpenSection={(id) => navigate(openSection(id))}
       />}
 
       {/* Main Workspace Injection Container */}

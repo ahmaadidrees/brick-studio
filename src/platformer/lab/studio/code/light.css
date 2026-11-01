@@ -36,6 +36,9 @@
 .code-light :is(.layer-chip, .layer-back, .layer-crumb) { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
 .code-light :is(.layer-chip, .layer-back, .layer-crumb):hover { background: var(--cl-soft); border-color: #c9c2b2; }
 .code-light .layer-here, .code-light .layer-trail { color: var(--cl-ink-2); }
+.code-light .layer-section-count { color: var(--cl-muted); }
+.code-light .layer-section-open { background: var(--cl-blue); }
+.code-light .layer-section:hover .layer-section-open { background: #2b44b0; }
 
 /* Notices */
 .code-light .code-diagnostics-drawer { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); box-shadow: 0 8px 24px rgba(31, 35, 64, .16); }

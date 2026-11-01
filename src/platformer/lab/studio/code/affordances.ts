@@ -3,12 +3,14 @@
  *  - a magnifier field on every My Block call (drill into its definition) and every Platformer block (open the plain
  *    Scratch card);
  *  - one-line labels on each script's hat;
- *  - showing/hiding top-level stacks for the top view and for a drilled-in definition.
+ *  - showing/hiding top-level stacks for the top view, a brick section ("How I move") and a drilled-in definition, and
+ *    drawing a section's or the top view's scripts packed together for this visit (PackedLayout).
  * Nothing here is saved except the label, which lives in the block's `data` string (`label:<text>`, see layers.ts).
  */
 import * as Blockly from 'blockly/core'
 import { isHatOpcode } from '../../core/editor/definitions'
-import { currentProccode, LABEL_PREFIX, labelData, readLabel, type LayerState } from './layers'
+import { currentProccode, currentSection, LABEL_PREFIX, labelData, readLabel, type LayerState } from './layers'
+import { sectionOfScript, type ScriptSection } from './sections'
 
 export interface WorkspaceHandlers {
   /** The kid clicked the magnifier on a My Block call. */
@@ -224,25 +226,64 @@ export function hasDefinition(ws: Blockly.Workspace, proccode: string): boolean 
 function setShown(block: Blockly.BlockSvg, shown: boolean): void {
   const root = block.getSvgRoot()
   if (root) root.style.display = shown ? '' : 'none'
+  // A hidden stack's connections leave Blockly's lookup too, so a block dropped where it sits can't snap into it unseen.
+  block.setConnectionTracking(shown)
+}
+
+/** The section a top-level stack is folded into, or null (it shows on the top view). */
+export type SectionOf = (block: Blockly.Block) => string | null
+
+const NO_SECTIONS: SectionOf = () => null
+
+/**
+ * Which section each script of a brick is in: by its hat and label (sections.ts), or, for a script the kid made or pulled
+ * out while a section was open, that section, for the rest of this visit (`pin`). Saved nowhere: when the code opens
+ * again, the kid's own scripts are on the top view.
+ */
+export class SectionTracker {
+  private readonly pins = new Map<string, string>()
+  constructor(readonly sections: readonly ScriptSection[]) {}
+
+  readonly sectionOf: SectionOf = (block) => {
+    if (!this.sections.length || block.getParent() || block.type === 'procedures_definition') return null
+    return this.pins.get(block.id) ?? sectionOfScript(block.type, getLabel(block), this.sections)
+  }
+
+  pin(id: string, section: string | null): void {
+    if (section) this.pins.set(id, section)
+    else this.pins.delete(id)
+  }
 }
 
 /** Is this top-level stack shown in the given view? */
-export function isShownIn(block: Blockly.Block, state: LayerState): boolean {
+export function isShownIn(block: Blockly.Block, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): boolean {
   const cur = currentProccode(state)
   const isDef = block.type === 'procedures_definition'
-  return cur === null ? !isDef : isDef && proccodeOf(block) === cur
+  if (cur !== null) return isDef && proccodeOf(block) === cur
+  return !isDef && sectionOf(block) === currentSection(state)
 }
 
-/** Top view: scripts only (definitions kept out of the way). Drilled in: just that definition. Nothing is moved or saved. */
-export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
+/**
+ * Top view: scripts only (definitions and sections kept out of the way). In a section: just its scripts. Drilled in: just
+ * that definition. Nothing is moved or saved.
+ */
+export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
   Blockly.Events.disable()
   try {
     for (const block of ws.getTopBlocks(false)) {
-      const shown = isShownIn(block, state)
+      const shown = isShownIn(block, state, sectionOf)
       if (shown && block.type === 'procedures_definition') block.setCollapsed(false)
       setShown(block as Blockly.BlockSvg, shown)
     }
   } finally { Blockly.Events.enable() }
+}
+
+/**
+ * Take hidden stacks out of Blockly's connection lookup again. Blockly adds every loaded or pasted block back a moment
+ * later (a 1 ms timeout), which can land after the view was applied, so the editor calls this when a drag starts.
+ */
+export function untrackHidden(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
+  for (const block of ws.getTopBlocks(false)) if (!isShownIn(block, state, sectionOf)) block.setConnectionTracking(false)
 }
 
 /** Long programs open with their definitions folded; drilling into one expands it locally. */
@@ -254,9 +295,9 @@ export function foldLongDefinitions(ws: Blockly.Workspace): boolean {
   return true
 }
 
-/** Fit just the currently visible layer, excluding the hidden procedure bodies. */
-export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
-  const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state))
+/** Fit just the currently visible layer, excluding the hidden procedure bodies and sections. */
+export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
+  const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state, sectionOf))
   if (shown.length === 0) return
   const rectangles = shown.map((block) => {
     const bounds = block.getBoundingRectangle()
@@ -347,18 +388,33 @@ export function columnLayout(stacks: PlacedStack[]): Map<string, { x: number; y:
   return out
 }
 
+function placed(b: Blockly.BlockSvg): PlacedStack {
+  const r = b.getBoundingRectangle()
+  return { id: b.id, left: r.left, top: r.top, right: r.right, bottom: r.bottom, labelled: takesLabel(b) && !!getLabel(b) }
+}
+
 /**
  * When scripts (or their labels) overlap, arrange them in a column. A layout that doesn't overlap is left exactly as the
- * kid made it. Definitions are never on screen together with scripts, so they don't take part. Returns whether it moved.
+ * kid made it. Definitions are never on screen together with scripts, so they don't take part; nor are scripts of
+ * different sections (`sectionOf`), so only scripts of the same section are checked against each other. Returns whether
+ * it moved.
  */
-export function tidyIfOverlapping(ws: Blockly.WorkspaceSvg): boolean {
-  const tops = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
-  const stacks: PlacedStack[] = tops.map((b) => {
-    const r = b.getBoundingRectangle()
-    return { id: b.id, left: r.left, top: r.top, right: r.right, bottom: r.bottom, labelled: takesLabel(b) && !!getLabel(b) }
-  })
-  if (!anyOverlap(stacks)) return false
-  const target = columnLayout(stacks)
+export function tidyIfOverlapping(ws: Blockly.WorkspaceSvg, sectionOf: SectionOf = NO_SECTIONS): boolean {
+  const scripts = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
+  const groups = new Map<string | null, Blockly.BlockSvg[]>()
+  for (const b of scripts) {
+    const key = sectionOf(b)
+    groups.set(key, [...(groups.get(key) ?? []), b])
+  }
+  const tops: Blockly.BlockSvg[] = []
+  const target = new Map<string, { x: number; y: number }>()
+  for (const group of groups.values()) {
+    const stacks = group.map(placed)
+    if (!anyOverlap(stacks)) continue
+    tops.push(...group)
+    for (const [id, to] of columnLayout(stacks)) target.set(id, to)
+  }
+  if (!tops.length) return false
   Blockly.Events.disable()
   try {
     for (const b of tops) {
@@ -372,6 +428,97 @@ export function tidyIfOverlapping(ws: Blockly.WorkspaceSvg): boolean {
   }
   ws.clearUndo()
   return true
+}
+
+/**
+ * Scratch's "Clean up" for the layer on screen: its stacks in one column, in reading order, with room for each label.
+ * Hidden stacks stay where they are (Blockly's own cleanUp would leave gaps where they sit). One undo step.
+ */
+export function cleanUpShown(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
+  const shown = ws.getTopBlocks(true).filter((b) => b.isMovable() && isShownIn(b, state, sectionOf))
+  Blockly.Events.setGroup(true)
+  try {
+    let y = 0
+    for (const b of shown) {
+      const s = placed(b)
+      const top = s.labelled ? y + LABEL_BAND : y
+      b.moveBy(-s.left, top - s.top)
+      y = top + (s.bottom - s.top) + STACK_GAP
+    }
+  } finally {
+    Blockly.Events.setGroup(false)
+  }
+}
+
+/**
+ * A brick with sections keeps its scripts where it always has, so its top view would open on a few scripts with screens of
+ * empty space between them (where the folded ones sit). For this visit only, the shown layer is drawn packed into tidy
+ * columns: the moves fire no events and make no undo steps, and `toSaved` writes every saved place back into what the
+ * editor saves. A stack the kid drags keeps its offset, so it saves as moved by the same amount.
+ */
+export class PackedLayout {
+  private readonly offsets = new Map<string, { dx: number; dy: number }>()
+  constructor(readonly workspace: Blockly.WorkspaceSvg) {}
+
+  /** Put every packed stack back where it is saved. */
+  unpack(): void {
+    Blockly.Events.disable()
+    try {
+      for (const [id, o] of this.offsets) {
+        const b = this.workspace.getBlockById(id)
+        if (b && !b.getParent()) b.moveBy(-o.dx, -o.dy)
+      }
+    } finally {
+      Blockly.Events.enable()
+    }
+    this.offsets.clear()
+  }
+
+  /** Draw these stacks packed into columns (as columnLayout), every column starting at the same height. */
+  pack(stacks: Blockly.BlockSvg[]): void {
+    this.unpack()
+    if (!stacks.length) return
+    const at = stacks.map(placed)
+    const target = columnLayout(at)
+    const top = Math.min(...at.map((s) => (s.labelled ? s.top - LABEL_BAND : s.top)))
+    const columnTop = new Map<number, number>()
+    for (const s of at) {
+      const to = target.get(s.id)!
+      const start = to.y - (s.labelled ? LABEL_BAND : 0)
+      columnTop.set(to.x, Math.min(columnTop.get(to.x) ?? Infinity, start))
+    }
+    Blockly.Events.disable()
+    try {
+      for (const s of at) {
+        const to = target.get(s.id)!
+        const dx = Math.round(to.x - s.left)
+        const dy = Math.round(to.y - (columnTop.get(to.x)! - top) - s.top)
+        if (!dx && !dy) continue
+        this.workspace.getBlockById(s.id)?.moveBy(dx, dy)
+        this.offsets.set(s.id, { dx, dy })
+      }
+    } finally {
+      Blockly.Events.enable()
+    }
+  }
+
+  /** A packed stack joined another one: it has no place of its own any more. */
+  forget(id: string): void {
+    this.offsets.delete(id)
+  }
+
+  /** The editor's save, with every packed stack at its saved place. */
+  toSaved<T>(json: T): T {
+    const tops = (json as { blocks?: { blocks?: Array<{ id?: string; x?: number; y?: number }> } }).blocks?.blocks
+    if (!this.offsets.size || !Array.isArray(tops)) return json
+    for (const b of tops) {
+      const o = b.id ? this.offsets.get(b.id) : undefined
+      if (!o) continue
+      if (typeof b.x === 'number') b.x -= o.dx
+      if (typeof b.y === 'number') b.y -= o.dy
+    }
+    return json
+  }
 }
 
 /** Can the workspace undo / redo right now? (Blockly keeps its stacks private, so read them defensively.) */
