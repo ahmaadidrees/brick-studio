@@ -46,7 +46,7 @@ export function KnobsCard({ store, brickId, compact = false }: { store: StudioSt
       {main.length === 0 && moreCount === 0 ? (
         <p className="ws-hint">Make a variable and turn on “Show as a slider” to get a slider here.</p>
       ) : (
-        <ul className="ws-knob-list">{main.map((v) => slider(v))}</ul>
+        <ul className="ws-knob-list ws-knob-main">{main.map((v) => slider(v))}</ul>
       )}
       {moreCount > 0 && (
         <div className="ws-more">

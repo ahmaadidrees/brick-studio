@@ -34,6 +34,8 @@
 .ws-knob { display: grid; grid-template-columns: 1fr 52px; grid-template-rows: auto auto; column-gap: 8px; align-items: center; }
 .ws-knob label { grid-column: 1 / 3; font-weight: 700; font-size: 14px; }
 .ws-knob-hint { grid-column: 1 / 3; font-size: 12px; line-height: 1.3; color: #5b6b7b; }
+/* On a narrow screen the four up front speak for themselves; their hints would push the sliders out of the sheet. */
+@media (max-width: 600px) { .ws-knob-main .ws-knob-hint { display: none; } }
 .ws-knob input[type='range'] { width: 100%; min-height: 28px; accent-color: #2f9e44; }
 .ws-knob output { font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
 @media (max-width: 900px) { .ws-body { grid-template-columns: 1fr; overflow: auto; } }
