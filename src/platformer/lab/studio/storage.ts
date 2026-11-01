@@ -28,6 +28,7 @@ import {
 } from './persist/projectIo'
 import { isQuotaError, writeHackableText } from './persist/hackableProjects'
 import { openableSaveText, parseSaveText } from './persist/repairSave'
+import { announceOpened } from './persist/openChecks'
 import { createStarterProject } from './starter'
 import type { StudioProject, StudioStore } from './store'
 
@@ -115,10 +116,12 @@ export function loadProject(storageOverride?: Storage, key = CODE_LAB_STORAGE_KE
   // A save holding a picture the game refuses (the old blank Stage backdrop) opens with that picture put right.
   const result = parseSaveText(raw)
   if (result.ok) {
-    return upgradeUntouchedHero({
+    const project = upgradeUntouchedHero({
       design: result.save.design,
       workspaces: result.save.workspaces ?? {},
     })
+    announceOpened(project, result.replaced)
+    return project
   }
 
   // Handle invalid/corrupt save or newer schema version

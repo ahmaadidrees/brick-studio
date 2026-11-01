@@ -15,7 +15,7 @@ export interface ProjectMenuProps {
 export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showConfirmReset, setShowConfirmReset] = useState(false)
-  const [pendingOpen, setPendingOpen] = useState<StudioProject | null>(null)
+  const [pendingOpen, setPendingOpen] = useState<{ project: StudioProject; notice?: string } | null>(null)
 
   const handleExport = () => {
     const project = store.getState().project
@@ -36,7 +36,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
     const result = await importProjectFile(file)
     if (result.ok) {
       // Opening a file replaces this whole world: ask first (confirmOpen below).
-      setPendingOpen(result.project)
+      setPendingOpen({ project: result.project, notice: result.notice })
     } else {
       setStorageNotice({
         id: 'import-error',
@@ -67,7 +67,8 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
 
   const confirmOpen = () => {
     if (!pendingOpen) return
-    replaceProject(pendingOpen, 'import-success', `Opened ${pendingOpen.design.name || 'your project'}.`)
+    const { project, notice } = pendingOpen
+    replaceProject(project, 'import-success', `Opened ${project.design.name || 'your project'}.${notice ? ` ${notice}` : ''}`)
     setPendingOpen(null)
   }
 
@@ -128,7 +129,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
       {pendingOpen && (
         <div className="project-menu-confirm-dialog" role="dialog" aria-label="Confirm open">
           <p className="project-menu-confirm-text">
-            Open {pendingOpen.design.name || 'this file'}? It takes the place of the project you are working on. You can undo it right after.
+            Open {pendingOpen.project.design.name || 'this file'}? It takes the place of the project you are working on. You can undo it right after.
           </p>
           <div className="project-menu-confirm-actions">
             <button type="button" className="project-menu-btn" onClick={() => setPendingOpen(null)}>

@@ -10,7 +10,7 @@ import { play, type Runtime } from '../core/index'
 import { deterministicStringify } from '../core/save'
 import { parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
-import { fits as fitsPower, isPowerOn as isPowerOnIn, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
+import { fits as fitsPower, isPowerOn as isPowerOnIn, powerProblem, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
 
@@ -334,10 +334,13 @@ export class StudioStore {
 
   // ------------------------------------------------------------ power bricks (studio/powers)
 
-  /** Snap a power onto a brick. Unsaved editor changes are kept first; the editor reloads to show the new scripts. */
+  /**
+   * Snap a power onto a brick. Unsaved editor changes are kept first; the editor reloads to show the new scripts. A
+   * power that does not fit, or that fails its check (a block this version does not have), is not snapped on.
+   */
   snapPower(brickId: string, power: PowerBrick): SnappedPower | null {
     const brick = this.brick(brickId)
-    if (!brick || !fitsPower(power, brick)) return null
+    if (!brick || !fitsPower(power, brick) || powerProblem(power)) return null
     this.flushEditor()
     const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
     this.applyPowerChange(brickId, project)
