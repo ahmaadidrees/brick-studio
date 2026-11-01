@@ -1,6 +1,6 @@
 export const BUILD_PATH = '/build'
 
-export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'join' | 'worlds' | 'class' | 'class-projector' | 'platformer' | 'not-found'
+export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'join' | 'worlds' | 'class' | 'class-projector' | 'platformer' | 'help' | 'not-found'
 
 /** The 2D side: `/2d` and everything under it (the 2D chunk picks the page, see src/platformer/routes2d.ts). */
 export const PLATFORMER_PATH = '/2d'
@@ -57,6 +57,9 @@ export function resolveAppRoute(
   if (/^\/worlds\/?$/.test(pathname)) return { route: 'worlds', canonicalPath: `/projects${search}${hash}` }
   if (/^\/class\/projector\/?$/.test(pathname)) return { route: 'class-projector' }
   if (/^\/class\/?$/.test(pathname)) return { route: 'class', ...(pathname.endsWith('/') ? { canonicalPath: `/class${search}${hash}` } : {}) }
+  // Help, FAQ, teacher details and the privacy summary (they used to sit at the bottom of the landing page).
+  if (/^\/help\/?$/.test(pathname)) return { route: 'help', ...(pathname.endsWith('/') ? { canonicalPath: `/help${search}${hash}` } : {}) }
+  if (/^\/privacy\/?$/.test(pathname)) return { route: 'help', canonicalPath: '/help#privacy' }
   if (pathname === '/') return { route: 'landing' }
   return { route: 'not-found' }
 }
