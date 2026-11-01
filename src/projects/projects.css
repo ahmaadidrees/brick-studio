@@ -2,11 +2,19 @@
 
 .projects-kinds {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  /* Two by two (the sheet is never wide enough for four readable cards), one column on phones. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
+@media (max-width: 559px) {
+  .projects-kinds { grid-template-columns: minmax(0, 1fr); }
+}
+
 .projects-kind {
+  /* A card never grows past its column because of a long title or button (it used to run into the next card). */
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
   gap: var(--space-2);
   align-content: start;
@@ -38,6 +46,7 @@
   align-items: center;
   gap: var(--space-2);
   margin: 0;
+  flex-wrap: wrap;
   font: 600 19px var(--font-display);
 }
 
@@ -53,6 +62,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+.projects-kind-actions > * {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
 }
 
 /* The Hackable Platformer card: two blocks over the level picture, and a "New" tag. */
