@@ -1,8 +1,9 @@
 import type { Costume } from '../../core/contracts'
+import { isCostumeSource, isSoundSource } from '../../core/contentRules'
 import { DESIGN_LIMITS } from '../../core/project'
 import { checkJsonDepth, encodeBase64, MAX_PARSE_DEPTH, MAX_SAVE_BYTES, parse, type ParseResult } from '../../core/save'
 import { upgradeLegacySaveText } from '../legacySave'
-import { costumeFromImage, decodePng, type PixelImage } from '../pixels'
+import { blankImage, costumeFromImage, decodePng, pngDataUrl, type PixelImage } from '../pixels'
 
 /*
  * Pictures that stopped a project from opening, put right.
@@ -16,6 +17,12 @@ import { costumeFromImage, decodePng, type PixelImage } from '../pixels'
  *     stretches its backdrop over the level, so it looks the same, a little blockier);
  *   - an empty opaque box is left out (the costume's mask still says nothing is solid).
  * Nothing else in the save is touched, and a save that opens as it is never comes here.
+ *
+ * Pictures and sounds from somewhere the game no longer takes them (core/contentRules.ts: a web address, an SVG, not a
+ * picture at all) are put right too, and the kid is told (`Replaced`):
+ *   - such a picture becomes a gray checked one of the same size; the costume keeps its name, size, center and mask,
+ *     so the brick still stands, bumps and lands the same;
+ *   - such a sound keeps its name and length but goes quiet.
  */
 
 /** A save this much over the save limit is not an old picture problem: leave it for the kid to save as a file. */
@@ -55,8 +62,29 @@ function asJson(costume: Costume): Json {
   return { ...rest, ...(mask ? { mask: { width: mask.width, height: mask.height, data: encodeBase64(mask.data) } } : {}) }
 }
 
+/** What was put right that the kid should hear about. */
+export interface Replaced {
+  pictures: number
+  sounds: number
+}
+
+/** A gray checked picture of this size, in place of one the game will not show; undefined when it is too big to make. */
+export function placeholderPicture(width: unknown, height: unknown): string | undefined {
+  if (typeof width !== 'number' || typeof height !== 'number' || !Number.isInteger(width) || !Number.isInteger(height)) return undefined
+  if (width < 1 || height < 1 || width * height > DESIGN_LIMITS.maxMaskPixels) return undefined
+  const img = blankImage(width, height)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const shade = ((x >> 2) + (y >> 2)) % 2 ? 0xc4 : 0x9a
+      img.data.set([shade, shade, shade + 6, 255], (y * width + x) * 4)
+    }
+  }
+  const url = pngDataUrl(img)
+  return url.length <= DESIGN_LIMITS.maxAssetChars ? url : undefined
+}
+
 /** The costume put right; null to drop it; the same object when nothing needed changing. */
-function repairCostume(costume: unknown, isStage: boolean): unknown {
+function repairCostume(costume: unknown, isStage: boolean, replaced: Replaced): unknown {
   if (!isRecord(costume)) return costume
   let out: Json = costume
   if (emptyBox(out.opaque)) {
@@ -64,6 +92,15 @@ function repairCostume(costume: unknown, isStage: boolean): unknown {
     delete out.opaque
   }
   const asset = out.asset
+  if (asset !== undefined && (typeof asset !== 'string' || asset.length <= DESIGN_LIMITS.maxAssetChars) && !isCostumeSource(asset)) {
+    // A picture from somewhere the game no longer takes: a gray one in its place, everything else kept.
+    replaced.pictures++
+    out = { ...out }
+    const placeholder = placeholderPicture(out.width, out.height)
+    if (placeholder) out.asset = placeholder
+    else delete out.asset
+    return out
+  }
   if (typeof asset !== 'string' || asset.length <= DESIGN_LIMITS.maxAssetChars) return out
   const name = typeof out.name === 'string' ? out.name : 'costume'
   const img = decodePng(asset)
@@ -92,12 +129,12 @@ function repairCostume(costume: unknown, isStage: boolean): unknown {
   return null
 }
 
-function repairCostumes(brick: unknown, isStage: boolean): boolean {
+function repairCostumes(brick: unknown, isStage: boolean, replaced: Replaced): boolean {
   if (!isRecord(brick) || !Array.isArray(brick.costumes)) return false
   let changed = false
   const kept: unknown[] = []
   for (const costume of brick.costumes) {
-    const fixed = repairCostume(costume, isStage)
+    const fixed = repairCostume(costume, isStage, replaced)
     if (fixed !== costume) changed = true
     if (fixed !== null) kept.push(fixed)
   }
@@ -105,8 +142,22 @@ function repairCostumes(brick: unknown, isStage: boolean): boolean {
   return changed
 }
 
-/** The save text with its pictures put right, or null when there was nothing to put right (or it is not a save). */
-export function repairSaveText(text: string): string | null {
+/** Sounds the game will not play keep their name and length, without the sound. */
+function repairSounds(brick: unknown, replaced: Replaced): boolean {
+  if (!isRecord(brick) || !Array.isArray(brick.sounds)) return false
+  let changed = false
+  brick.sounds = brick.sounds.map((sound: unknown) => {
+    if (!isRecord(sound) || sound.asset === undefined || isSoundSource(sound.asset)) return sound
+    changed = true
+    replaced.sounds++
+    const { asset: _asset, ...rest } = sound
+    return rest
+  })
+  return changed
+}
+
+/** The save text with its pictures and sounds put right, and what the kid should hear about; null when there was nothing to put right (or it is not a save). */
+export function repairSave(text: string): { text: string; replaced: Replaced } | null {
   if (typeof text !== 'string' || text.length > MAX_REPAIR_CHARS || !checkJsonDepth(text, MAX_PARSE_DEPTH)) return null
   let envelope: unknown
   try {
@@ -116,9 +167,21 @@ export function repairSaveText(text: string): string | null {
   }
   const design = isRecord(envelope) ? envelope.design : null
   if (!isRecord(design)) return null
-  let changed = repairCostumes(design.stage, true)
-  if (Array.isArray(design.bricks)) for (const brick of design.bricks) changed = repairCostumes(brick, false) || changed
-  return changed ? JSON.stringify(envelope) : null
+  const replaced: Replaced = { pictures: 0, sounds: 0 }
+  let changed = repairCostumes(design.stage, true, replaced)
+  changed = repairSounds(design.stage, replaced) || changed
+  if (Array.isArray(design.bricks)) {
+    for (const brick of design.bricks) {
+      changed = repairCostumes(brick, false, replaced) || changed
+      changed = repairSounds(brick, replaced) || changed
+    }
+  }
+  return changed ? { text: JSON.stringify(envelope), replaced } : null
+}
+
+/** The save text with its pictures and sounds put right, or null when there was nothing to put right. */
+export function repairSaveText(text: string): string | null {
+  return repairSave(text)?.text ?? null
 }
 
 const newerVersion = (result: ParseResult) =>
@@ -128,13 +191,15 @@ const newerVersion = (result: ParseResult) =>
  * Every way into the game reads a save through here (this computer, the account, a file): the game's own parser, and,
  * when it refuses the save, one more try with the pictures put right. A newer version's save is never changed.
  */
-export function parseSaveText(text: string): ParseResult & { repaired?: boolean } {
+export function parseSaveText(text: string): ParseResult & { repaired?: boolean; replaced?: Replaced } {
   const first = parse(upgradeLegacySaveText(text))
   if (first.ok || newerVersion(first)) return first
-  const fixed = repairSaveText(text)
+  const fixed = repairSave(text)
   if (fixed === null) return first
-  const second = parse(upgradeLegacySaveText(fixed))
-  return second.ok ? { ...second, repaired: true } : first
+  const second = parse(upgradeLegacySaveText(fixed.text))
+  if (!second.ok) return first
+  const told = fixed.replaced.pictures > 0 || fixed.replaced.sounds > 0
+  return { ...second, repaired: true, ...(told ? { replaced: fixed.replaced } : {}) }
 }
 
 /**

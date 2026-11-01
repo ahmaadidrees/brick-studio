@@ -10,6 +10,7 @@ import {
 import type { StudioProject } from '../store'
 import { HACKABLE_FILE_MAX_CHARS, HACKABLE_SAVE_MAX_CHARS, isHackableDocument } from './hackableProjects'
 import { parseSaveText } from './repairSave'
+import { openedNote } from './openChecks'
 
 export function createProjectEnvelope(project: StudioProject): SavedProjectEnvelope {
   return {
@@ -67,7 +68,8 @@ export function exportProjectFile(project: StudioProject, filename?: string): vo
 }
 
 export type ImportResult =
-  | { ok: true; project: StudioProject }
+  /** `notice`: what to tell the kid about things in the file the game could not use (persist/openChecks.ts). */
+  | { ok: true; project: StudioProject; notice?: string }
   | { ok: false; error: string; problems?: DesignProblem[] }
 
 /** What the kid reads when a file will not open. */
@@ -137,13 +139,9 @@ export function importProjectJson(text: string): ImportResult {
   const result = parseSaveText(unwrapped.text)
   if (!result.ok) return { ok: false, error: reasonFor(result.problems), problems: result.problems }
 
-  return {
-    ok: true,
-    project: {
-      design: result.save.design,
-      workspaces: result.save.workspaces ?? {},
-    },
-  }
+  const project = { design: result.save.design, workspaces: result.save.workspaces ?? {} }
+  const notice = openedNote(project, result.replaced)
+  return { ok: true, project, ...(notice ? { notice } : {}) }
 }
 
 /**
