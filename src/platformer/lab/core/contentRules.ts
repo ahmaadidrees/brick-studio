@@ -48,7 +48,7 @@ const POWER_KEYS = new Set(['kind', 'version', 'id', 'name', 'credits', 'what', 
 const BLOCK_KEYS = new Set(['type', 'id', 'x', 'y', 'enabled', 'disabledReasons', 'collapsed', 'deletable', 'movable', 'editable', 'inline', 'inputsInline', 'extraState', 'data', 'icons', 'fields', 'inputs', 'next'])
 const FORBIDDEN = new Set(['__proto__', 'constructor', 'prototype'])
 
-export type PowerRefusal = 'not-power' | 'damaged' | 'other-game' | 'unknown-blocks' | 'too-big'
+export type PowerRefusal = 'not-power' | 'damaged' | 'other-game' | 'unknown-blocks' | 'pictures' | 'too-big'
 
 /** What the kid reads for each refusal. */
 export const POWER_REFUSALS: Readonly<Record<PowerRefusal, string>> = {
@@ -56,6 +56,7 @@ export const POWER_REFUSALS: Readonly<Record<PowerRefusal, string>> = {
   damaged: 'That power is damaged, so it can’t snap on.',
   'other-game': 'That power is for a different game, so it can’t snap on here.',
   'unknown-blocks': 'That power uses blocks that aren’t part of Brickgineers, so it can’t snap on.',
+  pictures: 'That power has pictures or sounds in it. A power holds only blocks, so it can’t snap on.',
   'too-big': 'That power is too big to snap on.',
 }
 
@@ -123,6 +124,8 @@ function checked(v: unknown): PowerCheck {
   const p = v as Json
   if (p.version !== 1) refuse('not-power', 'version')
   if (p.game !== undefined && p.game !== 'platformer') refuse('other-game', `game ${String(p.game)}`)
+  // Powers carry no pictures or sounds (a brick's own costumes are used), so none can come in from somewhere else this way.
+  if (p.costumes !== undefined || p.sounds !== undefined) refuse('pictures', 'costumes or sounds')
   for (const key of Object.keys(p)) if (!POWER_KEYS.has(key)) refuse('damaged', `unexpected field ${key}`)
   if (p.id !== undefined && !isText(p.id, 80)) refuse('damaged', 'id')
   if (!isText(p.name, 80) || !p.name.trim()) refuse('damaged', 'name')

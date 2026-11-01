@@ -49,6 +49,7 @@ function checkPayload(payload: unknown, fail: Fail): CheckedPower {
   if (check.refusal === 'too-big') fail(413, 'too_large', 'This power is too big for the shelf.');
   if (check.refusal === 'other-game') fail(400, 'other_game', check.message);
   if (check.refusal === 'unknown-blocks') fail(400, 'unknown_blocks', check.message);
+  if (check.refusal === 'pictures') fail(400, 'invalid_power', check.message);
   return fail(400, 'invalid_power', check.refusal === 'not-power' ? 'That is not a power file.' : 'That power file is damaged.');
 }
 

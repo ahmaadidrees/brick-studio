@@ -108,10 +108,19 @@ describe('power files', () => {
       'a variable with no id': { variables: [{ name: 'x', value: 1 }] },
       'two variables with one id': { variables: [{ id: 'v', name: 'a', value: 1 }, { id: 'v', name: 'b', value: 1 }] },
       'a variable holding an object': { variables: [{ id: 'v', name: 'a', value: { x: 1 } }] },
-      'pictures riding along': { costumes: [{ name: 'cat', asset: 'https://example.com/cat.png' }] },
-      'sounds riding along': { sounds: [{ name: 'boom', asset: 'https://example.com/boom.wav' }] },
+      'a field powers do not have': { script: 'alert(1)' },
     })) {
       expect(checkPowerPayload(power(over)), what).toMatchObject({ ok: false, refusal: 'damaged', message: POWER_REFUSALS.damaged })
+    }
+  })
+
+  it('refuse a power carrying pictures or sounds, wherever they would load from', () => {
+    for (const over of [
+      { costumes: [{ name: 'cat', asset: 'https://example.com/cat.png' }] },
+      { costumes: [{ name: 'cat', asset: PNG }] },
+      { sounds: [{ name: 'boom', asset: 'https://example.com/boom.wav' }] },
+    ]) {
+      expect(checkPowerPayload(power(over))).toMatchObject({ ok: false, refusal: 'pictures', message: 'That power has pictures or sounds in it. A power holds only blocks, so it can’t snap on.' })
     }
   })
 
