@@ -1544,7 +1544,8 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       tooltip: '',
     },
     // =========================================================================
-    // PLATFORMER (extension, step 3). Wording is fixed by docs/qa/code-lab-core/STEP3.md.
+    // PLATFORMER (extension, step 3). Wording from docs/qa/code-lab-core/STEP3.md; "every tick" reads "over and over"
+    // since the plain-words pass (docs/qa/hackable-c-2026-11-01/words.md).
     // =========================================================================
     {
       type: 'platformer_setgravity',
@@ -1554,7 +1555,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: '',
+      tooltip: 'Turns gravity on or off for this brick. With gravity on, it falls until it lands on something solid.',
     },
     {
       type: 'platformer_setsolid',
@@ -1564,7 +1565,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: '',
+      tooltip: 'Solid bricks stop other bricks. With "only on top", bricks can jump up through it and land on top.',
     },
     {
       type: 'platformer_setspeed',
@@ -1577,7 +1578,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: '',
+      tooltip: 'x speed moves me sideways: more than 0 goes right, less than 0 goes left. y speed: more than 0 goes up.',
     },
     {
       type: 'platformer_changespeed',
@@ -1590,7 +1591,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: '',
+      tooltip: 'Adds to my x or y speed. A minus number takes away.',
     },
     {
       type: 'platformer_speed',
@@ -1599,7 +1600,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
       output: 'Number',
-      tooltip: '',
+      tooltip: 'How fast I am moving: x is sideways, y is up and down.',
     },
     {
       type: 'platformer_onground',
@@ -1607,7 +1608,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
       output: 'Boolean',
-      tooltip: '',
+      tooltip: 'Yes when I am standing on something solid.',
     },
     {
       type: 'platformer_whenbump',
@@ -1620,7 +1621,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       nextStatement: null,
       hat: 'cap',
-      tooltip: '',
+      tooltip: 'Runs when this brick bumps into something on that side.',
     },
     // Bricks that move themselves: the engine's own sweep, with the decisions left to the brick's blocks.
     {
@@ -1631,7 +1632,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: 'With "my own blocks", the Platformer stops moving this brick (no gravity, no speed moves, no bumps). Move it yourself with "move until I hit something". Others still bump into it if it is solid.',
+      tooltip: 'With "my own blocks", the Platformer stops moving this brick: no gravity, no speed, no bumps. Move it yourself with "move until I hit something". Other bricks still bump into it if it is solid.',
     },
     {
       type: 'platformer_moveuntilhit',
@@ -1644,7 +1645,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: 'Moves this brick, stopping flush against the first solid face, one-way top, level wall or floor in the way. "hit something?" then says whether it stopped.',
+      tooltip: 'Moves this brick until it touches something solid in the way: a brick, a level wall or the floor. Then "hit something?" says if it stopped early.',
     },
     {
       type: 'platformer_hitsomething',
@@ -1652,7 +1653,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
       output: 'Boolean',
-      tooltip: 'True when the last "move until I hit something" stopped before going the whole way.',
+      tooltip: 'Yes when the last "move until I hit something" stopped before it went the whole way.',
     },
     {
       type: 'platformer_tellhit',
@@ -1661,7 +1662,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
       nextStatement: null,
-      tooltip: 'Starts "when I bump" on this brick and on the brick it hit (next tick), like the Platformer does when it stops a brick.',
+      tooltip: 'Starts "when I bump" on this brick and on the brick it hit, a moment later, just like the Platformer does when it stops a brick.',
     },
     {
       type: 'platformer_setonground',
@@ -1675,12 +1676,12 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     },
     {
       type: 'platformer_everytick',
-      message0: 'every tick',
+      message0: 'over and over',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
       nextStatement: null,
       hat: 'cap',
-      tooltip: 'Runs these blocks once every tick (30 times a second) while the level plays, in the order the scripts were made.',
+      tooltip: 'Runs these blocks over and over, 30 times a second, while the level plays. Scripts take turns in the order they were made.',
     },
     {
       type: 'platformer_whenland',
@@ -1698,7 +1699,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       colour: CATEGORY_COLORS.platformer,
       nextStatement: null,
       hat: 'cap',
-      tooltip: 'Runs when this brick stops standing on something: it jumped, fell or walked off a ledge.',
+      tooltip: 'Runs when this brick stops standing on something: it jumped, fell or walked off an edge.',
     },
   ]
 }
