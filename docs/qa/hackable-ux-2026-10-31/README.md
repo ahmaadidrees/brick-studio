@@ -16,6 +16,7 @@ Integration commits on top of the lane merges:
 - A test that waited a fixed 20 ms now waits for the save.
 - A short palette (fits without scrolling) swallowed vertical swipes into block drags at 820×1180.
 - Costumes at 540–767 px had a 48 px picture; the level steps aside and the list becomes a row.
+- A painted Stage backdrop now draws over the day sky, hills and clouds (clear parts show them) instead of a flat pale sky.
 
 Checks: `tsc -b`; full vitest 3,262 passed + 25 expected-fail (one timing flake fixed); Worker 253/253; `npm run build`.
 A separate browser pass on the merged branch (guest mode, own Vite) checked pinch/pan/tap at 540×720 and 820×1180 in
