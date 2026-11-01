@@ -379,3 +379,15 @@
   [data-screen='play'] .p2d-overlay { padding-left: calc(var(--cl-hinge-r) + 16px); }
   [data-screen='play'] .p2d-card { width: min(460px, calc(var(--cl-pane) - 32px)); }
 }
+
+/* Tablets: the header is tight, so the chip says just "Saved" (its icon shows where: a computer or a cloud). */
+@media (min-width: 768px) and (max-width: 1180px) {
+  .cl-shell .builder-header .ui-save-status-where { display: none; }
+}
+/* The chip keeps its words; the project's name gives up room first (its full name is in the tooltip and My projects). */
+.cl-shell .builder-header .app-header-save.ui-save-status-wrap { flex: none; }
+/* The save chip (a button that says where the project lives) comes back as an icon on a Duo-size screen; a narrower
+   phone has no room for it next to Help, so Help's "Saving and sharing" says it there. */
+@media (min-width: 540px) and (max-width: 767px) {
+  .cl-shell .builder-header .app-header-save.ui-save-status-wrap { display: inline-flex; }
+}
