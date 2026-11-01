@@ -915,6 +915,31 @@
   font-weight: 700;
   color: #ffffff;
 }
+/* A brick's folded sections ("How I move · 23 scripts"): a chip on the top view that opens them like a My Block. */
+.layer-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.layer-section {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 6px 0 16px;
+}
+.layer-section-name { font-weight: 800; }
+.layer-section-count { margin-left: 4px; font-weight: 600; color: #aab3c8; }
+.layer-section-open {
+  margin-left: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #3b5bdb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.layer-section:hover .layer-section-open { background: #4c6ef5; }
 
 .code-script-label {
   fill: #cfd6ea;
@@ -1108,6 +1133,12 @@
 .code-editor-root-docked .layer-back,
 .code-editor-root-docked .layer-crumb { min-height: 28px; padding: 0 9px; font-size: 12px; }
 .code-editor-root-docked .layer-here { font-size: 12px; }
+.code-editor-root-docked .layer-shelf { flex: none; min-height: 52px; padding: 4px 8px; }
+/* A finger needs the full 44px for Back and the breadcrumb. */
+@media (pointer: coarse) {
+  .code-editor-root-docked .layer-back,
+  .code-editor-root-docked .layer-crumb { min-height: 44px; }
+}
 .code-editor-root-docked .code-diagnostics-drawer { left: 100px; right: 12px; }
 
 /* Variables: a typed name (Make a Variable, Rename), and the small ask/tell dialogs. */

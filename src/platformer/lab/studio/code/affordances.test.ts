@@ -2,9 +2,10 @@ import * as Blockly from 'blockly'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { compileWorkspace } from '../../core/editor/compile'
 import { registerEditorBlocks } from '../../core/editor/definitions'
-import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
-import { createHeroWorkspace } from '../hero/heroBrick'
-import { drillInto, TOP_VIEW } from './layers'
+import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, SectionTracker, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
+import { createHeroWorkspace, HERO_BRICK_ID } from '../hero/heroBrick'
+import { drillInto, openSection, TOP_VIEW } from './layers'
+import { sectionsForBrick } from './sections'
 
 const WORKSPACE = {
   blocks: {
@@ -177,5 +178,47 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     const plainTop = (scroll.mock.calls[1][0] as Blockly.utils.Rect).top
     expect(plainTop - labelledTop).toBe(LABEL_BAND)
     expect(blockBounds.top).toBe(20)
+  })
+
+  it('the Hero\'s top view shows its level-start script, its receivers and a kid\'s scripts; "How I move" shows the rest', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(createHeroWorkspace(), ws)
+    const kid = ws.newBlock('platformer_everytick', 'kid')
+    const tracker = new SectionTracker(sectionsForBrick({ id: HERO_BRICK_ID }))
+    const shown = (state: typeof TOP_VIEW) => ws.getTopBlocks(false).filter((b) => isShownIn(b, state, tracker.sectionOf))
+    const top = shown(TOP_VIEW)
+    expect(top.map((b) => b.type)).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived'), 'platformer_everytick'])
+    expect(top[top.length - 1]).toBe(kid)
+    const section = shown(openSection('how-i-move'))
+    expect(section.length).toBeGreaterThan(20)
+    expect(section.every((b) => b.type === 'platformer_everytick' || b.type === 'platformer_whenbump')).toBe(true)
+    expect(section).not.toContain(kid)
+    // Every script is in exactly one of the two; the definition only shows drilled in.
+    const scripts = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
+    expect(top.length + section.length).toBe(scripts.length)
+    expect(shown(drillInto(openSection('how-i-move'), 'move and collide')).map((b) => b.type)).toEqual(['procedures_definition'])
+  })
+
+  it('a script pinned to a section stays there for the visit; an inner block never counts as a script', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(createHeroWorkspace(), ws)
+    const kid = ws.newBlock('platformer_everytick', 'kid')
+    const tracker = new SectionTracker(sectionsForBrick({ id: HERO_BRICK_ID }))
+    expect(tracker.sectionOf(kid)).toBeNull()
+    tracker.pin('kid', 'how-i-move')
+    expect(tracker.sectionOf(kid)).toBe('how-i-move')
+    tracker.pin('kid', null)
+    expect(tracker.sectionOf(kid)).toBeNull()
+    const inner = ws.getTopBlocks(false).find((b) => b.type === 'platformer_everytick')!.getChildren(false)[0]
+    expect(tracker.sectionOf(inner)).toBeNull()
+  })
+
+  it('a brick without sections shows every script on top, as before', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(createHeroWorkspace(), ws)
+    const none = new SectionTracker(sectionsForBrick({ id: 'brick_walker' }))
+    const scripts = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
+    expect(scripts.every((b) => isShownIn(b, TOP_VIEW, none.sectionOf))).toBe(true)
+    expect(scripts.every((b) => isShownIn(b, TOP_VIEW))).toBe(true)
   })
 })
