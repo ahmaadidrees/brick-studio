@@ -17,6 +17,7 @@ import { play } from '../../core/index'
 import { validateDesign } from '../../core/project'
 import { buildEditorContext } from '../code/context'
 import { projectFromText } from '../persist/hackableSave'
+import { parseSaveText } from '../persist/repairSave'
 import { exportProjectJson } from '../persist/projectIo'
 import { canResetBrick, upgradeUntouchedHero, workspaceFingerprint } from '../remix'
 import { createStarterProject } from '../starter'
@@ -24,6 +25,7 @@ import { StudioStore, type StudioProject } from '../store'
 import { KnobsCard } from '../workshop/KnobsCard'
 import { knobList, knobWords } from '../workshop/knobs'
 import feelScriptsHero from '../__fixtures__/hero-before-feel-scripts.json'
+import step6bSave from '../__fixtures__/step6b-save.json?raw'
 import startRespawnHero from './__fixtures__/hero-before-start-respawn.json'
 import plainNamesHero from './__fixtures__/hero-before-plain-names.json'
 import { HERO_BRICK_ID, HERO_KNOBS, HERO_OLD_VARIABLE_NAMES, heroVariables } from './heroBrick'
@@ -61,10 +63,11 @@ function variableRefs(workspace: unknown): Set<string> {
   return refs
 }
 
-/** Every block's variable is declared, in the brick and in its workspace. */
+/** Every block's variable is declared, in the brick and in its workspace (or is one of the Stage's, shared by all). */
 function expectNoMissingVariables(project: StudioProject): void {
-  const declaredInBrick = new Set(heroOf(project).program.variables.map((v) => v.id))
-  const declaredInWorkspace = new Set((project.workspaces[HERO_BRICK_ID] as Ws).variables.map((v) => v.id))
+  const stage = project.design.stage.program.variables.map((v) => v.id)
+  const declaredInBrick = new Set([...heroOf(project).program.variables.map((v) => v.id), ...stage])
+  const declaredInWorkspace = new Set([...(project.workspaces[HERO_BRICK_ID] as Ws).variables.map((v) => v.id), ...stage])
   for (const id of variableRefs(project.workspaces[HERO_BRICK_ID])) {
     expect(declaredInBrick.has(id), id).toBe(true)
     expect(declaredInWorkspace.has(id), id).toBe(true)
@@ -240,5 +243,16 @@ describe('older saved Heroes', () => {
       expect(main.map((v) => knobWords(v).label)).toEqual(['walk speed', 'run speed', 'jump power', 'gravity'])
       expect(moreCount).toBe(HERO_KNOBS.length - 4)
     }
+  })
+
+  it('the step 6b save (an older Hero a fingerprint does not know) opens as before, with every block\'s variable there', () => {
+    const result = parseSaveText(step6bSave)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    const project = { design: result.save.design, workspaces: result.save.workspaces ?? {} }
+    const opened = upgradeUntouchedHero(project)
+    expect(opened).toBe(project)
+    expectNoMissingVariables(opened)
+    expect(knobList(heroOf(opened).program.variables).main.map((v) => knobWords(v).label)).toEqual(['walk speed', 'run speed', 'jump power', 'gravity'])
   })
 })
