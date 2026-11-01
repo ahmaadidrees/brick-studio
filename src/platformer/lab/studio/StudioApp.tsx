@@ -541,6 +541,7 @@ function OpenProject({ opened }: { opened: Opened }) {
         saveStatus={saveStatus}
         onRenameProject={home.kind === 'viewer' ? undefined : async (title) => store.renameProject(title)}
         onLeave={saveBeforeLeaving}
+        firstRunTips
         banner={home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined}
       />
     </div>

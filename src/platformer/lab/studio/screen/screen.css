@@ -391,3 +391,33 @@
 @media (min-width: 540px) and (max-width: 767px) {
   .cl-shell .builder-header .app-header-save.ui-save-status-wrap { display: inline-flex; }
 }
+
+/* First-run tips (StudioHelp.tsx): over the level's top-left corner in Build, clear of the zoom buttons (top right),
+   the Hero's start and Play's buttons (bottom), and a Duo's hinge (it never grows past 340 px from the left). No
+   backdrop: the level works around it. */
+.cl-tips { position: absolute; z-index: 12; top: 12px; left: 12px; width: min(340px, calc(100% - 24px)); box-sizing: border-box; padding: 12px 14px 14px; border: 1px solid var(--cl-line); border-radius: 16px; background: var(--cl-panel); box-shadow: 0 8px 24px rgba(31, 35, 64, .18); }
+.cl-tips-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; font: 600 17px/1.2 var(--font-display, 'Fredoka'), system-ui, sans-serif; }
+.cl-tips-steps { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.cl-tips-steps li { display: flex; align-items: flex-start; gap: 10px; }
+.cl-tips-steps b { font-weight: 800; }
+.cl-tips-icon { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-tips-ok { min-height: 40px; padding: 0 18px; }
+/* Phones and a Duo: the tips go under the zoom buttons and get the full width minus the gutters. */
+@media (max-width: 767px) { .cl-tips { top: 68px; left: 16px; width: min(340px, calc(100% - 32px)); } }
+
+/* Help (StudioHelp.tsx). */
+.cl-help-body { display: grid; gap: 16px; }
+.cl-help-body section { display: grid; gap: 6px; }
+.cl-help-body h3 { display: flex; align-items: center; gap: 8px; margin: 0; font: 600 18px/1.2 var(--font-display, 'Fredoka'), system-ui, sans-serif; }
+.cl-help-body h3 svg { color: var(--primary, #3e5bd9); }
+.cl-help-body p { margin: 0; font-size: 15px; line-height: 1.45; }
+.cl-help-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; width: 100%; }
+/* A narrow phone: the header's buttons sit a little closer so the brand, My projects, Build · Code · Play, sign in,
+   Help and ⋯ all fit on one row. */
+@media (max-width: 539px) {
+  .cl-shell .builder-header .app-header-editor { column-gap: 4px; padding-inline: 6px; }
+  .cl-shell .builder-header .app-header-mode { padding-left: 0; border-left: 0; }
+  .cl-shell .builder-header .app-header-end { gap: 0; }
+  .cl-shell .builder-header .app-header-end .ui-button { min-width: 40px; width: 40px; padding: 0; }
+  .cl-shell .cl-mode { padding: 0 6px; }
+}
