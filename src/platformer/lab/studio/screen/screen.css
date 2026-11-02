@@ -385,8 +385,22 @@
 @media (min-width: 768px) and (max-width: 1180px) {
   .cl-shell .builder-header .ui-save-status-where { display: none; }
 }
-/* The chip keeps its words; the project's name gives up room first (its full name is in the tooltip and My projects). */
+/* The chip keeps its words; on a tablet the project's name keeps a few letters too (its full name is in the tooltip and
+   My projects). On an iPad in portrait that leaves room only for the chip's icon, and for Sign in's icon: a tap on the
+   chip still says where the project lives. */
 .cl-shell .builder-header .app-header-save.ui-save-status-wrap { flex: none; }
+@media (min-width: 768px) and (max-width: 1180px) {
+  .cl-shell .builder-header .app-header-world { min-width: min-content; }
+  .cl-shell .builder-header .app-header-title { min-width: 6em; }
+}
+@media (min-width: 768px) and (max-width: 900px) {
+  .cl-shell .builder-header .shell-account-signin .ui-button-label,
+  .cl-shell .builder-header .app-header-save .ui-save-status-auto:not(.ui-save-status-error):not(.ui-save-status-offline) .ui-save-status-text {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .cl-shell .builder-header .app-header-save .ui-save-status-auto:not(.ui-save-status-error):not(.ui-save-status-offline) { padding: 0; width: 40px; justify-content: center; }
+}
+
 /* Its explanation opens over a save banner (z-index 60) too: the kid just asked for it. */
 .cl-shell .builder-header:has(.ui-save-status-pop) { z-index: 61; }
 /* The save chip (a button that says where the project lives) comes back as an icon on a Duo-size screen; a narrower
