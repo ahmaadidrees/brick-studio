@@ -948,22 +948,16 @@
   pointer-events: none;
   user-select: none;
 }
-.code-magnifier {
-  cursor: pointer;
-}
-.blocklyEditableField.code-magnifier,
-.code-magnifier text {
-  cursor: pointer;
-}
 
 .plain-card-backdrop {
-  position: absolute;
+  /* Over the whole page (rendered into <body>), above the palette's categories and the studio header. */
+  position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-modal, 1100);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   background: rgba(10, 12, 18, 0.62);
 }
 .plain-card {
@@ -972,7 +966,9 @@
   gap: 10px;
   width: min(720px, 100%);
   max-height: 100%;
-  padding: 16px 18px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px 0;
   background: #1d2029;
   border: 1px solid #3a4258;
   border-radius: 14px;
@@ -1013,8 +1009,9 @@
 }
 .plain-card-blocks {
   position: relative;
-  height: 340px;
-  min-height: 160px;
+  flex: none;
+  /* Tall enough to read on a Duo; the card scrolls if the explanation needs the room. */
+  height: clamp(220px, 52dvh, 380px);
   border: 1px solid #2c3246;
   border-radius: 10px;
   overflow: hidden;
@@ -1025,10 +1022,40 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
-  color: #8d96ad;
+  /* "Got it" stays reachable while the card scrolls. */
+  position: sticky;
+  bottom: 0;
+  margin: 0 -18px;
+  padding: 10px 18px 14px;
+  background: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #b7bfd3;
+}
+.plain-card-stage {
+  position: relative;
+  flex: none;
+}
+.plain-card-zoom {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  gap: 6px;
+}
+.plain-card-zoom button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #3a4258;
+  background: #222736;
+  color: #eef0f5;
+  font: 700 22px/1 system-ui, sans-serif;
+  cursor: pointer;
 }
 .plain-card-done {
+  flex: none;
+  white-space: nowrap;
   min-height: 40px;
   padding: 0 18px;
   border-radius: 10px;

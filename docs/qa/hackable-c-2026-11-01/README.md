@@ -19,6 +19,27 @@ Hackable Platformer accepts outside content. The owner's go: "Yes, start group C
   - In a tight header the save chip gives way first, down to its icon; then the name, which keeps about six letters. Up to 1024 px (and 1200–1260 px, where the mode switch is centred) the chip and Sign in show just their icons; up to 1366 px My projects shows just its folder. Checked for overlaps at 13 widths from 768 to 1440. Tapping the chip still explains where the project is saved.
   - Wider screens are unchanged (`int/hdr-820.png`, `int/hdr-1366.png`).
 
+## See inside fixes (2026-11-02)
+After four read-only explorers looked at the mode, the owner chose the small See inside fixes ("See inside fixes").
+- **One name.** The brick card's button and the "How I move" fold now both say **See inside**, and so does Help. Before, the same idea had four names.
+- **A Duo can open code from the brick card.** At 540–767 px the card said "Code needs a bigger screen", even though the Code tab works there. Now it shows See inside and Change costumes; only phones under 540 px get the note (`int/see-inside-duo-card.png`).
+- **🔍 means See inside, ? means How it works.** My Block calls keep a 🔍 that opens the block; Platformer blocks get a ? that opens the card instead. Both are round buttons, 36 units wide: about 23 px at the Hero's zoom, where the old emoji was 15 px. They work on touch and have names a screen reader can use. A ? only appears on blocks that have a card.
+- **The palette has ? too.** A kid can ask how a Platformer block works before dragging it out. Tapping the ? opens the card without adding the block (`int/how-it-works-palette.png`).
+- **The How it works card:**
+  - It sits over the whole page, so the palette's categories no longer cover it.
+  - It follows the light theme. Its title used to be white on white.
+  - It scrolls, and "Got it" stays at the bottom.
+  - It never shrinks blocks below 0.6, and has its own − and + buttons plus pinch to zoom. Blockly's own zoom buttons would load their pictures from blockly.com.
+  - Esc closes it, focus starts on ✕, and focus goes back to the block afterwards.
+  - The title is now "How on ground? works", and the footer explains that this is a picture to look at.
+  - On a Duo it fits: 516x640, with "Got it" visible (`int/how-it-works-duo.png`).
+- **Checked in Chrome** at 1366x768, 820x1180 (touch) and 540x720 (touch):
+  - the card opens from a script and from the palette;
+  - Esc closes it and focus returns;
+  - zoom works;
+  - Duo card → See inside → 🔍 drills into "give a coin".
+- **Left for the focused "inside" view (next):** the Hero still opens at the smallest zoom. A drilled-in My Block lands at the right edge instead of in view. On a Duo the code area is still small.
+
 ## Checks
 - `tsc -b` is clean.
 - **Full `vitest run` on the merged lanes:** 302 files, 3,365 passed and 25 expected fail.

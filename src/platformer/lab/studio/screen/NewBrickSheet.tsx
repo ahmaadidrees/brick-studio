@@ -16,7 +16,7 @@ type Step =
 
 /**
  * + New brick in Build, without Code: pick a picture (or draw one), give it a name, and land back in Build with the new
- * brick armed, ready to place. Its code is still one tap away (Open its code) once it is in the level.
+ * brick armed, ready to place. Its code is still one tap away (See inside) once it is in the level.
  */
 export function NewBrickSheet({ store, open, onClose, onMade }: { store: StudioStore; open: boolean; onClose: () => void; onMade?: (brickId: string) => void }) {
   const [step, setStep] = useState<Step>({ kind: 'look' })

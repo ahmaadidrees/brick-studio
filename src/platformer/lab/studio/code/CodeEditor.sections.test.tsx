@@ -44,7 +44,7 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
 
     const entry = screen.getByRole('button', { name: /How I move/ })
     expect(entry).toHaveTextContent(`How I move · ${movement.length} scripts`)
-    expect(entry).toHaveTextContent('Show how it works')
+    expect(entry).toHaveTextContent('See inside')
     const top = shownIds(ws).map((id) => ws.getBlockById(id)!.type)
     expect(top).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived')])
 

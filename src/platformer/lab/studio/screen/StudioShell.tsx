@@ -254,7 +254,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
         )}
 
         <div className={`cl-slot cl-slot-inspector${settling ? ' cl-settling' : ''}`} inert={!inspecting ? true : undefined}>
-          {inspecting && <Inspector store={store} history={history} compact={phone} />}
+          {inspecting && <Inspector store={store} history={history} compact={phone} noCode={noCode} />}
         </div>
 
         <div className="cl-slot cl-slot-level" inert={screen !== 'code' ? true : undefined}>

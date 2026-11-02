@@ -314,10 +314,10 @@ describe('grid bricks: paint, select a cell, open code, Remove', () => {
     expect(within(card).queryByRole('slider')).toBeNull()
   })
 
-  it('Open its code goes to Code on that brick; Build comes back with the cell still selected', () => {
+  it('See inside goes to Code on that brick; Build comes back with the cell still selected', () => {
     const store = paintRowOfQ()
     press(store, 8 + 16 * 4, 40)
-    fireEvent.click(within(screen.getByRole('region', { name: '? block in this level' })).getByRole('button', { name: /Open its code/ }))
+    fireEvent.click(within(screen.getByRole('region', { name: '? block in this level' })).getByRole('button', { name: /See inside/ }))
     const q = store.getState().project.design.bricks.find((b) => b.name === '? block')!
     expect(store.getState().selectedBrickId).toBe(q.id)
     expect(store.getState().runtime).not.toBeNull()
@@ -419,7 +419,7 @@ describe('one Hero, one Goal (limit 1)', () => {
     expect(within(card).getByText(/One per level/)).toBeTruthy()
     expect(within(card).getAllByRole('slider')).toHaveLength(4)
     expect(within(card).queryByRole('group', { name: 'Which ones change' })).toBeNull()
-    fireEvent.click(within(card).getByRole('button', { name: /Open its code/ }))
+    fireEvent.click(within(card).getByRole('button', { name: /See inside/ }))
     expect(store.getState().selectedBrickId).toBe('brick_hero')
     expect(store.getState().cardTab).toBe('code')
   })

@@ -814,7 +814,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
         )}
       </div>
 
-      {card && <PlainScratchCard opcode={card.opcode} blockText={card.blockText} onClose={() => setCard(null)} />}
+      {card && <PlainScratchCard opcode={card.opcode} blockText={card.blockText} light={docked} onClose={() => setCard(null)} />}
 
       {renaming && <RenameVariableModal
         name={renaming.name}

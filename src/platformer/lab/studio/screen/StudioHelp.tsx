@@ -47,7 +47,7 @@ export function HelpSheet({ open, onClose, onShowTips }: { open: boolean; onClos
         </section>
         <section>
           <h3><Code2 size={18} aria-hidden="true" /> Code</h3>
-          <p>Tap a brick, then press <b>Open its code</b>. Code needs a laptop, Chromebook or tablet.</p>
+          <p>Tap a brick, then press <b>See inside</b>. Code needs a laptop, Chromebook or tablet.</p>
           <p><b>Switches:</b> every script has an On/Off switch. Turn one off, press Restart, and see what changes.</p>
           <p><b>+ Power:</b> snap a ready-made power onto a brick, like a double jump. Turn it off or take it off any time.</p>
           <p><b>My Blocks:</b> the brick’s own blocks. Open one to see the steps inside and change a number.</p>

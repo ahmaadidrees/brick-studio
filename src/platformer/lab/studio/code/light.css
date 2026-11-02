@@ -75,11 +75,18 @@
 .code-light .code-picker-header { color: var(--cl-ink); }
 
 /* "What does this block do?" card */
-.code-light .plain-card-backdrop { background: rgba(31, 35, 64, .3); }
+/* The card is rendered into <body> with .code-light on its own backdrop (so the backdrop must undo .code-light's white). */
+.plain-card-backdrop.code-light { background: rgba(31, 35, 64, .3); }
 .code-light .plain-card { background: #fff; color: var(--cl-ink); border-color: var(--cl-line); box-shadow: 0 18px 48px rgba(31, 35, 64, .25); animation: code-light-pop 200ms cubic-bezier(.2, .8, .2, 1) 1; }
+.code-light .plain-card-head h2 { color: var(--cl-ink); }
+.code-light .plain-card-head em { color: #0b7a55; }
 .code-light .plain-card-text { color: var(--cl-ink-2); }
-.code-light .plain-card-blocks, .code-light .plain-card-foot { background: var(--cl-softer); border-color: var(--cl-line); }
-.code-light .plain-card-close { color: var(--cl-muted); }
+.code-light .plain-card-blocks { background: var(--cl-softer); border-color: var(--cl-line); }
+.code-light .plain-card-foot { background: #fff; border-top: 1px solid var(--cl-line); color: var(--cl-muted); }
+.code-light .plain-card-close { background: #fff; border-color: var(--cl-line); color: var(--cl-ink-2); }
+.code-light .plain-card-close:hover { background: var(--cl-soft); }
+.code-light .plain-card-zoom button { background: #fff; border-color: var(--cl-line); color: var(--cl-ink-2); box-shadow: 0 2px 6px rgba(31, 35, 64, .12); }
+.code-light .plain-card-zoom button:hover { background: var(--cl-soft); }
 
 @keyframes code-light-pop { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .code-light * { animation: none !important; } }

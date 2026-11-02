@@ -1,7 +1,7 @@
 /**
  * The layered code view, on a Blockly workspace:
- *  - a magnifier field on every My Block call (drill into its definition) and every Platformer block (open the plain
- *    Scratch card);
+ *  - a 🔍 "See inside" button on every My Block call (drill into its definition) and a ? "How it works" button on every
+ *    Platformer block that has a plain-Scratch card, in the scripts and in the palette (open the card);
  *  - one-line labels on each script's hat;
  *  - showing/hiding top-level stacks for the top view, a brick section ("How I move") and a drilled-in definition, and
  *    drawing a section's or the top view's scripts packed together for this visit (PackedLayout).
@@ -11,11 +11,12 @@ import * as Blockly from 'blockly/core'
 import { isHatOpcode } from '../../core/editor/definitions'
 import { currentProccode, currentSection, LABEL_PREFIX, labelData, readLabel, type LayerState } from './layers'
 import { sectionOfScript, type ScriptSection } from './sections'
+import { plainScratchFor } from './plainScratch'
 
 export interface WorkspaceHandlers {
-  /** The kid clicked the magnifier on a My Block call. */
+  /** The kid clicked 🔍 on a My Block call. */
   drill(proccode: string): void
-  /** The kid clicked the magnifier on a Platformer block. */
+  /** The kid clicked ? on a Platformer block (in the scripts or the palette). */
   explain(opcode: string, blockText: string): void
 }
 
@@ -26,15 +27,41 @@ export function setWorkspaceHandlers(ws: Blockly.Workspace, h: WorkspaceHandlers
   else handlers.delete(ws)
 }
 
-class FieldMagnifier extends Blockly.FieldLabel {
-  constructor(private readonly onClick: (block: Blockly.Block) => void, tooltip: string) {
-    super('🔍', 'code-magnifier')
-    this.setTooltip(tooltip)
+/** Drawn size of the 🔍 and ? buttons, in workspace units: a real target (23 px at the Hero's zoom, 31 px at the usual one). */
+const BUTTON_SIZE = 36
+
+const svgIcon = (body: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 30 30">` +
+      `<circle cx="15" cy="15" r="14" fill="#ffffff" stroke="rgba(31,35,64,.28)" stroke-width="1.5"/>${body}</svg>`,
+  )}`
+
+/** "See inside" (a My Block call): a magnifier on a white disc. */
+const SEE_INSIDE_ICON = svgIcon(
+  '<circle cx="13" cy="13" r="6" fill="none" stroke="#1f2340" stroke-width="2.6"/>' +
+    '<path d="M17.6 17.6 L22.5 22.5" stroke="#1f2340" stroke-width="3" stroke-linecap="round"/>',
+)
+
+/** "How it works" (a Platformer block): a question mark on a white disc. */
+const HOW_IT_WORKS_ICON = svgIcon(
+  '<text x="15" y="21" text-anchor="middle" font-family="system-ui, sans-serif" font-size="19" font-weight="800" fill="#1f2340">?</text>',
+)
+
+/**
+ * A round button drawn inside a block. It is not saved (the block's JSON never mentions it) and it works on touch,
+ * where the old emoji label was a 15 px target with a hover-only tooltip.
+ */
+class FieldBlockButton extends Blockly.FieldImage {
+  constructor(src: string, label: string, onClick: (block: Blockly.Block) => void, private readonly inPalette: boolean) {
+    super(src, BUTTON_SIZE, BUTTON_SIZE, label, (field) => {
+      const block = field.getSourceBlock()
+      if (block) onClick(block)
+    })
+    this.setTooltip(label)
   }
 
-  protected override showEditor_(): void {
-    const block = this.getSourceBlock()
-    if (block) this.onClick(block)
+  override isClickableInFlyout(): boolean {
+    return this.inPalette
   }
 }
 
@@ -45,9 +72,16 @@ interface PatchableDef {
   __codeLabMagnifier?: boolean
 }
 
-function addMagnifier(block: Blockly.Block, make: () => FieldMagnifier): void {
+/** The workspace whose handlers answer this block: the editor's own, also for a block in its palette. */
+function handlersFor(block: Blockly.Block): WorkspaceHandlers | undefined {
+  const ws = block.workspace as Blockly.Workspace & { targetWorkspace?: Blockly.Workspace | null }
+  return handlers.get(ws) ?? (ws.isFlyout && ws.targetWorkspace ? handlers.get(ws.targetWorkspace) : undefined)
+}
+
+function addButton(block: Blockly.Block, make: () => FieldBlockButton, inPalette: boolean): void {
   const ws = block.workspace
-  if (ws.isFlyout || (ws.options as { readOnly?: boolean }).readOnly) return
+  if ((ws.options as { readOnly?: boolean }).readOnly) return
+  if (ws.isFlyout && !inPalette) return
   if (block.getField(MAGNIFIER)) return
   const field = make()
   const first = block.inputList[0] ?? block.appendDummyInput()
@@ -58,33 +92,44 @@ function proccodeOf(block: Blockly.Block): string {
   return (block as unknown as { extraState_?: { proccode?: string } }).extraState_?.proccode ?? ''
 }
 
+const SEE_INSIDE_LABEL = 'See inside this block'
+const HOW_IT_WORKS_LABEL = 'How this block works'
+
+/** "turn gravity on" from a block's text, without the button's own alt text (Blockly reads an image as its alt). */
+function blockWords(block: Blockly.Block): string {
+  return block.toString().replace(HOW_IT_WORKS_LABEL, '').replace(SEE_INSIDE_LABEL, '').replace(/\s+/g, ' ').trim()
+}
+
 /**
- * Add the magnifier to `procedures_call` and every `platformer_*` block. Call after `registerEditorBlocks` (which
- * redefines the blocks) and after any extra Platformer definitions are registered. Safe to call again.
+ * Add the 🔍 "See inside" button to `procedures_call`, and the ? "How it works" button to every `platformer_*` block
+ * that has a plain-Scratch card (also in the palette, so a kid can ask before dragging one out). Call after
+ * `registerEditorBlocks` (which redefines the blocks) and after any extra Platformer definitions are registered.
+ * Safe to call again.
  */
 export function attachAffordances(): void {
   for (const type of Object.keys(Blockly.Blocks)) {
     const isCall = type === 'procedures_call'
-    if (!isCall && !type.startsWith('platformer_')) continue
+    if (!isCall && !(type.startsWith('platformer_') && plainScratchFor(type))) continue
     const def = Blockly.Blocks[type] as PatchableDef | undefined
     if (!def || def.__codeLabMagnifier || typeof def.init !== 'function') continue
     const original = def.init
     def.init = function (this: Blockly.Block) {
       original.call(this)
       if (isCall) {
-        addMagnifier(
+        addButton(
           this,
           () =>
-            new FieldMagnifier((b) => {
+            new FieldBlockButton(SEE_INSIDE_ICON, SEE_INSIDE_LABEL, (b) => {
               const code = proccodeOf(b)
-              if (code) handlers.get(b.workspace)?.drill(code)
-            }, 'See inside this block'),
+              if (code) handlersFor(b)?.drill(code)
+            }, false),
+          false,
         )
       } else {
-        addMagnifier(
+        addButton(
           this,
-          () =>
-            new FieldMagnifier((b) => handlers.get(b.workspace)?.explain(b.type, b.toString()), 'How this works in plain Scratch'),
+          () => new FieldBlockButton(HOW_IT_WORKS_ICON, HOW_IT_WORKS_LABEL, (b) => handlersFor(b)?.explain(b.type, blockWords(b)), true),
+          true,
         )
       }
     }

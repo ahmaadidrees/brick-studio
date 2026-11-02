@@ -122,12 +122,31 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     Blockly.serialization.workspaces.load(WORKSPACE, ws)
     const drilled: string[] = []
     const explained: string[] = []
-    setWorkspaceHandlers(ws, { drill: (c) => drilled.push(c), explain: (op) => explained.push(op) })
+    const words: string[] = []
+    setWorkspaceHandlers(ws, { drill: (c) => drilled.push(c), explain: (op, text) => { explained.push(op); words.push(text) } })
     ws.getBlockById('call')!.getField('MAGNIFIER')!.showEditor()
     ws.getBlockById('grav')!.getField('MAGNIFIER')!.showEditor()
     ws.getBlockById('bump')!.getField('MAGNIFIER')!.showEditor()
     expect(drilled).toEqual(['walk at %s'])
     expect(explained).toEqual(['platformer_setgravity', 'platformer_whenbump'])
+    // The card gets the block's own words, not the button's label.
+    for (const text of words) expect(text).not.toMatch(/How this block works|See inside/)
+  })
+
+  it('the ? also works in the palette (it asks the editor, not the palette), and the 🔍 stays out of it', () => {
+    ws = new Blockly.Workspace()
+    const palette = new Blockly.Workspace()
+    Object.defineProperty(palette, 'isFlyout', { value: true })
+    ;(palette as unknown as { targetWorkspace: Blockly.Workspace }).targetWorkspace = ws
+    Blockly.serialization.workspaces.load(WORKSPACE, palette)
+    const explained: string[] = []
+    setWorkspaceHandlers(ws, { drill: () => {}, explain: (op) => explained.push(op) })
+    const help = palette.getBlockById('grav')!.getField('MAGNIFIER')!
+    expect(help.isClickableInFlyout(true)).toBe(true)
+    help.showEditor()
+    expect(explained).toEqual(['platformer_setgravity'])
+    expect(palette.getBlockById('call')!.getField('MAGNIFIER')).toBeNull()
+    palette.dispose()
   })
 
   it('folds the Hero definitions on open without changing their compiled program', () => {

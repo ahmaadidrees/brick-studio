@@ -15,7 +15,7 @@ type Conn = { block: Json } | { shadow: Json }
 export interface PlainScratchCard {
   /** The Platformer opcode this card explains. */
   opcode: string
-  /** Short noun for the title: "How <name> works in plain Scratch". Falls back to the block's own text. */
+  /** Short noun for the title: "How <name> works". Falls back to the block's own text. */
   name: string
   /** Two or three kid-words sentences. */
   explanation: string

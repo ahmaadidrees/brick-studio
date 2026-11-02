@@ -37,7 +37,7 @@ export const LayerBar: React.FC<Props> = ({ brickName, state, definitions, secti
             <button key={s.id} type="button" className="layer-chip layer-section" onClick={() => onOpenSection?.(s.id)}>
               <span className="layer-section-name">{s.title}</span>
               <span className="layer-section-count"> · {scriptCount(s.count)}</span>
-              <span className="layer-section-open">Show how it works</span>
+              <span className="layer-section-open">See inside</span>
             </button>
           ))}
         </nav>
