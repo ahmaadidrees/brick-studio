@@ -62,6 +62,9 @@
 .class-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3) var(--space-4); }
 .class-head h1 { font-size: 30px; }
 .class-head-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* Pause building sits at the end of the class name's line, and wraps under it when there's no room. */
+.class-head { align-items: center; }
+.class-head-pause.ui-button { margin-left: auto; }
 .class-tabs { max-width: 640px; }
 
 /* Chips, banners, helpers -------------------------------------------------- */
@@ -139,6 +142,23 @@
 }
 .class-code-steps { color: var(--text-muted); }
 .class-code-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+/* The code card folded to one line once the class has students. */
+.class-code-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.class-code-strip-value { font-family: var(--font-display); font-size: 28px; line-height: 1; letter-spacing: 0.08em; color: var(--primary-strong); }
+.class-code-strip-host { color: var(--text-muted); font-weight: 700; }
+.class-code-strip .class-code-actions { margin: 0 0 0 auto; }
+.class-code-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.class-code-card { scroll-margin-top: var(--space-4); }
 .class-code-fallback { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); font-weight: 700; }
 
 /* Cards -------------------------------------------------------------------- */
@@ -160,8 +180,8 @@
   background: var(--surface);
 }
 .class-card-hidden { background: var(--surface-2); border-style: dashed; }
-.class-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
-.class-card-title { font-family: var(--font-display); font-size: var(--text-lg); }
+.class-card-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.class-card-title { min-width: 0; font-family: var(--font-display); font-size: var(--text-lg); overflow-wrap: anywhere; }
 .class-card-owner { color: var(--text-muted); font-size: var(--text-sm); }
 .class-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: auto; }
 

@@ -48,7 +48,7 @@ export function WorldsTab({ currentClass, worlds, students, busy, selected, memb
       <div className="class-section-head">
         <h2 id="class-worlds-title" className="class-section-title">Worlds you started</h2>
       </div>
-      {!currentClass.collaborationOpen && <p className="class-help class-warning" role="status">Collaboration is closed to students. You can still open these worlds to review and manage them.</p>}
+      {!currentClass.collaborationOpen && <p className="class-help class-warning" role="status">Building together is paused, so these worlds are closed to students. You can still open them to look and manage them.</p>}
       {worlds.length
         ? <ul className="class-card-row" aria-label="Worlds you started for this class">
           {worlds.map(world => <li key={world.id} className="class-card">
@@ -58,12 +58,12 @@ export function WorldsTab({ currentClass, worlds, students, busy, selected, memb
             </div>
             <p className="class-card-owner">Saved {new Date(world.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · revision {world.revision}</p>
             <div className="class-card-actions">
-              <Button variant="secondary" size="sm" href={worldRoomHref(world)}>Join</Button>
+              <Button variant="secondary" size="sm" href={worldRoomHref(world)} aria-label={`Open ${world.title}`}>Open</Button>
               <Button variant="quiet" size="sm" icon={<Settings2 size={16} />} disabled={busy} aria-label={`World controls for ${world.title}`} onClick={() => onSelect(world)}>World controls</Button>
             </div>
           </li>)}
         </ul>
-        : <p className="class-help">No shared worlds yet. Start one below and students will find it in My worlds.</p>}
+        : <p className="class-help">No shared worlds yet. Start one below and students will find it in My projects.</p>}
     </section>
     <form className="class-section class-form" aria-labelledby="class-start-world-title" onSubmit={event => onCreate(readForm(event).title, kind)}>
       <h2 id="class-start-world-title" className="class-section-title">Start a shared world</h2>

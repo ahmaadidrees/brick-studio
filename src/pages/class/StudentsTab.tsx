@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '../../ui'
 import type { ClassroomStudent } from '../../classroom/contracts'
 import { ConfirmDialog } from '../../classroom/ConfirmDialog'
 import { RosterSection } from '../../classroom/RosterView'
-import { ClassCodeCard, PrintableCode } from './ClassCodeCard'
+import { ClassCodeCard, ClassCodeStrip, PrintableCode } from './ClassCodeCard'
 import { classCode, worldRoomHref, type ClassPageClass, type ClassPageWorld } from './classPageData'
 
 type Props = {
@@ -19,7 +19,6 @@ type Props = {
   onManageStudent: (student: ClassroomStudent, focus?: 'password') => void
   onToggleHidden: (world: ClassPageWorld) => void
   onToggleSuspend: (student: ClassroomStudent) => void
-  onViewSettings: () => void
 }
 
 /** "Look only" / "Build together" reads the sharing choice the student made; a quiet invite adds "3 classmates". */
@@ -31,13 +30,30 @@ function ShareChip({ world }: { world: ClassPageWorld }) {
   </>
 }
 
-/** Code card, what students shared, then the roster. */
-export function StudentsTab({ currentClass, students, studentsLoading, search, busy, shared, onSearch, onManageStudent, onToggleHidden, onToggleSuspend, onViewSettings }: Props) {
+/**
+ * The class code, what students shared, then the roster. Before anyone has joined the code card is full size; once
+ * the class has students it folds to one line so the roster isn't under the QR, and opens again on request.
+ */
+export function StudentsTab({ currentClass, students, studentsLoading, search, busy, shared, onSearch, onManageStudent, onToggleHidden, onToggleSuspend }: Props) {
   const code = classCode(currentClass)
   const sharingOff = currentClass.studentsCanShare === false
   const [suspendTarget, setSuspendTarget] = useState<ClassroomStudent | null>(null)
+  const [codeOpen, setCodeOpen] = useState(false)
+  const cardRef = useRef<HTMLElement>(null)
+  const focusCard = useRef(false)
+  const folded = !codeOpen && (studentsLoading || students.length > 0)
+  useEffect(() => { setCodeOpen(false) }, [currentClass.id])
+  useEffect(() => {
+    if (!codeOpen || !focusCard.current) return
+    focusCard.current = false
+    cardRef.current?.scrollIntoView?.({ block: 'nearest' })
+    cardRef.current?.focus({ preventScroll: true })
+  }, [codeOpen])
+  const showCode = () => { focusCard.current = true; setCodeOpen(true) }
   return <>
-    <ClassCodeCard className={currentClass.name} code={code} projectorHref="/class/projector" />
+    {folded
+      ? <ClassCodeStrip code={code} projectorHref="/class/projector" onExpand={showCode} />
+      : <ClassCodeCard className={currentClass.name} code={code} projectorHref="/class/projector" cardRef={cardRef} onFold={students.length ? () => setCodeOpen(false) : undefined} />}
     <PrintableCode className={currentClass.name} code={code} />
     <section className="class-section" aria-labelledby="class-shared-title">
       <div className="class-section-head">
@@ -53,7 +69,7 @@ export function StudentsTab({ currentClass, students, studentsLoading, search, b
             </div>
             <p className="class-card-owner">{world.ownerName || 'A student'}{world.hiddenByTeacher && ' · Hidden from the class'}</p>
             <div className="class-card-actions">
-              <Button variant="secondary" size="sm" href={worldRoomHref(world)}>Visit</Button>
+              <Button variant="secondary" size="sm" href={worldRoomHref(world)} aria-label={`Open ${world.title}`}>Open</Button>
               <Button variant="quiet" size="sm" icon={world.hiddenByTeacher ? <Eye size={16} /> : <EyeOff size={16} />} disabled={busy} onClick={() => onToggleHidden(world)}>
                 {world.hiddenByTeacher ? 'Show again' : 'Hide from class'}
               </Button>
@@ -72,7 +88,7 @@ export function StudentsTab({ currentClass, students, studentsLoading, search, b
       busy={busy}
       onSearch={onSearch}
       onManage={onManageStudent}
-      onViewCodes={onViewSettings}
+      onViewCodes={showCode}
       actions="menu"
       onToggleSuspend={setSuspendTarget}
     />

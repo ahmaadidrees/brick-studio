@@ -62,7 +62,7 @@ export function RosterSection({ currentClass, students, loading, search, busy, o
       {!loading && students.length > 0 && <TextInput label="Find a student" id="classroom-student-search" className="classroom-search" type="search" icon={<Search size={18} />} value={search} onChange={event => onSearch(event.target.value)} placeholder="Name or username" autoComplete="off" />}
     </div>
     {loading ? <p role="status" className="classroom-loading">Loading students…</p> : students.length > 0 ? <>
-      <div className="classroom-roster" role="list" aria-label="Students in this class">
+      <div className={`classroom-roster${actions === 'menu' ? '' : ' classroom-roster-buttons'}`} role="list" aria-label="Students in this class">
         <div className="classroom-roster-head" aria-hidden="true"><span>Roster name</span><span>Username</span><span>Status</span><span /></div>
         {visible.map(student => <div className="classroom-roster-row" role="listitem" key={student.id}>
           <strong>{student.rosterName}</strong>

@@ -316,7 +316,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const heading = section === 'mine' ? 'My projects' : currentClass?.name ?? 'Class'
   const counts = section === 'mine'
     ? `${myWorlds.length} ${myWorlds.length === 1 ? 'project' : 'projects'} saved to your account`
-    : collaborationClosed ? 'Collaboration is closed right now.'
+    : collaborationClosed ? 'Building together is paused right now.'
       : `${classmateWorlds.length + classWorlds.length} ${classmateWorlds.length + classWorlds.length === 1 ? 'project' : 'projects'} ${teacher ? 'in this class' : 'to join'}`
 
   return <div className="worlds-page">
@@ -409,7 +409,9 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
 
         {!loading && section !== 'mine' && currentClass && <>
           {collaborationClosed
-            ? <p className="worlds-closed" role="status">{currentClass.teacherName || 'Your teacher'} closed collaboration. Class worlds come back when it reopens.</p>
+            ? <p className="worlds-closed" role="status">{teacher
+              ? <>Building together is paused for {currentClass.name}. <a href={`/class?classId=${encodeURIComponent(currentClass.id)}`}>Resume it on the class page</a>.</>
+              : <>{currentClass.teacherName || 'Your teacher'} paused building together. Class worlds come back when it starts again.</>}</p>
             : <>
               {teacher && <StartSharedWorld busy={busy} className={currentClass.name} onCreate={createShared} />}
 

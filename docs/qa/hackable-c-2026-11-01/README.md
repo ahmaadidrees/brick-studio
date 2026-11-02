@@ -61,6 +61,30 @@ Next, the owner said "Yes, build it" to the focused inside view.
 - **Checked in Chrome** at 1366x768, 820x1180 (touch) and 540x720 (touch): list, script, 🔍 drill, Back ×3, and the Duo layout. The ? block's "give a coin" now opens top-left.
 - **Not done:** on a Duo the top view is still about 310 px for the blocks, because the level and its bricks keep their row there.
 
+## Teacher fixes (2026-11-02)
+The owner chose "Teacher fixes first" before group C ships. These come from the teacher explorer's day-one and day-two list, limited to fixes that need no Worker change and no policy decision. All of them are on `/class`, plus one line on `/projects`.
+- **Open goes to the right place.** On `/class`, "Visit" and "Join" always linked to `/live/…`, which is wrong for 2D levels and Hackable Platformers. Now one "Open" button picks the right page, the same way `/projects` does: a 3D room, `/2d/w/…`, or the Hackable page.
+- **Pause building is one button** in the class head, with one confirm ("Keep building" / "Pause now"). When paused, "Resume building" is one tap. Before, pausing took Settings, then a switch, then a confirm (`int/teacher-pause-dialog.jpg`, `int/teacher-paused.jpg`).
+- **One name for it: "Building together".** The chips read "Joining open" and "Building together on / paused". The Settings switch, the Worlds tab, `/projects` and Help all say "pause building together" now, instead of a mix of "Collaboration open", "Close collaboration" and "Building together". The old in-studio teacher panel (`ClassView.tsx`) still uses its own words.
+- **The roster is near the top.** Once a class has students, the code card folds to one line: the code, the join address, Show on projector, and "QR and join link". The roster starts about 400 px down at 1366x768; before, it was about 940 px. A class with nobody in it yet keeps the full card (`int/teacher-students-1366.jpg`, `-820`, `-390`).
+- **"View class codes" opens the code right there,** scrolled into view and focused. Before, it opened Settings, which doesn't show the code. "Fold away" puts it back.
+- **The roster columns line up.** Rows had five columns under a four-column header. Checked in Chrome at 1366: the header and row cells start at the same x.
+- **The Shelf tab says what's waiting,** e.g. "Shelf · 2 waiting", before the teacher opens it. Opening the tab keeps the count current.
+- **The sharing switch says it also closes the shelf.** "Students can share" covers bricks too, which matches what the Worker already does.
+- **Smaller fixes:**
+  - The rail says "My projects" and links to `/projects`.
+  - Chips in narrow cards wrap instead of spilling out.
+  - On `/projects`, a teacher whose class is paused is told so, with a link to resume it. Before, it said the teacher had "closed collaboration".
+- **Checked:** `tsc -b` clean; `src/pages`, `src/classroom` and `src/shell` tests 383 of 383; build OK. The full suite had 7 time-outs under load (Code sections, slot shadows, the perf replay, the 3D studio), and those 4 files pass alone (78 of 78). Chrome on the `/class?demo=everyday` fixture at 1366x768, 820x1180 and 390x844: the strip, View class codes, Pause → Pause now → Resume, Shelf · 2 waiting, and roster alignment.
+- **Tests** cover all three Open link kinds, Pause/Resume with Keep building, the folding card, the waiting count, and the teacher's paused line.
+- **Still open, needing a decision or the Worker:**
+  - opening teacher sign-up (the `BRICK_TEACHER_IDS` allowlist);
+  - a "right now" view of the class, and whether teachers can see unshared work;
+  - adding many students to a group at once;
+  - a projector spotlight and an "N joined" count;
+  - removing the old in-studio teacher dashboard;
+  - one "Start a shared world" form.
+
 ## Checks
 - `tsc -b` is clean.
 - **Full `vitest run` on the merged lanes:** 302 files, 3,365 passed and 25 expected fail.
