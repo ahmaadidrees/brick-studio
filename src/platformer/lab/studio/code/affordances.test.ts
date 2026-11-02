@@ -2,9 +2,9 @@ import * as Blockly from 'blockly'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { compileWorkspace } from '../../core/editor/compile'
 import { registerEditorBlocks } from '../../core/editor/definitions'
-import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, SectionTracker, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
+import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, SectionTracker, setLabel, setWorkspaceHandlers, takesLabel, READABLE_SCALE, READABLE_SCALE_NARROW } from './affordances'
 import { createHeroWorkspace, HERO_BRICK_ID } from '../hero/heroBrick'
-import { drillInto, openSection, TOP_VIEW } from './layers'
+import { ALL_SCRIPTS, drillInto, openScript, openSection, TOP_VIEW } from './layers'
 import { sectionsForBrick } from './sections'
 
 const WORKSPACE = {
@@ -176,26 +176,35 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     expect(shown(drillInto(TOP_VIEW, 'missing'))).toEqual([])
   })
 
-  it('includes the label above the first hat when fitting and centering the visible code', () => {
+  it('opens at a readable size with the first hat\'s label at the top left (not shrunk to fit)', () => {
     ws = new Blockly.Workspace()
     Blockly.serialization.workspaces.load(WORKSPACE, ws)
     const flag = ws.getBlockById('flag')! as Blockly.BlockSvg
     const blockBounds = new Blockly.utils.Rect(20, 160, 20, 320)
     flag.getBoundingRectangle = () => blockBounds
     const scroll = vi.fn()
+    const setScale = vi.fn()
     const displayed = {
       getTopBlocks: () => [flag],
       getMetrics: () => ({ viewWidth: 700, viewHeight: 580 }),
-      setScale: vi.fn(),
-      scrollBoundsIntoView: scroll,
+      options: { zoomOptions: { minScale: 0.65, maxScale: 2 } },
+      setScale,
+      scroll,
     } as unknown as Blockly.WorkspaceSvg
     focusView(displayed, TOP_VIEW)
-    const labelledTop = (scroll.mock.calls[0][0] as Blockly.utils.Rect).top
-    expect(labelledTop).toBeLessThan(blockBounds.top - LABEL_BAND)
+    expect(setScale).toHaveBeenLastCalledWith(READABLE_SCALE)
+    // The label's top (block top minus its band) lands 24 px in: scrollY = 24 - top * scale.
+    const [, labelledY] = scroll.mock.calls[0] as [number, number]
+    expect(labelledY).toBeCloseTo(24 - (blockBounds.top - LABEL_BAND) * READABLE_SCALE)
     setLabel(flag, '')
     focusView(displayed, TOP_VIEW)
-    const plainTop = (scroll.mock.calls[1][0] as Blockly.utils.Rect).top
-    expect(plainTop - labelledTop).toBe(LABEL_BAND)
+    const [plainX, plainY] = scroll.mock.calls[1] as [number, number]
+    expect(labelledY - plainY).toBeCloseTo(LABEL_BAND * READABLE_SCALE)
+    expect(plainX).toBeCloseTo(24 - blockBounds.left * READABLE_SCALE)
+    // A narrow editor (a Duo) opens a little smaller.
+    ;(displayed as unknown as { getMetrics: () => object }).getMetrics = () => ({ viewWidth: 400, viewHeight: 580 })
+    focusView(displayed, TOP_VIEW)
+    expect(setScale).toHaveBeenLastCalledWith(READABLE_SCALE_NARROW)
     expect(blockBounds.top).toBe(20)
   })
 
@@ -208,8 +217,11 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     const top = shown(TOP_VIEW)
     expect(top.map((b) => b.type)).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived'), 'platformer_everytick'])
     expect(top[top.length - 1]).toBe(kid)
-    const section = shown(openSection('how-i-move'))
+    // The section's list shows no blocks; "all of them" shows every movement script; one script shows just it.
+    expect(shown(openSection('how-i-move'))).toEqual([])
+    const section = shown(openScript('how-i-move', ALL_SCRIPTS))
     expect(section.length).toBeGreaterThan(20)
+    expect(shown(openScript('how-i-move', section[3].id))).toEqual([section[3]])
     expect(section.every((b) => b.type === 'platformer_everytick' || b.type === 'platformer_whenbump')).toBe(true)
     expect(section).not.toContain(kid)
     // Every script is in exactly one of the two; the definition only shows drilled in.

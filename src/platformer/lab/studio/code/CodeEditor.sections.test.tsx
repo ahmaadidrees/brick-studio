@@ -37,7 +37,7 @@ function addScript(ws: Blockly.WorkspaceSvg, type = 'platformer_everytick'): Blo
 }
 
 describe('the Hero\'s code: movement folded into "How I move"', () => {
-  it('opens on the receivers and one "How I move" entry, which opens with a breadcrumb and Back', async () => {
+  it('opens on the receivers and one "How I move" entry, which opens as a list; a row shows that script alone', async () => {
     const { ws } = await openHero()
     const movement = ws.getTopBlocks(false).filter(isMovement)
     expect(movement.length).toBe(heroMovementLabels().size)
@@ -49,24 +49,50 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
     expect(top).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived')])
 
     fireEvent.click(entry)
-    const trail = screen.getByRole('navigation', { name: 'Where you are' })
-    expect(within(trail).getByRole('button', { name: "Hero's scripts" })).toBeInTheDocument()
-    expect(within(trail).getByText('How I move')).toHaveAttribute('aria-current', 'page')
-    expect(shownIds(ws).sort()).toEqual(movement.map((b) => b.id).sort())
+    const trail = () => screen.getByRole('navigation', { name: 'Where you are' })
+    expect(within(trail()).getByRole('button', { name: "Hero's scripts" })).toBeInTheDocument()
+    expect(within(trail()).getByText('How I move')).toHaveAttribute('aria-current', 'page')
+    // The list: one row per script, in plain words; no blocks on screen behind it.
+    const list = screen.getByRole('region', { name: /How I move: \d+ scripts/ })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(movement.length)
+    expect(list).toHaveTextContent('Late jump')
+    expect(list).not.toHaveTextContent(/Coyote|\bp speed|\btick\b/)
+    expect(shownIds(ws)).toEqual([])
 
-    fireEvent.click(within(trail).getByRole('button', { name: /Back/ }))
+    // A row: that script alone, and its short name in the trail.
+    const walk = movement.find((b) => getLabel(b).startsWith('Walk:'))!
+    fireEvent.click(within(list).getByRole('button', { name: /^Walk\b/ }))
+    expect(shownIds(ws)).toEqual([walk.id])
+    expect(within(trail()).getByText('Walk')).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('region', { name: /How I move: / })).toBeNull()
+
+    // "Show all at once" shows every script, as before.
+    fireEvent.click(within(trail()).getByRole('button', { name: /Back/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Show all \d+ at once/ }))
+    expect(shownIds(ws).sort()).toEqual(movement.map((b) => b.id).sort())
+    expect(within(trail()).getByText('All of them')).toHaveAttribute('aria-current', 'page')
+
+    // Back: the list, then the top view.
+    fireEvent.click(within(trail()).getByRole('button', { name: /Back/ }))
+    expect(screen.getByRole('region', { name: /How I move: / })).toBeInTheDocument()
+    fireEvent.click(within(trail()).getByRole('button', { name: /Back/ }))
     expect(screen.queryByRole('navigation', { name: 'Where you are' })).toBeNull()
     expect(shownIds(ws).map((id) => ws.getBlockById(id)!.type)).toEqual(top)
   }, 60000)
 
-  it('keeps every script editable in the section: its On/Off switch turns it off', async () => {
+  it('keeps every script editable in the section: the list\'s switch and the script\'s own switch turn it off and on', async () => {
     const { ws } = await openHero()
     fireEvent.click(screen.getByRole('button', { name: /How I move/ }))
     const gravity = ws.getTopBlocks(false).find((b) => getLabel(b) === 'Gravity: pull me down every tick')!
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off: Gravity' }))
+    expect(isScriptOff(gravity)).toBe(true)
+    expect(screen.getByRole('button', { name: 'Turn on: Gravity' })).toHaveTextContent('Off')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Gravity\b/ }))
     const toggle = gravity.getSvgRoot().querySelector('.code-script-switch')!
     expect(toggle).toBeTruthy()
     act(() => { toggle.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
-    expect(isScriptOff(gravity)).toBe(true)
+    expect(isScriptOff(gravity)).toBe(false)
   }, 60000)
 
   it('a diagnostic on a block inside a folded script opens "How I move" first', async () => {
@@ -78,12 +104,12 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
       ;(store as unknown as { set(patch: object): void }).set({ diagnostics: { [HERO]: [{ message: 'Check this block', severity: 'warning', blockId: inner.id }] } })
     })
     fireEvent.click(screen.getByRole('button', { name: /Check this block/ }))
-    expect(screen.getByRole('navigation', { name: 'Where you are' })).toHaveTextContent('How I move')
-    expect(shownIds(ws)).toContain(jump.id)
+    expect(screen.getByRole('navigation', { name: 'Where you are' })).toHaveTextContent(/How I move.*Jump/)
+    expect(shownIds(ws)).toEqual([jump.id])
     expect(select).toHaveBeenCalled()
   }, 60000)
 
-  it('a kid\'s script dropped on the top view stays on top; one made inside the section stays in it', async () => {
+  it('a kid\'s script dropped on the top view stays on top; one made beside a section script stays in the section', async () => {
     const { ws } = await openHero()
     const count = heroMovementLabels().size
     const onTop = addScript(ws)
@@ -91,8 +117,13 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
     expect(screen.getByRole('button', { name: /How I move/ })).toHaveTextContent(`${count} scripts`)
 
     fireEvent.click(screen.getByRole('button', { name: /How I move/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Walk\b/ }))
     expect(shownIds(ws)).not.toContain(onTop.id)
     const inside = addScript(ws, 'platformer_whenbump')
+    // It shows next to the script on screen (it doesn't vanish when dropped), and joins the section's list.
+    expect(shownIds(ws)).toContain(inside.id)
+    fireEvent.click(screen.getByRole('button', { name: /Back/ }))
+    expect(within(screen.getByRole('region', { name: /How I move: / })).getAllByRole('listitem')).toHaveLength(count + 1)
     fireEvent.click(screen.getByRole('button', { name: /Back/ }))
     expect(shownIds(ws)).toContain(onTop.id)
     expect(shownIds(ws)).not.toContain(inside.id)
@@ -104,6 +135,10 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
       const { store, ws, view } = await openHero()
       if (visit) {
         fireEvent.click(screen.getByRole('button', { name: /How I move/ }))
+        fireEvent.click(screen.getByRole('button', { name: /^Walk\b/ }))
+        fireEvent.click(screen.getByRole('button', { name: /Back/ }))
+        fireEvent.click(screen.getByRole('button', { name: /Show all \d+ at once/ }))
+        fireEvent.click(screen.getByRole('button', { name: /Back/ }))
         fireEvent.click(screen.getByRole('button', { name: /Back/ }))
         fireEvent.click(screen.getByRole('button', { name: /How I move/ }))
       }

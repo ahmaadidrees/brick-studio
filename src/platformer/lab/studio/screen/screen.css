@@ -280,6 +280,12 @@
      height until the kid goes back to the Code tab. */
   .cl-shell[data-screen='code']:has(.cl-slot-code :is(.costume-editor-layout, .sound-panel-container)) { --cl-code-top: calc(-1 * var(--cl-gap)); }
   .cl-shell[data-screen='code']:has(.cl-slot-code :is(.costume-editor-layout, .sound-panel-container)) :is(.cl-slot-stage, .cl-slot-level) { display: none; }
+  /* Inside a brick's code (a section, a script, a My Block): the level shrinks to a strip across the top and its bricks
+     step aside, so the blocks get the height. Back at the top view, both return. */
+  .cl-shell[data-screen='code']:has(.code-editor-root[data-inside='yes']) { --cl-code-top: clamp(96px, 16vh, 140px); }
+  .cl-shell[data-screen='code']:has(.code-editor-root[data-inside='yes']) .cl-slot-level { display: none; }
+  .cl-shell[data-screen='code']:has(.code-editor-root[data-inside='yes']) .cl-slot-stage { right: var(--cl-gap); }
+  .cl-code:has(.code-editor-root[data-inside='yes']) .cl-code-head .cl-chip { display: none; }
 }
 
 /* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
@@ -313,6 +319,8 @@
 .cl-phone[data-screen='play'] .play-coins { top: 64px; }
 
 /* Powers row in Code (PowersBar.tsx) */
+/* Inside a brick's code, Powers step aside: they belong to the brick, not to the script on screen. */
+.cl-code:has(.code-editor-root[data-inside='yes']) .cl-powers { display: none; }
 .cl-powers { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--cl-line); background: var(--cl-softer); }
 .cl-powers-title { margin-right: 4px; color: var(--cl-muted); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .cl-power { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 4px 0 10px; border: 1.5px solid #d0bfff; border-radius: 999px; background: #fff; font-size: 13px; animation: cl-pop 180ms var(--cl-ease) 1; }

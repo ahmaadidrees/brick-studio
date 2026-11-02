@@ -40,6 +40,27 @@ After four read-only explorers looked at the mode, the owner chose the small See
   - Duo card → See inside → 🔍 drills into "give a coin".
 - **Left for the focused "inside" view (next):** the Hero still opens at the smallest zoom. A drilled-in My Block lands at the right edge instead of in view. On a Duo the code area is still small.
 
+## The inside view (2026-11-02)
+Next, the owner said "Yes, build it" to the focused inside view.
+
+- **"How I move" opens as a list** of its 23 scripts, in the order they run (`int/inside-list-1366.png`).
+  - Each row has a plain name, what the script does, and its own On/Off switch.
+  - "when I bump" scripts are tagged.
+  - Tapping a row shows that script alone. "Show all 23 at once" keeps the old view.
+- **The trail names where you are,** e.g. "Hero's scripts › How I move › Move › move and collide". It is bigger now: 36 px buttons and 15 px text, where it was 28 px and 12 px. Back goes one step at a time: the My Block, then the script, then the list, then the top.
+- **Code opens readable.** Every view opens at 0.85 zoom (0.75 in a narrow editor), with its first script at the top left, so the kid scrolls for more. Before, it shrank everything to fit, which put the Hero at 0.65, and a drilled-in My Block could land at the right edge (`int/inside-drill-1366.png`).
+- **Room for the blocks inside.**
+  - Inside a section, a script or a My Block, Powers step aside.
+  - On a Duo, the level also shrinks to a strip and its bricks and the "Built-in" chip step aside. The blocks area goes from about 208 to 370 px (`int/inside-script-duo.png`).
+  - At the top view, everything is back.
+- **Plain words on the scripts:** "Late jump" and "Early jump" instead of Coyote time and Jump buffer; "full run speed" instead of p speed; "over and over" and "a moment at a time" instead of tick.
+  - These are drawn only. The saved labels, which sort scripts into the section, don't change, so old saves and the Hero upgrade aren't affected.
+- **No running glow inside a section.** Nearly every movement script runs every moment, so the glow only washed them out.
+- **A script dropped next to the one on screen stays visible** and joins the list. A diagnostic inside "How I move" opens its script directly.
+- **Saved data is unchanged:** the "changes nothing it saves" test now walks list → script → all → back.
+- **Checked in Chrome** at 1366x768, 820x1180 (touch) and 540x720 (touch): list, script, 🔍 drill, Back ×3, and the Duo layout. The ? block's "give a coin" now opens top-left.
+- **Not done:** on a Duo the top view is still about 310 px for the blocks, because the level and its bricks keep their row there.
+
 ## Checks
 - `tsc -b` is clean.
 - **Full `vitest run` on the merged lanes:** 302 files, 3,365 passed and 25 expected fail.

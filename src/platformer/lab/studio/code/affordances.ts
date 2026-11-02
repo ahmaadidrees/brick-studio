@@ -9,7 +9,7 @@
  */
 import * as Blockly from 'blockly/core'
 import { isHatOpcode } from '../../core/editor/definitions'
-import { currentProccode, currentSection, LABEL_PREFIX, labelData, readLabel, type LayerState } from './layers'
+import { ALL_SCRIPTS, currentProccode, currentSection, LABEL_PREFIX, labelData, plainLabel, readLabel, type LayerState } from './layers'
 import { sectionOfScript, type ScriptSection } from './sections'
 import { plainScratchFor } from './plainScratch'
 
@@ -187,7 +187,8 @@ export function renderLabels(ws: Blockly.WorkspaceSvg): void {
     const root = block.getSvgRoot()
     if (!root) continue
     const hat = takesLabel(block)
-    const text = hat ? getLabel(block) : ''
+    // Drawn in plain words; the saved label (which sorts the script into its section) stays as it is.
+    const text = hat ? plainLabel(getLabel(block)) : ''
     let sw = root.querySelector(`:scope > .${SWITCH_CLASS}`) as SVGGElement | null
     if (!(hat && editable)) {
       sw?.remove()
@@ -298,25 +299,39 @@ export class SectionTracker {
     if (section) this.pins.set(id, section)
     else this.pins.delete(id)
   }
+
+  /** Made (or pulled out) during this visit while a section was open: it shows next to the one script on screen. */
+  readonly isPinned = (block: Blockly.Block): boolean => this.pins.has(block.id)
 }
 
-/** Is this top-level stack shown in the given view? */
-export function isShownIn(block: Blockly.Block, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): boolean {
+/** Stacks made during this visit, shown beside the one script on screen so a dropped block never vanishes. */
+export type PinnedHere = (block: Blockly.Block) => boolean
+
+const NONE_PINNED: PinnedHere = () => false
+
+/**
+ * Is this top-level stack shown in the given view? In a section: none while its list is up, one script (and any stack made
+ * during this visit, `pinned`), or all of them.
+ */
+export function isShownIn(block: Blockly.Block, state: LayerState, sectionOf: SectionOf = NO_SECTIONS, pinned: PinnedHere = NONE_PINNED): boolean {
   const cur = currentProccode(state)
   const isDef = block.type === 'procedures_definition'
   if (cur !== null) return isDef && proccodeOf(block) === cur
-  return !isDef && sectionOf(block) === currentSection(state)
+  if (isDef || sectionOf(block) !== currentSection(state)) return false
+  if (!state.section) return true
+  if (!state.script) return false
+  return state.script === ALL_SCRIPTS || block.id === state.script || pinned(block)
 }
 
 /**
  * Top view: scripts only (definitions and sections kept out of the way). In a section: just its scripts. Drilled in: just
  * that definition. Nothing is moved or saved.
  */
-export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
+export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS, pinned: PinnedHere = NONE_PINNED): void {
   Blockly.Events.disable()
   try {
     for (const block of ws.getTopBlocks(false)) {
-      const shown = isShownIn(block, state, sectionOf)
+      const shown = isShownIn(block, state, sectionOf, pinned)
       if (shown && block.type === 'procedures_definition') block.setCollapsed(false)
       setShown(block as Blockly.BlockSvg, shown)
     }
@@ -327,8 +342,8 @@ export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf
  * Take hidden stacks out of Blockly's connection lookup again. Blockly adds every loaded or pasted block back a moment
  * later (a 1 ms timeout), which can land after the view was applied, so the editor calls this when a drag starts.
  */
-export function untrackHidden(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
-  for (const block of ws.getTopBlocks(false)) if (!isShownIn(block, state, sectionOf)) block.setConnectionTracking(false)
+export function untrackHidden(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS, pinned: PinnedHere = NONE_PINNED): void {
+  for (const block of ws.getTopBlocks(false)) if (!isShownIn(block, state, sectionOf, pinned)) block.setConnectionTracking(false)
 }
 
 /** Long programs open with their definitions folded; drilling into one expands it locally. */
@@ -340,30 +355,36 @@ export function foldLongDefinitions(ws: Blockly.Workspace): boolean {
   return true
 }
 
-/** Fit just the currently visible layer, excluding the hidden procedure bodies and sections. */
-export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
-  const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state, sectionOf))
+/** The zoom a layer opens at: big enough to read (Scratch opens at one fixed size too); a short layer can't go bigger. */
+export const READABLE_SCALE = 0.85
+/** A narrow editor (a Duo) opens a little smaller, so a whole block row still fits across. */
+export const READABLE_SCALE_NARROW = 0.75
+
+/**
+ * Open the layer on screen at a readable size with its first block at the top left, rather than shrinking everything to
+ * fit: the Hero's top view used to open at the smallest zoom, and a drilled-in My Block could land at the right edge.
+ * The kid scrolls for the rest. Hidden stacks (procedure bodies, other sections) don't count.
+ */
+export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS, pinned: PinnedHere = NONE_PINNED): void {
+  const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state, sectionOf, pinned))
   if (shown.length === 0) return
   const rectangles = shown.map((block) => {
     const bounds = block.getBoundingRectangle()
-    // The Blockly rectangle excludes our script label above the hat. Include its full text band before fitting or
-    // centering, otherwise the label's ascenders can land above the clipped workspace edge.
+    // The Blockly rectangle excludes our script label above the hat. Include its full text band before placing it,
+    // otherwise the label's ascenders can land above the clipped workspace edge.
     return takesLabel(block) && getLabel(block)
       ? new Blockly.utils.Rect(bounds.top - LABEL_BAND, bounds.bottom, bounds.left, bounds.right)
       : bounds
   })
   const left = Math.min(...rectangles.map((r) => r.left))
   const top = Math.min(...rectangles.map((r) => r.top))
-  const right = Math.max(...rectangles.map((r) => r.right))
-  const bottom = Math.max(...rectangles.map((r) => r.bottom))
   const metrics = ws.getMetrics()
-  const padding = 32
-  const scale = Math.min(0.85, Math.max(0.65, Math.min((metrics.viewWidth - padding * 2) / Math.max(1, right - left), (metrics.viewHeight - padding * 2) / Math.max(1, bottom - top))))
+  const padding = 24
+  const readable = metrics.viewWidth < 520 ? READABLE_SCALE_NARROW : READABLE_SCALE
+  const scale = Math.max(ws.options?.zoomOptions?.minScale ?? 0, Math.min(ws.options?.zoomOptions?.maxScale ?? 2, readable))
   ws.setScale(scale)
-  const width = metrics.viewWidth / scale
-  const height = metrics.viewHeight / scale
-  // A layer too long to fit still opens at its first block, rather than halfway down.
-  ws.scrollBoundsIntoView(new Blockly.utils.Rect(top - padding, top + height - padding, left - padding, left + width - padding), 0)
+  // Put the layer's top-left corner `padding` px in from the view's top-left (Blockly's scroll is the canvas offset).
+  ws.scroll(padding - left * scale, padding - top * scale)
 }
 
 export { LABEL_PREFIX }
@@ -479,8 +500,8 @@ export function tidyIfOverlapping(ws: Blockly.WorkspaceSvg, sectionOf: SectionOf
  * Scratch's "Clean up" for the layer on screen: its stacks in one column, in reading order, with room for each label.
  * Hidden stacks stay where they are (Blockly's own cleanUp would leave gaps where they sit). One undo step.
  */
-export function cleanUpShown(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS): void {
-  const shown = ws.getTopBlocks(true).filter((b) => b.isMovable() && isShownIn(b, state, sectionOf))
+export function cleanUpShown(ws: Blockly.WorkspaceSvg, state: LayerState, sectionOf: SectionOf = NO_SECTIONS, pinned: PinnedHere = NONE_PINNED): void {
+  const shown = ws.getTopBlocks(true).filter((b) => b.isMovable() && isShownIn(b, state, sectionOf, pinned))
   Blockly.Events.setGroup(true)
   try {
     let y = 0

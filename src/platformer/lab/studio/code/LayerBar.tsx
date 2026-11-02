@@ -9,6 +9,8 @@ interface Props {
   /** The brick's folded sections ("How I move · 23 scripts"), shown on the top view. */
   sections?: SectionEntry[]
   sectionTitle?: (id: string) => string
+  /** A section script's short name, for the breadcrumb ("How I move › Walk"). */
+  scriptTitle?: (id: string) => string
   onChange: (next: LayerState) => void
   onBack: () => void
   onOpen: (proccode: string) => void
@@ -16,7 +18,7 @@ interface Props {
 }
 
 /** Top view: the brick's sections and the "My Blocks" shelf. In a section or drilled in: breadcrumb and Back. */
-export const LayerBar: React.FC<Props> = ({ brickName, state, definitions, sections = [], sectionTitle, onChange, onBack, onOpen, onOpenSection }) => {
+export const LayerBar: React.FC<Props> = ({ brickName, state, definitions, sections = [], sectionTitle, scriptTitle, onChange, onBack, onOpen, onOpenSection }) => {
   if (isTop(state)) {
     if (definitions.length === 0 && sections.length === 0) return null
     const shelf = definitions.length > 0 && (
@@ -45,7 +47,7 @@ export const LayerBar: React.FC<Props> = ({ brickName, state, definitions, secti
       </div>
     )
   }
-  const crumbs = breadcrumb(state, brickName, sectionTitle)
+  const crumbs = breadcrumb(state, brickName, sectionTitle, scriptTitle)
   return (
     <nav className="layer-bar layer-crumbs" aria-label="Where you are">
       <button type="button" className="layer-back" onClick={onBack}>

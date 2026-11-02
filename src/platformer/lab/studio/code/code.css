@@ -1151,15 +1151,17 @@
   cursor: pointer;
 }
 .code-view-options-panel button:hover { background: #34405a; }
+/* Inside: one clear trail across the top ("Hero's scripts › How I move › Walk"), big enough to read and tap. */
 .code-editor-root-docked .layer-crumbs {
   flex: none;
-  min-height: 36px;
-  padding: 3px 8px;
-  gap: 6px;
+  min-height: 48px;
+  padding: 4px 10px;
+  gap: 8px;
 }
 .code-editor-root-docked .layer-back,
-.code-editor-root-docked .layer-crumb { min-height: 28px; padding: 0 9px; font-size: 12px; }
-.code-editor-root-docked .layer-here { font-size: 12px; }
+.code-editor-root-docked .layer-crumb { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.code-editor-root-docked .layer-here { font-size: 15px; font-weight: 800; }
+.code-editor-root-docked .layer-trail li + li::before { margin: 0 4px; }
 .code-editor-root-docked .layer-shelf { flex: none; min-height: 52px; padding: 4px 8px; }
 /* A finger needs the full 44px for Back and the breadcrumb. */
 @media (pointer: coarse) {
@@ -1179,3 +1181,83 @@
 .code-notice-text { margin: 0; font-size: 15px; line-height: 1.5; }
 .code-btn-primary:disabled { opacity: .5; cursor: default; filter: none; }
 .code-btn-primary.code-btn-danger { background-color: #dc2626; }
+
+/* A section ("How I move") as a list of its scripts, over the code area until the kid picks one (ScriptList.tsx). */
+.script-list {
+  position: absolute;
+  inset: 0;
+  z-index: 75;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px 16px;
+  background: var(--cl-softer, #fbf9f4);
+  color: var(--cl-ink, #1f2340);
+}
+.script-list-intro { margin: 0; max-width: 62ch; font-size: 14px; line-height: 1.45; color: var(--cl-ink-2, #2e3350); }
+.script-list-rows { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.script-list-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--cl-line, #e4dfd3);
+  border-radius: 12px;
+  background: #fff;
+}
+.script-list-switch {
+  flex: none;
+  align-self: center;
+  width: 52px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f9e44;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.script-list-row.is-off .script-list-switch { background: #ced4da; color: #343a40; }
+.script-list-open {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name go' 'detail go' 'when go';
+  align-items: center;
+  column-gap: 8px;
+  min-height: 44px;
+  padding: 4px 6px 4px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.script-list-open:hover { background: var(--cl-soft, #f1ece1); }
+.script-list-open:focus-visible, .script-list-switch:focus-visible, .script-list-all:focus-visible { outline: 3px solid var(--cl-blue, #3e5bd9); outline-offset: 2px; }
+.script-list-name { grid-area: name; font-size: 15px; font-weight: 800; }
+.script-list-detail { grid-area: detail; font-size: 13px; line-height: 1.35; color: var(--cl-muted, #4a5068); }
+.script-list-when { grid-area: when; margin-top: 2px; font-size: 11.5px; font-weight: 700; color: #0b7a55; text-transform: uppercase; letter-spacing: .03em; }
+.script-list-go { grid-area: go; font-size: 24px; line-height: 1; color: var(--cl-muted, #4a5068); }
+.script-list-row.is-off .script-list-name, .script-list-row.is-off .script-list-detail { opacity: .6; }
+.script-list-all {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--cl-line, #e4dfd3);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cl-ink, #1f2340);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.script-list-all:hover { background: var(--cl-soft, #f1ece1); }
