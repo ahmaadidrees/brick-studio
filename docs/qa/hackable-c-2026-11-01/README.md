@@ -16,7 +16,7 @@ Hackable Platformer accepts outside content. The owner's go: "Yes, start group C
 - **A block that can't run** gets its own title in the problems list.
 - **The header on tablets.**
   - The project name always keeps about six letters. Before, on an iPad in portrait it shrank to nothing, which already happened on main.
-  - At 768–900 px the save chip and Sign in show just their icons. Tapping the chip still explains where the project is saved.
+  - In a tight header the save chip gives way first, down to its icon; then the name, which keeps about six letters. Up to 1024 px (and 1200–1260 px, where the mode switch is centred) the chip and Sign in show just their icons; up to 1366 px My projects shows just its folder. Checked for overlaps at 13 widths from 768 to 1440. Tapping the chip still explains where the project is saved.
   - Wider screens are unchanged (`int/hdr-820.png`, `int/hdr-1366.png`).
 
 ## Checks
