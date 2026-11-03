@@ -14,12 +14,16 @@ export interface StageControlsProps {
   /** Current Play camera choice; null when the kid has scrolled/zoomed the view by hand. */
   playCamera?: PlayCameraMode | null
   onPlayCameraChoice?: (choice: PlayCameraMode) => void
+  /** The follow camera button, naming the kit's player ("Follow the Hero", "Follow the Car"). */
+  followLabel?: string
+  /** The whole-level camera button: "Whole level", or "Whole track" in a race. */
+  wholeLabel?: string
 }
 
 /**
  * The stage's small floating view tools: playback, zoom, fit and camera choice. Build or Play, and everything about placing, lives in the builder's own chrome, not here.
  */
-export function StageControls({ mode, codeView = false, pendingCodeChanges = false, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice }: StageControlsProps) {
+export function StageControls({ mode, codeView = false, pendingCodeChanges = false, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice, followLabel = 'Follow the Hero', wholeLabel = 'Whole level' }: StageControlsProps) {
   const isPlay = mode === 'play'
   return (
     <div className={`stage-view-tools${codeView ? ' stage-view-tools-code' : ''}`} role="toolbar" aria-label="Stage view">
@@ -33,22 +37,22 @@ export function StageControls({ mode, codeView = false, pendingCodeChanges = fal
           <button
             type="button"
             className={`stage-view-btn${playCamera === 'whole' ? ' active' : ''}`}
-            aria-label="Camera shows the whole level"
+            aria-label={wholeLabel === 'Whole level' ? 'Camera shows the whole level' : wholeLabel}
             aria-pressed={playCamera === 'whole'}
-            title="Camera: whole level"
+            title={wholeLabel === 'Whole level' ? 'Camera: whole level' : wholeLabel}
             onClick={() => onPlayCameraChoice('whole')}
           >
-            Whole level
+            {wholeLabel}
           </button>
           <button
             type="button"
             className={`stage-view-btn${playCamera === 'follow' ? ' active' : ''}`}
-            aria-label="Follow the Hero"
+            aria-label={followLabel}
             aria-pressed={playCamera === 'follow'}
-            title="Follow the Hero"
+            title={followLabel}
             onClick={() => onPlayCameraChoice('follow')}
           >
-            Follow the Hero
+            {followLabel}
           </button>
         </div>
       )}

@@ -134,6 +134,17 @@ describe('the class shelf', () => {
     expect((await call(ana, 'POST', [], { name: 'x', payload: big })).status).toBe(413);
   });
 
+  it('says which game each power is for (missing means the Platformer), and refuses a game it does not know', async () => {
+    const { call } = db({ shelf_needs_review: false });
+    await call(ana, 'POST', [], { name: 'Double jump', payload: power() });
+    await call(ana, 'POST', [], { name: 'Turbo', payload: { ...power('Turbo'), game: 'race' } });
+    const listed = (await call(sam, 'GET')).body.items as Row[];
+    expect(listed.map((i) => [i.name, i.game])).toEqual(expect.arrayContaining([['Double jump', 'platformer'], ['Turbo', 'race']]));
+    const turbo = listed.find((i) => i.name === 'Turbo')!;
+    expect((await call(sam, 'GET', [turbo.id])).body.item).toMatchObject({ game: 'race', payload: { game: 'race' } });
+    expect((await call(ana, 'POST', [], { name: 'x', payload: { ...power(), game: 'kart' } })).body.code).toBe('other_game');
+  });
+
   it('checks the whole power, with the app\'s own rules, and keeps only a power\'s own fields', async () => {
     const { call, items } = db();
     const post = (payload: unknown) => call(ana, 'POST', [], { name: 'x', payload });
@@ -145,8 +156,8 @@ describe('the class shelf', () => {
     const hidden = { type: 'platformer_everytick', id: 'a', next: { block: { type: 'control_if', inputs: { SUBSTACK: { block: { type: 'hack_teleport' } } } } } };
     expect((await post({ ...power(), blocks: [hidden] })).body.code).toBe('unknown_blocks');
     expect((await post({ ...power(), blocks: [{ type: 'controls_if' }] })).body.code).toBe('unknown_blocks');
-    // another game
-    expect((await post({ ...power(), game: 'race' })).body.code).toBe('other_game');
+    // a game this version does not know
+    expect((await post({ ...power(), game: 'kart' })).body.code).toBe('other_game');
     // shape and types
     for (const bad of [
       { ...power(), version: 2 },

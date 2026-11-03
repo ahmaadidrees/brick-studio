@@ -19,6 +19,14 @@ type Row = Record<string, any>;
 type Fail = (status: number, code: string, message: string) => never;
 
 const STATUSES = ['pending', 'approved', 'hidden'] as const;
+/** The Hackable games a power can be for (app: src/platformer/lab/core/contracts.ts KIT_IDS). Missing means the Platformer. */
+const GAMES = ['platformer', 'race', '3d'] as const;
+type Game = (typeof GAMES)[number];
+/** A row's game: lists select it from the payload as `game`, single reads carry the payload itself. */
+const gameOf = (row: Row): Game => {
+  const game = row.game ?? row.payload?.game;
+  return (GAMES as readonly unknown[]).includes(game) ? game : 'platformer';
+};
 export const SHELF_PAYLOAD_MAX = 65_536;
 const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
@@ -26,6 +34,7 @@ export function shelfItemView(row: Row, caller: Caller) {
   return {
     id: row.id as string,
     kind: row.kind as 'power',
+    game: gameOf(row),
     name: row.name as string,
     what: row.what as string,
     by: row.author_name as string,
@@ -82,7 +91,7 @@ export async function shelfRoute(
         : cls.students_can_share === false
           ? `class_id=eq.${cls.id}&author_id=eq.${caller.id}`
           : `class_id=eq.${cls.id}&or=(status.eq.approved,author_id.eq.${caller.id})`;
-      const rows = await service.rows('shelf_items', `${filter}&select=id,kind,name,what,author_id,author_name,status,uses,created_at&order=created_at.desc&limit=100`);
+      const rows = await service.rows('shelf_items', `${filter}&select=id,kind,game:payload->>game,name,what,author_id,author_name,status,uses,created_at&order=created_at.desc&limit=100`);
       return json({ items: rows.map((row) => shelfItemView(row, caller)), ...settings });
     }
     if (method === 'POST') {

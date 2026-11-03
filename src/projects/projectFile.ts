@@ -2,7 +2,8 @@ import { createPlatformerDocument, isPlatformerDocument, validatePlatformerDocum
 import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { BRICK_STUDIO_FILE_EXTENSION, validateBrickStudioDocument, type BrickStudioDocument } from '../brick/brickDocument'
-import { HACKABLE_FILE_MAX_CHARS, HACKABLE_FORMAT, isHackableDocument, type HackableDocument } from '../platformer/lab/studio/persist/hackableProjects'
+import { HACKABLE_FILE_MAX_CHARS, HACKABLE_FORMAT, isHackableDocument, saveKit, type HackableDocument } from '../platformer/lab/studio/persist/hackableProjects'
+import type { KitId } from '../platformer/lab/core/contracts'
 
 /*
  * One file for every kind of project: a 3D build, a platformer, a race track or a Hackable Platformer. A `.brickgineers` file says what it
@@ -28,9 +29,20 @@ const megabytes = (chars: number) => `${Math.floor(chars / 1_000_000)} MB`
 const TOO_BIG = `That file is too big to be a project. Project files can be up to ${megabytes(ANY_FILE_MAX_BYTES)}.`
 const TOO_BIG_NOT_HACKABLE = `That file is too big to open. 3D builds and 2D projects can be up to ${megabytes(PROJECT_FILE_MAX_BYTES)}.`
 
-export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable'
+/**
+ * What My projects calls a project. 'hackable' is a Hackable Platformer and 'hackable-race' a Hackable Racing project:
+ * both are kept, moved and saved as files the same way (a file's own `kind` is 'hackable' for both; the game is inside
+ * its save).
+ */
+export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable' | 'hackable-race'
 
-export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer' }
+export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer', 'hackable-race': 'Hackable Racing' }
+
+/** A Hackable project of any game. */
+export const isHackableKind = (kind: ProjectKind): kind is 'hackable' | 'hackable-race' => kind === 'hackable' || kind === 'hackable-race'
+
+/** The My projects kind of a Hackable project, from its game. */
+export const hackableKind = (kit: KitId | undefined): 'hackable' | 'hackable-race' => (kit === 'race' ? 'hackable-race' : 'hackable')
 
 export type ProjectContent =
   | { kind: '3d'; document: BrickStudioDocument }
@@ -46,7 +58,7 @@ export interface Project {
 export interface ProjectFile {
   format: typeof PROJECT_FILE_FORMAT
   version: typeof PROJECT_FILE_VERSION
-  kind: ProjectKind
+  kind: ProjectContent['kind']
   title: string
   savedAt: string
   /** A 3D build's BrickStudioDocument, a 2D level's PlatformerDocument, or a Hackable Platformer's document. */
@@ -54,6 +66,13 @@ export interface ProjectFile {
 }
 
 export const kindOfLevel = (level: LevelDesign): 'platformer' | 'race' => (kitOf(level) === 'race' ? 'race' : 'platformer')
+
+/** What My projects calls a project's content: a Hackable one by the game inside its save. */
+export const kindOfContent = (content: ProjectContent): ProjectKind =>
+  content.kind === 'hackable' ? hackableKind(hackableDocumentKit(content.document)) : content.kind
+
+/** The game a Hackable document's save names (the Platformer when it names none). */
+export const hackableDocumentKit = (document: HackableDocument): KitId => saveKit((document.save as { design?: unknown } | null)?.design)
 
 export function projectFile(project: Project, savedAt = new Date()): ProjectFile {
   const { content } = project
@@ -117,7 +136,7 @@ export function readProjectFile(text: string, fileName = ''): ReadResult {
     if (v.kind === 'hackable') {
       return isHackableDocument(v.document) && v.document.version === 1 && v.document.save && typeof v.document.save === 'object'
         ? { ok: true, project: { title, content: { kind: 'hackable', document: v.document } } }
-        : { ok: false, message: 'That Hackable Platformer could not be opened: the file is damaged or from a newer version.' }
+        : { ok: false, message: 'That Hackable project could not be opened: the file is damaged or from a newer version.' }
     }
     return { ok: false, message: 'That project is a kind this app does not know yet.' }
   }

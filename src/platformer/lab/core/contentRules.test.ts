@@ -77,7 +77,7 @@ describe('power files', () => {
     expect(checkPowerPayload(power()).ok).toBe(true)
     const platformer = checkPowerPayload(power({ game: 'platformer' }))
     expect(platformer.ok && platformer.power.game).toBe('platformer')
-    expect(checkPowerPayload(power({ game: 'race' }))).toMatchObject({ ok: false, refusal: 'other-game', message: POWER_REFUSALS['other-game'] })
+    expect(checkPowerPayload(power({ game: 'kart' }))).toMatchObject({ ok: false, refusal: 'other-game', message: POWER_REFUSALS['other-game'] })
   })
 
   it('refuse a power holding a block this version does not have, wherever it is', () => {

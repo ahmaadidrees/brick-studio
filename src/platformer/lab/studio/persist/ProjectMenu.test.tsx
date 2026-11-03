@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStarterProject } from '../starter'
+import { createRaceStarterProject } from '../race/raceProject'
 import { StudioStore } from '../store'
 import { clearStorageNotice, getStorageNotice, setStorageNotice } from './notice'
 import { StorageNoticeBar } from './StorageNoticeBar'
@@ -144,6 +145,34 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(store.getState().project).toBe(before)
     vi.useRealTimers()
+  })
+
+  it('in a race project, Start over goes back to the beginner track, still a race track, keeping its name', () => {
+    const race = new StudioStore(createRaceStarterProject())
+    race.renameProject('Ice ring')
+    render(<><StorageNoticeBar /><ProjectMenu store={race} /></>)
+    fireEvent.click(screen.getByRole('button', { name: 'Start over with the beginner track' }))
+    expect(screen.getByText('Start over with the beginner track? You can undo it right after.')).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: /^start over$/i }))
+    const design = race.getState().project.design
+    expect(design.kit).toBe('race')
+    expect(design.name).toBe('Ice ring')
+    expect(design.copies).toHaveLength(createRaceStarterProject().design.copies.length)
+    expect(getStorageNotice()?.message).toBe('Started over with the beginner track.')
+  })
+
+  it('Open File tells the file which game this project is', async () => {
+    const opened = vi.spyOn(projectIo, 'importProjectFile').mockResolvedValue({ ok: false, error: 'nope' })
+    const race = new StudioStore(createRaceStarterProject())
+    render(<ProjectMenu store={race} />)
+    fireEvent.change(screen.getByLabelText(/upload project file/i), { target: { files: [new File(['{}'], 'x.json')] } })
+    await act(async () => { await Promise.resolve() })
+    expect(opened).toHaveBeenCalledWith(expect.anything(), 'race')
+    cleanup()
+    render(<ProjectMenu store={store} />)
+    fireEvent.change(screen.getByLabelText(/upload project file/i), { target: { files: [new File(['{}'], 'x.json')] } })
+    await act(async () => { await Promise.resolve() })
+    expect(opened).toHaveBeenLastCalledWith(expect.anything(), 'platformer')
   })
 
   it('shows storage notices on the visible bar (menu closed) and allows dismissing them', () => {

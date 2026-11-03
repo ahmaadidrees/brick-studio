@@ -1,0 +1,120 @@
+/* Hackable Racing's Play HUD (RaceHud.tsx): big, plain and out of the way. Lane 4 of R1-SCREENS.md. */
+
+.race-hud {
+  position: absolute;
+  z-index: var(--z-hud, 30);
+  top: 12px;
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.race-hud > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  color: var(--text, #263c51);
+  background: rgba(255, 255, 255, 0.94);
+  border: 2px solid var(--text, #263c51);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md, 0 3px 10px rgba(0, 0, 0, 0.25));
+  font: 800 20px/1 var(--font-display, system-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.race-hud > .race-hud-place {
+  min-height: 52px;
+  padding: 0 16px;
+  font-size: 30px;
+  color: #fff;
+  background: #263c51;
+  border-color: #fff;
+}
+
+/* The countdown, over the middle of the track: the Starter's words, as big as the screen allows. */
+.race-countdown {
+  position: absolute;
+  z-index: var(--z-hud, 30);
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.race-countdown span {
+  display: block;
+  min-width: 1.4em;
+  padding: 0.08em 0.3em;
+  font: 900 clamp(64px, 20vmin, 150px)/1 var(--font-display, system-ui);
+  text-align: center;
+  color: #fff;
+  background: rgba(38, 60, 81, 0.86);
+  border: 4px solid #fff;
+  border-radius: 0.3em;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  animation: race-count-pop 260ms ease-out 1;
+}
+.race-countdown.is-go span { background: #2e9d57; }
+@keyframes race-count-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .race-countdown span { animation: none; }
+}
+
+.race-hud-note {
+  position: absolute;
+  z-index: var(--z-hud, 30);
+  top: 72px;
+  left: 50%;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 8px 14px;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  color: var(--text, #263c51);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md, 0 3px 10px rgba(0, 0, 0, 0.25));
+  font-weight: 800;
+  font-size: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* The results card's places. */
+.race-results-list {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 8px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.race-results-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--studio-panel-soft, #f3f5f9);
+  font-size: 17px;
+  font-weight: 800;
+}
+.race-results-list li.is-you { background: var(--primary-soft, #dbeafe); }
+.race-results-list b { min-width: 2.2em; font-family: var(--font-display, system-ui); }
+.race-results-list em { margin-left: auto; font-style: normal; font-size: 14px; color: var(--text-muted, #5b6b7d); }
+
+/* A phone: the view tools take the top row, so the lap and place go under them. */
+.cl-phone[data-screen='play'] .race-hud { top: 64px; }
+.cl-phone[data-screen='play'] .race-hud-note { top: 120px; }
+
+/* A Duo opened flat: everything on the right screen, clear of the hinge. */
+@media (horizontal-viewport-segments: 2) {
+  [data-screen='play'] .race-hud { left: calc(var(--cl-hinge-r, 50vw) + 12px); }
+  [data-screen='play'] :is(.race-countdown, .race-hud-note) { left: calc(var(--cl-hinge-r, 50vw) + var(--cl-pane, 50vw) / 2); }
+  [data-screen='play'] .race-hud-note { max-width: calc(var(--cl-pane, 50vw) - 24px); }
+}

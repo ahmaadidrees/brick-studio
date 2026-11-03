@@ -68,17 +68,29 @@ export function standardTemplates(): { key: GridBrickKey; template: GridBrickTem
   return out
 }
 
+type GridLike = Pick<BrickDef, 'grid'> & Partial<Pick<BrickDef, 'id' | 'remixOf'>>
+
+/**
+ * Does this level brick stand for that standard grid brick? Its character matches, and it is not another kit's built-in
+ * brick that happens to share the character: Hackable Racing's Boost pad is 'B', like the Platformer's Brick.
+ */
+function standsFor(brick: GridLike, key: GridBrickKey, ch: string | undefined): boolean {
+  if (!ch || brick.grid?.char !== ch) return false
+  const original = brick.id ? catalogOriginal(brick as BrickDef) : undefined
+  return !original || original.brick.id === `brick_${key}`
+}
+
 /** The standard grid brick (by its character) a level brick stands for, if any. */
-export function standardKeyOf(brick: Pick<BrickDef, 'grid'>): GridBrickKey | undefined {
-  const ch = brick.grid?.char
-  if (!ch) return undefined
-  return standardTemplates().find((t) => t.template.brick.grid?.char === ch)?.key
+export function standardKeyOf(brick: GridLike): GridBrickKey | undefined {
+  if (!brick.grid?.char) return undefined
+  return standardTemplates().find((t) => standsFor(brick, t.key, t.template.brick.grid?.char))?.key
 }
 
 export interface DrawerEntry {
   id: string
   name: string
-  category: CatalogCategory
+  /** A CatalogCategory for the Platformer; each kit names its own (kitScreens drawer.categories). */
+  category: string
   /** The level's brick this entry arms, or undefined for a standard grid brick the level does not have yet. */
   brick?: BrickDef
   /** First costume of the brick (or of the template), for the thumbnail. */
@@ -94,7 +106,7 @@ export function drawerEntries(bricks: readonly BrickDef[]): DrawerEntry[] {
   const used = new Set<string>()
   for (const { key, template } of standardTemplates()) {
     const ch = template.brick.grid?.char
-    const have = bricks.find((b) => b.grid?.char === ch)
+    const have = bricks.find((b) => standsFor(b, key, ch))
     if (have) used.add(have.id)
     out.push({
       id: gridEntryId(key),

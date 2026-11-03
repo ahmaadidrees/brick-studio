@@ -4,6 +4,10 @@ import { createStarterProject } from '../starter'
 import { StudioStore } from '../store'
 import { StudioShell } from './StudioShell'
 import { TIPS_SEEN_KEY, markTipsSeen, tipsSeen } from './firstRunTips'
+import { helpFor } from './StudioHelp'
+import { createRaceStarterProject } from '../race/raceProject'
+import { RACE_COPY, RACE_HELP } from '../race/raceCopy'
+import { KIT_SCREENS } from '../kitScreens'
 
 vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gridBricks')>()), gridBrickTemplate: (await import('../builder/testGridBricks')).fakeGridTemplate }))
 vi.mock('../CodeEditor', () => ({ CodeEditor: () => <div aria-label="Docked code editor">Code editor</div> }))
@@ -116,5 +120,52 @@ describe('Help in the studio header', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show the first-run tips again' }))
     expect(screen.getByRole('radio', { name: 'Build' }).getAttribute('aria-checked')).toBe('true')
     expect(tips()).toBeTruthy()
+  })
+})
+
+describe('in a race project (Hackable Racing)', () => {
+  const race = () => render(<StudioShell store={new StudioStore(createRaceStarterProject())} firstRunTips />)
+
+  it('the tips have their own key: a kid who saw the Platformer’s still sees the race ones, once', () => {
+    expect(RACE_COPY.tipsKey).not.toBe(TIPS_SEEN_KEY)
+    markTipsSeen()
+    const first = race()
+    const card = tips()!
+    expect(card).toBeTruthy()
+    expect(within(card).getByText(/paint the track/)).toBeTruthy()
+    expect(within(card).getByText(/see how it drives/)).toBeTruthy()
+    expect(within(card).getByText('Press Play to race your track.')).toBeTruthy()
+    expect(tipsSeen(undefined, RACE_COPY.tipsKey)).toBe(true)
+    first.unmount()
+    race()
+    expect(tips()).toBeNull()
+  })
+
+  it('seeing the race tips does not count as seeing the Platformer’s', () => {
+    markTipsSeen(undefined, RACE_COPY.tipsKey)
+    expect(tipsSeen()).toBe(false)
+    studio()
+    expect(tips()).toBeTruthy()
+  })
+
+  it('Help talks about the track, the Car and racing, and leaves out + Power', () => {
+    render(<StudioShell store={new StudioStore(createRaceStarterProject())} firstRunTips={false} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }))
+    const help = screen.getByRole('dialog', { name: 'Help' })
+    expect(within(help).getByText('How to build, code and race your track.')).toBeTruthy()
+    expect(within(help).getByText(/paint the track/)).toBeTruthy()
+    expect(within(help).getByText(/Tap your Car to change its sliders/)).toBeTruthy()
+    expect(within(help).getByText(/left and right steer, up is gas and down is brake/)).toBeTruthy()
+    expect(within(help).queryByText('+ Power:')).toBeNull()
+    expect(within(help).getByText('My Blocks:')).toBeTruthy()
+  })
+})
+
+describe('the words a kid reads in a race project', () => {
+  it('say track, Car and race, never the studio’s own words', () => {
+    const words = JSON.stringify(RACE_COPY).toLowerCase()
+    for (const engine of ['tick', 'sprite', 'kit', 'platformer', 'hero', 'level']) expect(words).not.toContain(engine)
+    expect(helpFor(KIT_SCREENS.race.copy)).toBe(RACE_HELP)
+    expect(helpFor(KIT_SCREENS.platformer.copy).power).toBe(true)
   })
 })

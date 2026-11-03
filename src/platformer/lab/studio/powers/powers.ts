@@ -4,10 +4,11 @@
  * their own (and a new name when one clashes), and records on the brick which blocks and variables came from which
  * power. Taking it off removes exactly those. Everything here is pure: it takes a project and returns a new one.
  */
-import type { BrickDef, SnappedPower, VariableDecl } from '../../core/contracts'
+import { designKit, isKitId, type BrickDef, type KitId, type SnappedPower, type VariableDecl } from '../../core/contracts'
 import { checkPowerPayload, checkPowerText, POWER_KIND, type PowerCheck } from '../../core/contentRules'
 import { compileWorkspace } from '../../core/editor/compile'
 import { Blocks, type BlockJson } from '../blockBuilder'
+import { KITS } from '../../kits'
 import { STAGE_ID, type StudioProject } from '../store'
 
 export const POWER_FILE_KIND = POWER_KIND
@@ -34,6 +35,8 @@ export interface PowerBrick {
   what: string
   /** "brick": any brick but the Stage. "stage": only the Stage (rules for the whole level). */
   fits: 'brick' | 'stage'
+  /** The Hackable game it was made in, and the only one it shows in. Missing means the Platformer. */
+  game?: KitId
   /** Top-level blocks: scripts (hats and their stacks) and My Block definitions, as Blockly saves them. */
   blocks: BlockJson[]
   variables: PowerVariable[]
@@ -107,12 +110,20 @@ const proccodeOf = (b: Json): string | undefined =>
 
 // ------------------------------------------------------------------------------------------------ fitting
 
-export function fits(power: PowerBrick, brick: BrickDef): boolean {
+/** The game a power is for. Powers made before kits are Platformer powers. */
+export const powerGame = (power: Pick<PowerBrick, 'game'>): KitId => power.game ?? 'platformer'
+
+/** Is this power for this game? A power shows only in its own game. */
+export const forGame = (power: Pick<PowerBrick, 'game'>, kit: KitId): boolean => powerGame(power) === kit
+
+export function fits(power: PowerBrick, brick: BrickDef, kit: KitId = 'platformer'): boolean {
+  if (!forGame(power, kit)) return false
   return power.fits === 'stage' ? brick.id === STAGE_ID || !!brick.isStage : brick.id !== STAGE_ID && !brick.isStage && !brick.grid
 }
 
-export function whyNot(power: PowerBrick, brick: BrickDef): string | null {
-  if (fits(power, brick)) return null
+export function whyNot(power: PowerBrick, brick: BrickDef, kit: KitId = 'platformer'): string | null {
+  if (fits(power, brick, kit)) return null
+  if (!forGame(power, kit)) return `${power.name} is a ${KITS[powerGame(power)].name} power, so it snaps onto ${KITS[powerGame(power)].name} bricks.`
   if (power.fits === 'stage') return `${power.name} changes the whole level, so it snaps onto the Stage.`
   if (brick.grid) return `${brick.name} is painted on the grid; powers snap onto bricks you place.`
   return `${power.name} snaps onto a brick, not the Stage.`
@@ -388,6 +399,8 @@ export function makePower(project: StudioProject, brickId: string, opts: { name:
     credits,
     what: opts.what.trim(),
     fits: brickId === STAGE_ID ? 'stage' : 'brick',
+    // Platformer powers stay as they were before kits, so their files are unchanged.
+    ...(designKit(project.design) === 'platformer' ? {} : { game: designKit(project.design) }),
     blocks,
     variables,
   }
@@ -417,6 +430,7 @@ function powerFrom(check: PowerCheck): PowerRead {
       credits: v.credits.map((c) => c.slice(0, 40)),
       what: v.what?.slice(0, 200) ?? '',
       fits: v.fits,
+      ...(v.game !== undefined && v.game !== 'platformer' ? { game: v.game } : {}),
       blocks: v.blocks as BlockJson[],
       variables: v.variables as PowerVariable[],
     },

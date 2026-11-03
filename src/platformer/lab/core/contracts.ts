@@ -66,6 +66,8 @@ export type HatOpcode =
   /** Platformer hooks: the brick's body just landed on something / just left the ground (started by the physics step). */
   | 'platformer_whenland'
   | 'platformer_whenleaveground'
+  /** Racing extension (docs/qa/hackable-modes R1): this racer just crossed the finish line the right way, every gate passed. */
+  | 'race_whenlap'
 
 export interface Script {
   id: string
@@ -194,9 +196,21 @@ export interface CopyPlacement {
   knobs?: Record<string, Value>
 }
 
+/**
+ * Which Hackable game a project is (docs/qa/hackable-modes): the Platformer, Racing or 3D. Every kit shares this core's
+ * scheduler, blocks and save format; a kit adds its own blocks, lifecycle and Stage on top.
+ */
+export type KitId = 'platformer' | 'race' | '3d'
+export const KIT_IDS: readonly KitId[] = ['platformer', 'race', '3d']
+export const isKitId = (value: unknown): value is KitId => typeof value === 'string' && (KIT_IDS as readonly string[]).includes(value)
+/** A design's kit. Missing means the Platformer, so every save made before kits opens unchanged. */
+export const designKit = (design: Pick<LevelDesign, 'kit'>): KitId => design.kit ?? 'platformer'
+
 export interface LevelDesign {
   id: string
   name: string
+  /** Which Hackable game this is. Missing means the Platformer; the studio never writes 'platformer' itself. */
+  kit?: KitId
   /** The level is the stage (decision 2): fencing, edge, random position. */
   bounds: StageBounds
   /** Holds global variables/lists, stage scripts and backdrops. */
@@ -232,6 +246,11 @@ export interface GridSpec {
   char: string
   /** Pick the starting costume from the cell above (costume 2 when covered by the same brick: grass top vs dirt). */
   autotile?: boolean
+  /**
+   * Hackable Racing: this grid brick is a finish line, and racers cross it heading this way (a Scratch direction: 90
+   * right, 0 up, 180 down, -90 left). Laps count from it (core/race.ts). Missing means an ordinary brick.
+   */
+  finish?: number
 }
 
 export const gridCopyId = (col: number, row: number): string => `cell:${col}:${row}`

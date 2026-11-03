@@ -1,16 +1,17 @@
-import { Code2, MoreHorizontal, Trash2, X } from 'lucide-react'
+import { ArrowUp, Code2, MoreHorizontal, RotateCw, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import type { Value } from '../../core/contracts'
-import { useStudio, type StudioStore } from '../store'
+import type { BrickDef, Value } from '../../core/contracts'
+import { useStudio, type FinishDirection, type StudioStore } from '../store'
 import { KnobsCard } from '../workshop/KnobsCard'
-import { formatKnob } from '../workshop/knobs'
-import { isKnobNumber, knobRange, snapKnob } from '../builder/knobs'
+import { formatKnob, knobSpecFor } from '../workshop/knobs'
+import { isKnobNumber, knobRange, snapKnob, type KnobRange } from '../builder/knobs'
 import { CostumeThumb } from '../builder/tileArt'
 import { knobEdit, removeCopyEdit, type History } from '../builder/history'
 import { isSingleton } from '../builder/limits'
 import { cellCount, removeCell, selectedCell } from '../builder/cells'
 import { isCatalogBrick, originalBrickName } from '../builder/catalog'
 import { BrickName } from './BrickName'
+import '../race/raceBuild.css'
 
 /**
  * Build's right column, shown while something in the level is selected: the brick's name, Sliders · Look, "Every
@@ -52,6 +53,8 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
   const original = originalBrickName(brick)
   const builtIn = isCatalogBrick(brick)
   const details = single ? 'One per level: place it again to move it.' : `${count} in this level`
+  const spec = knobSpecFor(brick)
+  const finish = brick.grid?.finish !== undefined
 
   const remove = () => {
     setMenu(false)
@@ -109,17 +112,20 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
             <button type="button" aria-pressed={scope === 'all'} onClick={() => store.setSliderScope('all')}>Every {brick.name}</button>
             <button type="button" aria-pressed={scope === 'one'} onClick={() => store.setSliderScope('one')}>Just this one</button>
           </div>}
-          {single ? <KnobsCard store={store} brickId={brick.id} compact /> : knobs.length === 0
+          {finish && <FinishArrow store={store} history={history} brick={brick} />}
+          {single ? <KnobsCard store={store} brickId={brick.id} compact /> : finish && knobs.length === 0 ? null : knobs.length === 0
             ? <p className="cl-muted cl-empty">No sliders yet. In Code, make a variable and turn on “Show as a slider”.</p>
             : <div className="cl-sliders" role="group" aria-label="Sliders">
               {knobs.map((v) => {
                 const own = !!copy && Object.prototype.hasOwnProperty.call(copy.knobs ?? {}, v.id)
                 const value: Value = thisOne ? copy?.knobs?.[v.id] ?? v.value : v.value
                 const start = ranges.current.values.get(v.id) ?? v.value
+                // A built-in brick's own numbers (a Computer racer's) have a fixed range; others grow from where they started.
+                const fixed = spec.knobs.find((k) => k.id === v.id && k.min !== undefined && k.max !== undefined)
                 return <div key={v.id} className="cl-slider">
                   <span className="cl-slider-name">{v.name}{own && <small className="cl-own">its own</small>}</span>
                   {isKnobNumber(value) && isKnobNumber(start)
-                    ? <KnobSlider name={v.name} start={start} value={value} onChange={(n) => change(v.id, n)} />
+                    ? <KnobSlider name={v.name} range={fixed && isKnobNumber(value) ? { min: Math.min(fixed.min!, value), max: Math.max(fixed.max!, value), step: fixed.step ?? 0.05 } : knobRange(start, value)} value={value} onChange={(n) => change(v.id, n)} />
                     : typeof value === 'boolean'
                       ? <button type="button" className="cl-btn" aria-label={v.name} aria-pressed={value} onClick={() => change(v.id, !value)}>{value ? 'On' : 'Off'}</button>
                       : <span className="cl-slider-value">{String(value)}</span>}
@@ -147,10 +153,32 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
   )
 }
 
-function KnobSlider({ name, start, value, onChange }: { name: string; start: number; value: number; onChange: (n: number) => void }) {
-  const r = knobRange(start, value)
+function KnobSlider({ name, range: r, value, onChange }: { name: string; range: KnobRange; value: number; onChange: (n: number) => void }) {
   return <span className="cl-slider-control">
     <input type="range" aria-label={name} min={r.min} max={r.max} step={r.step} value={value} onChange={(e) => onChange(snapKnob(Number(e.target.value), r.step))} />
     <output className="cl-slider-value">{formatKnob(value)}</output>
   </span>
+}
+
+/** Grid steps a finish arrow can point, in turning order (clockwise from up), and their plain words. */
+const FINISH_TURN: readonly FinishDirection[] = [0, 90, 180, -90]
+const FINISH_WAY: Readonly<Record<FinishDirection, string>> = { 0: 'up', 90: 'right', 180: 'down', [-90]: 'left' }
+const finishIndex = (direction: number) => ((Math.round(direction / 90) % 4) + 4) % 4
+
+/** The finish line's arrow: which way cars cross it for a lap to count. Turning it is one undo step. */
+function FinishArrow({ store, history, brick }: { store: StudioStore; history?: History; brick: BrickDef }) {
+  const now = FINISH_TURN[finishIndex(brick.grid?.finish ?? 90)]
+  const next = FINISH_TURN[(finishIndex(now) + 1) % 4]
+  const turn = () => {
+    history?.push({ undo: () => store.setFinishDirection(brick.id, now), redo: () => store.setFinishDirection(brick.id, next) })
+    store.setFinishDirection(brick.id, next)
+  }
+  return <div className="cl-finish" role="group" aria-label="Finish line arrow">
+    <span className="cl-slider-name">Cars cross it going {FINISH_WAY[now]}</span>
+    <span className="cl-slider-control">
+      <ArrowUp size={28} aria-hidden="true" className="cl-finish-arrow" style={{ transform: `rotate(${now}deg)` }} />
+      <button type="button" className="cl-btn" aria-label={`Turn the arrow (it points ${FINISH_WAY[now]})`} onClick={turn}><RotateCw size={16} aria-hidden="true" /> Turn</button>
+    </span>
+    <small className="cl-muted">Laps count when cars cross the line this way.</small>
+  </div>
 }

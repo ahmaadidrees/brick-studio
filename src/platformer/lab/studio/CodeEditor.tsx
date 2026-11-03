@@ -7,6 +7,7 @@ Blockly.setLocale(En as unknown as Record<string, string>)
 import type { StudioStore } from './store'
 import { STAGE_ID } from './store'
 import type { Diagnostic } from '../core/editor/compile'
+import { designKit } from '../core/contracts'
 import { registerEditorBlocks } from '../core/editor/definitions'
 import { setEditorContext } from '../core/editor/context'
 import { createContinuousToolbox, myBlocksFlyout, registerToolboxPlugins } from '../core/editor/toolbox'
@@ -220,7 +221,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     attachAffordances()
 
     // 4. Configure continuous toolbox (filter Motion if stage selected)
-    const toolboxDef = createContinuousToolbox(ctx, { isStage })
+    const toolboxDef = createContinuousToolbox(ctx, { isStage, kit: designKit(store.getState().project.design) })
     const slotShadows = slotShadowsFromToolbox(toolboxDef)
     const variableValue = (id: string) => ctx.getVariables?.().find((v) => v.id === id)?.value
 

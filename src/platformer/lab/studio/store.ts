@@ -8,8 +8,9 @@ import type { BrickDef, Costume, CopyPlacement, LevelDesign, SnappedPower, Sound
 import { type Diagnostic } from '../core/editor/compile'
 import { play, type Runtime } from '../core/index'
 import { deterministicStringify } from '../core/save'
-import { parseGridCopyId } from '../core/contracts'
+import { designKit, parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
+import { screensFor } from './kitScreens'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, powerProblem, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
@@ -26,6 +27,9 @@ export type StudioScreen = 'build' | 'code' | 'play'
 export type CardTab = 'sliders' | 'code' | 'look'
 export type SliderScope = 'all' | 'one'
 export type EditorTab = 'code' | 'costumes' | 'sounds'
+/** Which way racers cross a finish line: right, up, down or left (a Scratch direction; validateDesign checks it). */
+export type FinishDirection = 0 | 90 | 180 | -90
+const FINISH_DIRECTIONS: readonly number[] = [0, 90, 180, -90]
 
 export interface StudioState {
   project: StudioProject
@@ -168,7 +172,7 @@ export class StudioStore {
     this.set({ mode: 'build', runtime: null, previewPaused: false, pendingCodeChanges: false })
   }
 
-  /** Build · Code · Play. Code opens on the selected brick, else the brick last open in Code, else the Hero. */
+  /** Build · Code · Play. Code opens on the selected brick, else the brick last open in Code, else the kit's player. */
   setScreen(screen: StudioScreen, brickId?: string) {
     const s = this.state
     if (screen === 'play') {
@@ -188,7 +192,8 @@ export class StudioStore {
     const copyBrick = s.selectedCopyId ? (parseGridCopyId(s.selectedCopyId) ? s.selectedBrickId : d.copies.find((c) => c.id === s.selectedCopyId)?.brickId) : undefined
     if (copyBrick && this.brick(copyBrick)) return copyBrick
     if (this.codeVisited && this.brick(s.selectedBrickId)) return s.selectedBrickId
-    return d.bricks.find((b) => b.id === 'brick_hero')?.id ?? d.bricks[0]?.id ?? STAGE_ID
+    const player = screensFor(d).playerBrickId
+    return (d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player))?.id ?? d.bricks[0]?.id ?? STAGE_ID
   }
 
   /** Code: run the whole level, or just the open brick. */
@@ -278,6 +283,13 @@ export class StudioStore {
     this.setDesign({ ...d, tiles: { ...layer, data } })
   }
 
+  /** Hackable Racing: which way racers cross this finish line brick (`grid.finish`). Other bricks are left alone. */
+  setFinishDirection(brickId: string, direction: FinishDirection) {
+    const brick = this.brick(brickId)
+    if (!brick?.grid || brick.grid.finish === undefined || !FINISH_DIRECTIONS.includes(direction) || brick.grid.finish === direction) return
+    this.updateBrick(brickId, (b) => ({ ...b, grid: { ...b.grid!, finish: direction } }))
+  }
+
   // ------------------------------------------------------------ bricks
 
   brick(brickId: string): BrickDef | undefined {
@@ -340,7 +352,7 @@ export class StudioStore {
    */
   snapPower(brickId: string, power: PowerBrick): SnappedPower | null {
     const brick = this.brick(brickId)
-    if (!brick || !fitsPower(power, brick) || powerProblem(power)) return null
+    if (!brick || !fitsPower(power, brick, designKit(this.state.project.design)) || powerProblem(power)) return null
     this.flushEditor()
     const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
     this.applyPowerChange(brickId, project)

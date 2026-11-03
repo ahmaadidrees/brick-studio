@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CopyPlacement, Target } from '../core/contracts'
+import type { CopyPlacement, LevelDesign, Target } from '../core/contracts'
 import { TILE_SIZE } from '../core/contracts'
 import { activeQuestion, type AskPrompt } from '../core/sensing'
 import { StudioStore, useStudio } from './store'
@@ -33,7 +33,7 @@ import { gridCopyId } from '../core/contracts'
 import { builderSession } from './builder/session'
 import { addCopyEdit, moveCopyEdit, removeCopyEdit, tileStrokeEdit, type History, type TileChange } from './builder/history'
 import { cellsOnLine, decidePress, tileCharAt, worldToCell, type BuildTool, type Cell, type PressDecision } from './builder/tilePaint'
-import { clampToLevel, copyBox, landingSpot } from './builder/placement'
+import { clampToLevel, copyBox, landingPose, landingSpot } from './builder/placement'
 import {
   globalImageCache,
   renderBuildMode,
@@ -41,12 +41,39 @@ import {
   type TargetPose,
 } from './stage/renderer'
 import { StageControls } from './stage/StageControls'
+import { isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
 import './stage/stage.css'
 
 /** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
 export interface BuildTools {
   history: History
   erasing: boolean
+}
+
+/**
+ * The player Play's follow camera looks at: the first placed copy (not a clone) of any brick that is the kit's player,
+ * so the Hero, the Car and a remixed "My Car" all count, even when another player brick sits unplaced in the drawer.
+ */
+export function followTargetOf(design: LevelDesign, targets: readonly Target[]): Target | undefined {
+  const players = new Set(design.bricks.filter((b) => isPlayerBrick(design, b.id)).map((b) => b.id))
+  return targets.find((t) => !t.isStage && !t.isClone && players.has(t.brickId))
+}
+
+/** Seen from above (Racing), the screen's shorter side shows this many steps (22 bricks), whichever way it is held. */
+export const TOP_DOWN_SHORT_SIDE = 360
+
+/**
+ * The follow camera's width in steps for a kit. The descriptor's own number wins; a race is seen from above, so it
+ * shows about the same patch of track on any screen (the 11-step Car is 11 to 30 pixels long, with road ahead to see); the
+ * Platformer keeps its side view (followViewWidth).
+ */
+export function playFollowWidth(screens: Pick<KitScreens, 'kit' | 'followViewWidth'>, bounds: LevelDesign['bounds'], viewport: Viewport): number {
+  if (screens.followViewWidth) return screens.followViewWidth
+  if (screens.kit === 'race') {
+    const short = Math.min(viewport.width, viewport.height)
+    if (short > 0) return (TOP_DOWN_SHORT_SIDE * viewport.width) / short
+  }
+  return followViewWidth(bounds, viewport)
 }
 
 /** Bricks snap to an 8-step grid, like the old stage's default. */
@@ -79,6 +106,9 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   const pendingCodeChanges = useStudio(store, (s) => s.pendingCodeChanges)
   const sceneActive = !!runtime
   const design = useStudio(store, (s) => s.project.design)
+  // The kit's screens: whom Play's camera follows, how wide, and what the level's background is.
+  const screens = screensFor(design)
+  const background = screens.background
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const erasing = tools?.erasing ?? false
@@ -145,6 +175,8 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     startWorldY: number
     startCopyX: number
     startCopyY: number
+    /** moveCopy: the copy's direction when picked up (a car may turn to face the track when dropped). */
+    startCopyDirection: number | undefined
     /** paint: the tile being painted and the cells changed so far (one undo step). */
     paintChar: string
     paintLast: Cell | null
@@ -162,6 +194,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     startWorldY: 0,
     startCopyX: 0,
     startCopyY: 0,
+    startCopyDirection: undefined,
     paintChar: '.',
     paintLast: null,
     changes: [],
@@ -207,15 +240,14 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
       if (playFree) return camera
       if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
-      const heroId = design.bricks.find((brick) => brick.name === 'Hero' || brick.id === 'brick_hero' || brick.remixOf === 'brick_hero')?.id
-      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === heroId)
+      const first = followTargetOf(design, world.targets)
       const point = first ?? {
         x: (world.bounds.left + world.bounds.right) / 2,
         y: (world.bounds.bottom + world.bounds.top) / 2,
       }
-      return followCamera(world.bounds, viewport, point, followViewWidth(world.bounds, viewport))
+      return followCamera(world.bounds, viewport, point, playFollowWidth(screens, world.bounds, viewport))
     },
-    [playFree, camera, playCameraMode, viewport, design.bricks],
+    [playFree, camera, playCameraMode, viewport, design, screens],
   )
 
   /** Camera used for pointer maths. */
@@ -362,6 +394,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
           renderPlayMode(ctx, runtime.world, {
             camera: playCamera,
             viewport,
+            background,
             prevPoses: prevPosesRef.current,
             interpAlpha: alpha,
           })
@@ -373,7 +406,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
 
     animId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animId)
-  }, [sceneActive, previewPaused, runtime, computePlayCamera, viewport, accumulator, audioManager])
+  }, [sceneActive, previewPaused, runtime, computePlayCamera, viewport, accumulator, audioManager, background])
 
   // The brush preview is the armed brick (not while a grid brick or the eraser is armed: those preview on the cell).
   const previewBrickId = brushTile || erasing ? null : brushBrickId
@@ -392,6 +425,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       renderBuildMode(ctx, design, {
         camera,
         viewport,
+        background,
         gridSnap: true,
         selectedCopyId,
         selectPulse,
@@ -405,7 +439,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     draw()
     return globalImageCache.onImageLoaded(draw)
     // hoverInfo is derived from tileHover, the brush brick and erasing; revision covers design changes.
-  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, selectPulse, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
+  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, selectPulse, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision, background])
 
   // Helper to get canvas-relative coordinates
   const getCanvasCoords = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
@@ -426,6 +460,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       startWorldY: wy,
       startCopyX: 0,
       startCopyY: 0,
+      startCopyDirection: undefined,
       paintChar: '.',
       paintLast: null,
       changes: [],
@@ -445,10 +480,11 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     dragRef.current.changes.push({ col: cell.col, row: cell.row, from, to: ch })
   }
 
-  /** Put a brick down where the kid pressed: inside the level, and a Hero never inside the ground. */
+  /** Put a brick down where the kid pressed: inside the level, a Hero never inside the ground, a car clear of barriers and facing along the track. */
   const placeCopy = (brickId: string, x: number, y: number) => {
-    const at = landingSpot(store.getState().project.design, { brickId }, x, y, GRID)
+    const at = landingPose(store.getState().project.design, { brickId }, x, y, GRID)
     const id = store.addCopy(brickId, at.x, at.y)
+    if (at.direction !== undefined) store.updateCopy(id, { direction: at.direction })
     const copy = store.getState().project.design.copies.find((c) => c.id === id)
     if (copy && history) history.push(addCopyEdit(history, copy))
   }
@@ -464,15 +500,18 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     if (drag.mode === 'moveCopy' && drag.moved && selectedCopyId) {
       let copy = store.getState().project.design.copies.find((c) => c.id === selectedCopyId)
       if (copy) {
-        // Dropped: a Hero lands on top of the ground rather than inside it.
-        const at = landingSpot(store.getState().project.design, copy, copy.x, copy.y, GRID)
-        if (at.x !== copy.x || at.y !== copy.y) {
+        // Dropped: a Hero lands on top of the ground rather than inside it; a car clears barriers and faces along the track.
+        const at = landingPose(store.getState().project.design, copy, copy.x, copy.y, GRID)
+        if (at.x !== copy.x || at.y !== copy.y || (at.direction !== undefined && at.direction !== copy.direction)) {
           store.updateCopy(copy.id, at)
           copy = { ...copy, ...at }
         }
       }
-      if (copy && history && (copy.x !== drag.startCopyX || copy.y !== drag.startCopyY)) {
-        history.push(moveCopyEdit(history, copy.id, { x: drag.startCopyX, y: drag.startCopyY }, { x: copy.x, y: copy.y }))
+      const turned = copy !== undefined && copy.direction !== drag.startCopyDirection
+      if (copy && history && (copy.x !== drag.startCopyX || copy.y !== drag.startCopyY || turned)) {
+        history.push(moveCopyEdit(history, copy.id,
+          { x: drag.startCopyX, y: drag.startCopyY, ...(turned ? { direction: drag.startCopyDirection } : {}) },
+          { x: copy.x, y: copy.y, ...(turned ? { direction: copy.direction } : {}) }))
       }
     }
   }
@@ -610,7 +649,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       const decision = decidePress(design, buildTool, wx, wy, { erase: e.button === 2, snap: GRID })
       switch (decision.kind) {
         case 'select-copy': {
-          newDrag('moveCopy', sx, sy, wx, wy, { startCopyX: decision.copy.x, startCopyY: decision.copy.y })
+          newDrag('moveCopy', sx, sy, wx, wy, { startCopyX: decision.copy.x, startCopyY: decision.copy.y, startCopyDirection: decision.copy.direction })
           store.selectCopy(decision.copy.id)
           break
         }
@@ -951,6 +990,8 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
         onResetView={handleResetView}
         playCamera={playFree ? null : playCameraMode}
         onPlayCameraChoice={handlePlayCameraChoice}
+        followLabel={screens.copy.followLabel}
+        wholeLabel={screens.kit === 'race' ? 'Whole track' : undefined}
       />}
 
       <div className="stage-canvas-wrap">

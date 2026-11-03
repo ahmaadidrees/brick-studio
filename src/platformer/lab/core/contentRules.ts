@@ -7,6 +7,7 @@
  * (multiplayer/worker/src/classroom/shelf.ts), so the shelf and the app can never disagree about what a power is.
  */
 import { isKnownBlockType } from './editor/knownBlocks'
+import { isKitId, type KitId } from './contracts'
 
 // ------------------------------------------------------------------------------------------------ pictures and sounds
 
@@ -42,7 +43,7 @@ export const POWER_MAX_VARIABLES = 100
 const MAX_DEPTH = 64
 const MAX_LIST_ITEMS = 20_000
 const MAX_TEXT = 20_000
-/** The fields a power file has (studio/powers/powers.ts PowerBrick). `game` is optional: missing means the platformer. */
+/** The fields a power file has (studio/powers/powers.ts PowerBrick). `game` is optional: missing means the Platformer. */
 const POWER_KEYS = new Set(['kind', 'version', 'id', 'name', 'credits', 'what', 'fits', 'game', 'blocks', 'variables'])
 /** Blockly's own keys on a saved block. */
 const BLOCK_KEYS = new Set(['type', 'id', 'x', 'y', 'enabled', 'disabledReasons', 'collapsed', 'deletable', 'movable', 'editable', 'inline', 'inputsInline', 'extraState', 'data', 'icons', 'fields', 'inputs', 'next'])
@@ -54,7 +55,7 @@ export type PowerRefusal = 'not-power' | 'damaged' | 'other-game' | 'unknown-blo
 export const POWER_REFUSALS: Readonly<Record<PowerRefusal, string>> = {
   'not-power': 'That file isn’t a power. Power files end in .power.json.',
   damaged: 'That power is damaged, so it can’t snap on.',
-  'other-game': 'That power is for a different game, so it can’t snap on here.',
+  'other-game': 'That power is for a game this version of Brickgineers doesn’t know yet.',
   'unknown-blocks': 'That power uses blocks that aren’t part of Brickgineers, so it can’t snap on.',
   pictures: 'That power has pictures or sounds in it. A power holds only blocks, so it can’t snap on.',
   'too-big': 'That power is too big to snap on.',
@@ -69,7 +70,7 @@ export interface CheckedPower {
   credits: string[]
   what?: string
   fits: 'brick' | 'stage'
-  game?: 'platformer'
+  game?: KitId
   blocks: Array<Record<string, unknown>>
   variables: Array<{ id: string; name: string; value: unknown; list?: boolean; showInBuild?: boolean }>
 }
@@ -123,7 +124,8 @@ function checked(v: unknown): PowerCheck {
   if (!isRecord(v) || v.kind !== POWER_KIND) refuse('not-power', 'kind')
   const p = v as Json
   if (p.version !== 1) refuse('not-power', 'version')
-  if (p.game !== undefined && p.game !== 'platformer') refuse('other-game', `game ${String(p.game)}`)
+  // A power for another kit is still a power (the studio says whether it fits this game); only an unknown game is refused.
+  if (p.game !== undefined && !isKitId(p.game)) refuse('other-game', `game ${String(p.game)}`)
   // Powers carry no pictures or sounds (a brick's own costumes are used), so none can come in from somewhere else this way.
   if (p.costumes !== undefined || p.sounds !== undefined) refuse('pictures', 'costumes or sounds')
   for (const key of Object.keys(p)) if (!POWER_KEYS.has(key)) refuse('damaged', `unexpected field ${key}`)
@@ -191,7 +193,7 @@ function checked(v: unknown): PowerCheck {
     credits: p.credits as string[],
     ...(p.what !== undefined ? { what: p.what as string } : {}),
     fits: p.fits as 'brick' | 'stage',
-    ...(p.game !== undefined ? { game: 'platformer' as const } : {}),
+    ...(p.game !== undefined ? { game: p.game as KitId } : {}),
     blocks: blocks as Array<Record<string, unknown>>,
     variables: variables as CheckedPower['variables'],
   }

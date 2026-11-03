@@ -46,3 +46,19 @@ describe('the Hackable Platformer', () => {
     expect(at('/2d/lab/next')).toEqual({ kind: 'studio-moved' })
   })
 })
+
+describe('Hackable Racing', () => {
+  it('opens the newest race track, a new one, one in this browser or one in the account, at its own address', () => {
+    expect(at('/2d/hackable-race')).toEqual({ kind: 'studio', fresh: false, kit: 'race' })
+    expect(at('/2d/hackable-race/')).toEqual({ kind: 'studio', fresh: false, kit: 'race' })
+    expect(at('/2d/hackable-race?new=1')).toEqual({ kind: 'studio', fresh: true, kit: 'race' })
+    expect(at('/2d/hackable-race?draft=hk3x9')).toEqual({ kind: 'studio', draft: 'hk3x9', fresh: false, kit: 'race' })
+    expect(at('/2d/hackable-race?world=33333333333343338333000000000001')).toEqual({ kind: 'studio', world: '33333333-3333-4333-8333-000000000001', fresh: false, kit: 'race' })
+    expect(at('/2d/hackable-race?draft=../x&world=nope')).toEqual({ kind: 'studio', fresh: false, kit: 'race' })
+  })
+
+  it('is no other address', () => {
+    expect(at('/2d/hackable-racing')).toEqual({ kind: 'not-found' })
+    expect(at('/2d/hackable/race')).toEqual({ kind: 'not-found' })
+  })
+})

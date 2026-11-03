@@ -39,6 +39,7 @@ export const KNOWN_BLOCK_TYPES: readonly string[] = [
   'platformer_whenland', 'platformer_whenleaveground',
   'procedures_call', 'procedures_callnoreturn', 'procedures_callreturn', 'procedures_definition',
   'procedures_defnoreturn', 'procedures_defreturn', 'procedures_prototype',
+  'race_groundunder', 'race_lapsdone', 'race_myplace', 'race_trackdirection', 'race_whenlap',
   'sensing_answer', 'sensing_askandwait', 'sensing_coloristouchingcolor', 'sensing_current', 'sensing_currentmenu',
   'sensing_dayssince2000', 'sensing_distanceto', 'sensing_distancetomenu', 'sensing_keyoptions', 'sensing_keypressed',
   'sensing_loud', 'sensing_loudness', 'sensing_mousedown', 'sensing_mousex', 'sensing_mousey', 'sensing_of',

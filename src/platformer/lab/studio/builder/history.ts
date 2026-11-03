@@ -161,7 +161,10 @@ export function removeCopyEdit(h: History, copy: CopyPlacement): Edit {
   }
 }
 
-export function moveCopyEdit(h: History, copyId: string, from: { x: number; y: number }, to: { x: number; y: number }): Edit {
+type CopyPose = { x: number; y: number; direction?: number }
+
+/** Moving a copy; a car dropped on the track may also turn to face along it, so `direction` can ride along. */
+export function moveCopyEdit(h: History, copyId: string, from: CopyPose, to: CopyPose): Edit {
   let id = copyId
   return {
     undo: () => h.store.updateCopy(id, from),

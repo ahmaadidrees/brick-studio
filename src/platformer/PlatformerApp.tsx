@@ -11,6 +11,7 @@ import { AppHeader, currentPath, goToJoin, useClassroomSession } from '../shell'
 import { Button, TextField } from '../ui'
 import { classRoomSocketUrl, guestRoomInfo, guestRoomSocketUrl } from './net/endpoints'
 import { parse2dRoute, type NewKit, type Route2D } from './routes2d'
+import { hackableHref } from './lab/studio/persist/hackableProjects'
 import { NotALevelError, UnreadableLevelError, cloudWorldInfo, loadCloudLevel } from './ui/cloudLevel'
 import { listDrafts, readDraft } from './ui/drafts'
 import { GameScreen, type LevelSource } from './ui/GameScreen'
@@ -52,7 +53,7 @@ export default function PlatformerApp() {
       return <Notice title="Opening the Hackable Platformer…" busy />
     case 'studio':
       return (
-        <Suspense fallback={<Notice title="Opening the Hackable Platformer…" busy />}>
+        <Suspense fallback={<Notice title={route.kit === 'race' ? 'Opening Hackable Racing…' : 'Opening the Hackable Platformer…'} busy />}>
           <StudioApp route={route} />
         </Suspense>
       )
@@ -348,7 +349,7 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
     cloudWorldInfo(worldId).then(
       (w) => {
         if (cancelled) return
-        if (w.format === 'hackable') return window.location.replace(`/2d/hackable?world=${worldId}`)
+        if (w.format === 'hackable') return window.location.replace(hackableHref.world(worldId, w.kit))
         if (w.format !== '2d') return window.location.replace(`/live/${worldId.replaceAll('-', '')}`)
         setWorld(w)
       },

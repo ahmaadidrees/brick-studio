@@ -44,8 +44,8 @@ export const joinHost = () => `${window.location.host}/join`
  * Where "Open" goes for a classroom world, the same place `/projects` sends it (`liveHref` in worldsData): a 3D
  * build's live room, a 2D level's room, or a Hackable Platformer's own page (it has no live room yet).
  */
-export const worldRoomHref = (world: Pick<ClassroomWorld, 'id' | 'format'>) =>
-  world.format === 'hackable' ? hackableHref.world(world.id) : `${world.format === '2d' ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+export const worldRoomHref = (world: Pick<ClassroomWorld, 'id' | 'format' | 'kit'>) =>
+  world.format === 'hackable' ? hackableHref.world(world.id, world.kit) : `${world.format === '2d' ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
 
 export const loadClasses = (client: ClassPageClient) =>
   client.request<{ classes: ClassPageClass[] }>('/classes').then(result => result.classes ?? [])

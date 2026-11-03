@@ -130,16 +130,16 @@ export function readLocalDraft(storage: Pick<Storage, 'getItem'> = globalThis.lo
 /** A 2D level (the `/2d` builder and rooms) rather than a 3D brick build. */
 export const isLevel2d = (world: Pick<WorldsWorld, 'format'>) => world.format === '2d'
 /** Opening one of your own worlds hands it to its editor: the 3D studio (`/build?world=`) or the 2D builder. */
-export const buildHref = (world: Pick<WorldsWorld, 'id' | 'format'>) =>
-  world.format === 'hackable' ? hackableHref.world(world.id) : isLevel2d(world) ? `/2d/build?world=${encodeURIComponent(world.id)}` : `/build?world=${encodeURIComponent(world.id)}`
+export const buildHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
+  world.format === 'hackable' ? hackableHref.world(world.id, world.kit) : isLevel2d(world) ? `/2d/build?world=${encodeURIComponent(world.id)}` : `/build?world=${encodeURIComponent(world.id)}`
 /**
  * Joining or visiting someone else's world goes through the live room, the way
  * shared worlds are joined today: the room id is the world id without dashes
  * (`LiveWorldPage`, or `/2d/w/` for a 2D level), and the Worker's `canEdit` decides viewer or editor there.
  */
-export const liveHref = (world: Pick<WorldsWorld, 'id' | 'format'>) =>
-  // Hackable Platformers have no live rooms yet: a classmate's opens to look at and copy.
-  world.format === 'hackable' ? hackableHref.world(world.id) : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+export const liveHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
+  // Hackable projects have no live rooms yet: a classmate's opens (at its game's address) to look at and copy.
+  world.format === 'hackable' ? hackableHref.world(world.id, world.kit) : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
 /** The owner's way into the room right after inviting (`?invited=1` joined to any query the address already has). */
 export const invitedHref = (world: Pick<WorldsWorld, 'id' | 'format'>) => {
   const href = liveHref(world)

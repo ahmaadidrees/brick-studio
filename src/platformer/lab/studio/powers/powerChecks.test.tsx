@@ -30,7 +30,7 @@ describe('reading a power', () => {
   it('says why a file cannot snap on', () => {
     expect(readPowerFile('not json')).toEqual({ ok: false, message: 'That file isn’t a power. Power files end in .power.json.' })
     expect(readPowerFile(powerToFile(withUnknownBlock()))).toEqual({ ok: false, message: UNKNOWN })
-    expect(readPowerFile(JSON.stringify({ ...dash(), game: 'race' }))).toEqual({ ok: false, message: 'That power is for a different game, so it can’t snap on here.' })
+    expect(readPowerFile(JSON.stringify({ ...dash(), game: 'kart' }))).toEqual({ ok: false, message: 'That power is for a game this version of Brickgineers doesn’t know yet.' })
     expect(readPowerPayload({ ...dash(), game: 'platformer' }).ok).toBe(true)
   })
 

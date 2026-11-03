@@ -2,6 +2,7 @@ import * as Blockly from 'blockly/core'
 import { RecyclableBlockFlyoutInflater, registerContinuousToolbox } from '@blockly/continuous-toolbox'
 import * as ShareableProcedures from '@blockly/block-shareable-procedures'
 import type { EditorContext } from './context'
+import type { KitId } from '../contracts'
 import { CATEGORY_COLORS, parseProccode } from './definitions'
 
 export interface ToolboxShadow {
@@ -57,15 +58,75 @@ function textShadow(value: string): { shadow: ToolboxShadow } {
   return { shadow: { type: 'text', fields: { TEXT: value } } }
 }
 
+/** What a kit changes in the palette: a Racing category, and block types left out (studio/kitScreens.ts `toolbox`). */
+export interface KitPalette {
+  racing: boolean
+  hide: readonly string[]
+}
+
+/** The Platformer's palette: everything, as it has always been. */
+export const PLATFORMER_PALETTE: KitPalette = { racing: false, hide: [] }
+
+/**
+ * Hackable Racing's palette: the Racing blocks, without the Platformer blocks that only mean something with gravity and
+ * a floor (a car seen from above never lands, leaves the ground or stands on anything). Scripts that already hold one,
+ * like the Car's "no gravity", keep it; it just isn't offered.
+ */
+export const RACE_PALETTE: KitPalette = {
+  racing: true,
+  hide: ['platformer_whenland', 'platformer_whenleaveground', 'platformer_setgravity', 'platformer_onground', 'platformer_setonground'],
+}
+
+/** A kit's palette: Hackable Racing's, or the Platformer's (no kit, the Platformer, or a kit with no palette of its own). */
+export function paletteForKit(kit: KitId | undefined): KitPalette {
+  return kit === 'race' ? RACE_PALETTE : PLATFORMER_PALETTE
+}
+
+/** The Racing extension (Hackable Racing R1): laps and the track, in the Racing colour. */
+function racingCategory(): ToolboxCategory {
+  return {
+    kind: 'category',
+    name: 'Racing',
+    colour: CATEGORY_COLORS.race,
+    cssConfig: { container: 'code-extension-category' },
+    contents: [
+      { kind: 'label', text: 'Racing blocks' },
+      { kind: 'block', type: 'race_whenlap' },
+      { kind: 'sep' },
+      { kind: 'block', type: 'race_lapsdone' },
+      { kind: 'block', type: 'race_myplace' },
+      { kind: 'sep' },
+      { kind: 'block', type: 'race_groundunder' },
+      { kind: 'block', type: 'race_trackdirection' },
+    ],
+  }
+}
+
+/** A category without the hidden blocks, and without the gaps they leave: no gap first, last, twice, or before a label. */
+function withoutHidden(category: ToolboxCategory, hide: ReadonlySet<string>): ToolboxCategory {
+  if (!category.contents || !category.contents.some((item) => item.kind === 'block' && hide.has(item.type))) return category
+  const kept = category.contents.filter((item) => !(item.kind === 'block' && hide.has(item.type)))
+  const contents = kept.filter((item, i) => {
+    if (item.kind !== 'sep') return true
+    const prev = kept[i - 1]
+    const next = kept[i + 1]
+    return !!prev && !!next && prev.kind !== 'sep' && next.kind !== 'sep' && next.kind !== 'label'
+  })
+  return { ...category, contents }
+}
+
 /**
  * Creates the complete continuous-category toolbox specification for Scratch 3 opcodes.
- * If isStage is true, the Motion category is omitted.
+ * If isStage is true, the Motion category is omitted. `kit` is the project's Hackable kit (missing means the
+ * Platformer) and picks its palette (`paletteForKit`); `palette` overrides it (the kit's screens descriptor).
+ * The Platformer's palette is exactly the one it has always had.
  */
 export function createContinuousToolbox(
   context?: EditorContext,
-  options?: { isStage?: boolean },
+  options?: { isStage?: boolean; kit?: KitId; palette?: KitPalette },
 ): ContinuousToolboxDefinition {
   const isStage = options?.isStage ?? context?.isStage ?? false
+  const palette = options?.palette ?? paletteForKit(options?.kit)
 
   const allCategories: ToolboxCategory[] = [
     // 0. My Blocks (Procedures): first, so the kid's own blocks are the first thing in the palette
@@ -391,10 +452,15 @@ export function createContinuousToolbox(
     },
   ]
 
-  // Motion and Platformer both act on a brick's body; the Stage has neither.
+  // Racing comes just before Platformer: a race brick's own blocks first, then the ones that move it.
+  if (palette.racing) allCategories.splice(allCategories.findIndex((cat) => cat.name === 'Platformer'), 0, racingCategory())
+  const hide = new Set(palette.hide)
+  const kitCategories = hide.size ? allCategories.map((cat) => withoutHidden(cat, hide)) : allCategories
+
+  // Motion, Platformer and Racing all act on a brick's body; the Stage has none of them.
   const contents = isStage
-    ? allCategories.filter((cat) => cat.name !== 'Motion' && cat.name !== 'Platformer')
-    : allCategories
+    ? kitCategories.filter((cat) => cat.name !== 'Motion' && cat.name !== 'Platformer' && cat.name !== 'Racing')
+    : kitCategories
 
   return {
     kind: 'categoryToolbox',

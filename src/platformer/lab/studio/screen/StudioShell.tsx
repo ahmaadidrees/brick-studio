@@ -8,9 +8,8 @@ import { StorageNoticeBar } from '../persist/StorageNoticeBar'
 import { Stage } from '../Stage'
 import { screenOf, useStudio, type StudioScreen, type StudioStore } from '../store'
 import { TestRoom } from '../workshop/TestRoom'
-import { PlayFeedback } from '../builder/PlayFeedback'
-import { PlayTouchControls } from './PlayTouchControls'
-import { checkLevelForPlay, NO_HERO_MESSAGE } from '../builder/playRules'
+import { hasPlayer, screensFor } from '../kitScreens'
+import { KIT_PARTS } from './kitParts'
 import { ensureTiles } from '../builder/ensureTiles'
 import { limitedStore } from '../builder/limits'
 import { builderSession } from '../builder/session'
@@ -70,6 +69,9 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const remixNotice = useStudio(store, (s) => s.remixNotice)
   const name = useStudio(store, (s) => s.project.design.name)
+  // The kit's screens (kitScreens.ts) and its React slots (kitParts.tsx).
+  const screens = useStudio(store, (s) => screensFor(s.project.design))
+  const parts = KIT_PARTS[screens.kit]
   const phone = useMedia(PHONE)
   const noCode = useMedia(NO_CODE)
   const touch = useTouch()
@@ -98,8 +100,9 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const [note, setNote] = useState<string | null>(null)
   const [help, setHelp] = useState(false)
   // Shown once per browser: remembered as soon as they show, so a reload does not bring them back (Help does).
-  const [tips, setTips] = useState(() => firstRunTips && !tipsSeen())
-  useEffect(() => { if (tips) markTipsSeen() }, [tips])
+  const tipsKey = screens.copy.tipsKey
+  const [tips, setTips] = useState(() => firstRunTips && !tipsSeen(undefined, tipsKey))
+  useEffect(() => { if (tips) markTipsSeen(undefined, tipsKey) }, [tips, tipsKey])
   // The logo and My projects save first, then go (after LEAVE_WAIT_MS at most, so a slow save never traps the kid; a
   // save still unfinished then is covered by the page's own "Leave site?" warning).
   const leaving = useRef(false)
@@ -129,8 +132,10 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const go = (next: StudioScreen) => {
     if (next === screen) return
     if (next === 'code' && noCode) return setNote(CODE_NEEDS_ROOM)
-    // Play needs a Hero. Without one, say so kindly and stay put instead of starting a level where nothing moves.
-    if (next === 'play' && !checkLevelForPlay(store.getState().project.design).hero) return setNote(NO_HERO_MESSAGE)
+    // Play needs the kit's player (the Hero, the Car). Without one, say so kindly and stay put instead of starting a level
+    // where nothing moves.
+    const design = store.getState().project.design
+    if (next === 'play' && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
     setNote(null)
     setSheet(false)
     if (next !== 'build') setErasing(false)
@@ -230,12 +235,13 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
         <div className="cl-slot cl-slot-stage">
           <div className="cl-stage-frame">
             <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
-            {screen === 'code' && <CodeStageBar store={store} />}
+            {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} />}
           </div>
           {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
-          {screen === 'play' && <PlayFeedback store={store} />}
-          {screen === 'play' && touch && runtime && !paused && <PlayTouchControls runtime={runtime} />}
-          {tips && screen === 'build' && <FirstRunTips phone={phone} noCode={noCode} onClose={() => setTips(false)} />}
+          {screen === 'build' && parts.BuildChip && <parts.BuildChip store={store} />}
+          {screen === 'play' && <parts.PlayHud store={store} />}
+          {screen === 'play' && touch && runtime && !paused && <parts.TouchControls runtime={runtime} store={store} />}
+          {tips && screen === 'build' && <FirstRunTips phone={phone} noCode={noCode} copy={screens.copy} onClose={() => setTips(false)} />}
         </div>
 
         {/* Phones and a Duo: the Bricks sheet is closed most of the time, so Undo and Erase stay out here in their own
@@ -262,7 +268,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
         </div>
 
         {phone && sheet && screen === 'build' && <button type="button" className="cl-sheet-close" aria-label="Close bricks" onClick={() => setSheet(false)}><X size={18} /></button>}
-        <HelpSheet open={help} onClose={() => setHelp(false)} onShowTips={() => { setHelp(false); go('build'); setTips(true) }} />
+        <HelpSheet open={help} copy={screens.copy} onClose={() => setHelp(false)} onShowTips={() => { setHelp(false); go('build'); setTips(true) }} />
         {(note || remixNotice) && (
           <div className="cl-toast cl-rise" role="status">
             {note ?? remixNotice}
@@ -304,9 +310,12 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
   )
 }
 
-/** Over Code's small level: pause, restart, and run the whole level or just this brick. */
-function CodeStageBar({ store }: { store: StudioStore }) {
-  const solo = useStudio(store, (s) => s.codeSolo)
+/**
+ * Over Code's small level: pause, restart, and run the whole level or just this brick. A kit without a test room
+ * (`testRoom`, Racing for now: the room is built around a helper Hero) always runs the whole level.
+ */
+function CodeStageBar({ store, testRoom }: { store: StudioStore; testRoom: boolean }) {
+  const solo = useStudio(store, (s) => s.codeSolo) && testRoom
   const paused = useStudio(store, (s) => s.previewPaused)
   const pending = useStudio(store, (s) => s.pendingCodeChanges)
   const brickId = useStudio(store, (s) => s.selectedBrickId)
@@ -317,10 +326,10 @@ function CodeStageBar({ store }: { store: StudioStore }) {
       {!solo && <button type="button" className="cl-btn cl-btn-sm cl-btn-icon" aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} onMouseDown={(e) => e.preventDefault()} onClick={() => paused ? store.startPreview() : store.pausePreview()}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}
       <button type="button" className={`cl-btn cl-btn-sm cl-btn-icon${pending && !solo ? ' cl-btn-attn' : ''}`} aria-label="Restart" title={pending && !solo ? 'Restart to try your changes' : 'Restart'} onMouseDown={(e) => e.preventDefault()} onClick={() => solo ? setRestartKey((n) => n + 1) : store.restartPreview()}><RotateCcw size={16} /></button>
       <span className="cl-tools-gap" />
-      <div className="cl-seg cl-seg-sm" role="group" aria-label="What runs">
+      {testRoom && <div className="cl-seg cl-seg-sm" role="group" aria-label="What runs">
         <button type="button" aria-pressed={!solo} onClick={() => store.setCodeSolo(false)}>Whole level</button>
         <button type="button" aria-pressed={solo} onClick={() => store.setCodeSolo(true)}>Just this brick</button>
-      </div>
+      </div>}
     </div>
     {pending && !solo && <span className="cl-stage-note cl-rise" role="status">Press Restart to try your changes</span>}
   </>

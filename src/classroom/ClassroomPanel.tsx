@@ -17,6 +17,7 @@ import { ManageStudentForm, RosterSection } from './RosterView'
 import { WorldControls } from './GroupControls'
 import { errorMessage, validatePassword, validateUsername } from './panelShared'
 import './classroom.css'
+import { hackableHref } from '../platformer/lab/studio/persist/hackableProjects'
 
 export { generateTemporaryPassword } from './panelShared'
 
@@ -199,7 +200,7 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
     const result = await client.request<{ world: ClassroomWorld }>(`/worlds/${world.id}`)
     // A 2D level opens in the 2D builder, never as a 3D build.
     if (isPlatformerDocument(result.world.document)) { window.location.assign(`/2d/build?world=${encodeURIComponent(world.id)}`); return }
-    if (result.world.format === 'hackable') { window.location.assign(`/2d/hackable?world=${encodeURIComponent(world.id)}`); return }
+    if (result.world.format === 'hackable') { window.location.assign(hackableHref.world(world.id, result.world.kit)); return }
     if (!result.world.document) throw new Error('This world did not include a complete build.')
     await onOpenWorld(result.world.document, result.world); onClose()
   })

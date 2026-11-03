@@ -32,8 +32,11 @@ export type ClassroomWorld = {
   id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document?: BrickStudioDocument
   /** What the world holds: a 3D brick build, a 2D level (`/2d`) or a Hackable Platformer. Older servers omit it: treat that as 'brick'. */
   format?: 'brick' | '2d' | 'hackable'
-  /** 2D only: 'race' for a race track. Absent means a platformer (or an older server). */
-  kit?: 'race'
+  /**
+   * 'race' for a race track (format '2d') or a Hackable Racing project, '3d' for a Hackable 3D project. Absent means a
+   * platformer, a Hackable Platformer or a 3D build (or an older server): `format` says which builder opens it.
+   */
+  kit?: 'race' | '3d'
   visibility: ClassroomWorldVisibility
   /** Whether the caller may change bricks: owner, shared with edit, or the class/group rules. */
   canEdit: boolean

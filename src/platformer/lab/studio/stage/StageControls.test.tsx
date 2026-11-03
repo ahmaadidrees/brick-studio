@@ -20,3 +20,17 @@ describe('focused code preview controls', () => {
     expect(screen.getByRole('button', { name: 'Zoom in' })).toBeTruthy()
   })
 })
+
+describe('the camera choice names the kit’s things', () => {
+  it('a race says Whole track and Follow the Car; the Platformer keeps Whole level and Follow the Hero', () => {
+    const choose = vi.fn()
+    const props = { mode: 'play' as const, onTogglePlay: vi.fn(), onRestart: vi.fn(), onZoomIn: vi.fn(), onZoomOut: vi.fn(), onResetView: vi.fn(), onPlayCameraChoice: choose, playCamera: 'follow' as const }
+    const { rerender } = render(<StageControls {...props} followLabel="Follow the Car" wholeLabel="Whole track" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Whole track' }))
+    expect(choose).toHaveBeenCalledWith('whole')
+    expect(screen.getByRole('button', { name: 'Follow the Car' }).getAttribute('aria-pressed')).toBe('true')
+    rerender(<StageControls {...props} />)
+    expect(screen.getByRole('button', { name: 'Camera shows the whole level' }).textContent).toBe('Whole level')
+    expect(screen.getByRole('button', { name: 'Follow the Hero' })).toBeTruthy()
+  })
+})

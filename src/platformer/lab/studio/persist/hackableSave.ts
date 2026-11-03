@@ -1,3 +1,4 @@
+import { designKit } from '../../core/contracts'
 import { upgradeUntouchedHero } from '../remix'
 import type { StudioProject } from '../store'
 import { HACKABLE_FORMAT, isHackableDocument, saveHackableText, type HackableDocument, type HackableSaveResult, type HackableStorage, type PendingWorld } from './hackableProjects'
@@ -5,7 +6,7 @@ import { exportProjectJson, projectStorageText } from './projectIo'
 import { openableSaveText, parseSaveText } from './repairSave'
 import { announceOpened } from './openChecks'
 
-/* Opening and writing Hackable Platformer projects: the part of hackableProjects.ts that needs the game's own parser. */
+/* Opening and writing Hackable projects (every kit): the part of hackableProjects.ts that needs the game's own parser. */
 
 /**
  * A project's save text read back, upgraded the way Code Lab always upgrades a save (and with any picture or sound the
@@ -69,5 +70,5 @@ export function documentBytes(project: StudioProject): number {
 }
 
 export function saveHackableProject(id: string, project: StudioProject, store?: HackableStorage | null, picture?: string, pendingWorld?: PendingWorld): HackableSaveResult {
-  return saveHackableText(id, project.design.name, projectStorageText(project), store ?? undefined, picture, pendingWorld)
+  return saveHackableText(id, project.design.name, projectStorageText(project), store ?? undefined, picture, pendingWorld, designKit(project.design))
 }
