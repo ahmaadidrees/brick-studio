@@ -10,7 +10,8 @@
  *
  * Nothing here changes the product: it only uses the core and the save format as the studio does.
  */
-import type { LevelDesign, Stmt, Target, Value, World } from '../../../src/platformer/lab/core/contracts'
+import type { LevelDesign, Stmt, Value, World } from '../../../src/platformer/lab/core/contracts'
+import { worldFingerprint, worldFromJson, worldToJson } from '../../../src/platformer/lab/core/snapshot'
 import { createRuntime, type Runtime } from '../../../src/platformer/lab/core'
 import { exportProjectJson, importProjectJson } from '../../../src/platformer/lab/studio/persist/projectIo'
 import { createStarterProject } from '../../../src/platformer/lab/studio/starter'
@@ -41,8 +42,9 @@ export interface ScenarioOptions {
 export interface ScenarioResult {
   engine: string
   kit: Kit
-  /** One fingerprint per tick, after that tick ran. */
+  /** One fingerprint per tick, after that tick ran: the full-text one, then core/snapshot's cheap one a room would use. */
   hashes: string[]
+  fingerprints: number[]
   dumps: Record<number, string>
   /** Events that changed something, and ones that found nothing to change. */
   applied: string[]
@@ -88,20 +90,16 @@ function stable(value: unknown): string {
   return JSON.stringify(String(value))
 }
 
-function targetState(t: Target) {
-  return {
-    id: t.id, brickId: t.brickId, isClone: t.isClone, copyId: t.copyId, x: t.x, y: t.y, direction: t.direction, size: t.size,
-    visible: t.visible, costumeIndex: t.costumeIndex, rotationStyle: t.rotationStyle, effects: t.effects, volume: t.volume,
-    soundEffects: t.soundEffects, variables: t.variables, lists: t.lists, bubble: t.bubble, edgeHatState: t.edgeHatState, body: t.body,
-  }
-}
-
-/** Everything that decides what happens next: every target, the RNG, the clock, the keys and every running script. */
+/**
+ * Everything that decides what happens next, as text to compare and diff: every target whole, the RNG, the clock, the
+ * keys, the kit state kept in the world, and every running script's place in its blocks.
+ */
 export function worldState(world: World): string {
   return stable({
     tick: world.tick, timerStartTick: world.timerStartTick, rngState: world.rngState, cloneCount: world.cloneCount,
-    nextTargetId: world.nextTargetId, answer: world.answer, keysDown: world.keysDown,
-    stage: targetState(world.stage), targets: world.targets.map(targetState),
+    nextTargetId: world.nextTargetId, answer: world.answer, keysDown: world.keysDown, askQueue: world.askQueue,
+    everyTick: world.everyTick, toldBumps: world.toldBumps, nextThreadId: world.nextThreadId,
+    stage: world.stage, targets: world.targets,
     threads: (world.threads ?? []).map((th) => ({
       id: th.id, targetId: th.targetId, scriptId: th.scriptId, status: th.status, done: th.done,
       stack: th.stack.map((f) => ({ pc: f.pc, n: f.statements.length, proccode: f.proccode, params: f.params, warp: f.warp, loopType: f.loopType, left: f.loopTimesRemaining, mem: f.stmtMemory })),
@@ -143,7 +141,8 @@ function editProgram(world: World, design: LevelDesign): string | null {
     const s = edited.scripts.find((x) => x.id === script.id)!
     const target = visit(s.body)!
     target.inputs = { ...target.inputs, VALUE: { kind: 'lit', value: 5 } }
-    world.bricks[world.stage.brickId] = { ...stage, program: edited }
+    // An edit replaces world.bricks (never changes it in place), so caches keyed by the bricks start again.
+    world.bricks = { ...world.bricks, [world.stage.brickId]: { ...stage, program: edited } }
     design.stage = world.bricks[world.stage.brickId]
     return `Stage: "change ${target.fields.VARIABLE ?? 'a variable'} by 1" is now "by 5" (script ${script.id})`
   }
@@ -172,17 +171,10 @@ function editKnob(world: World, design: LevelDesign, playerBrickId: string): str
 
 // ------------------------------------------------------------------------------------------------ late joiner
 
-/** What a room would send a late joiner: the world without its bricks (the joiner has the project), as JSON. */
-function snapshotText(world: World): string {
-  const { bricks: _bricks, ...rest } = world
-  return JSON.stringify({ ...rest, keysDown: [...world.keysDown] })
-}
-
+/** What a room sends a late joiner (core/snapshot.ts), loaded into a fresh runtime with the project as edited. */
 function rejoin(snapshot: string, design: LevelDesign): Runtime {
   const fresh = createRuntime(design)
-  const parsed = JSON.parse(snapshot) as Omit<World, 'keysDown' | 'bricks'> & { keysDown: string[] }
-  const world: World = { ...parsed, keysDown: new Set(parsed.keysDown), bricks: fresh.world.bricks }
-  fresh.restoreWorld(world)
+  fresh.restoreWorld(worldFromJson(snapshot, fresh.world.bricks))
   return fresh
 }
 
@@ -196,13 +188,13 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
   runtime.greenFlag()
   const byTick = new Map<number, RoomEvent[]>()
   for (const e of opts.events) byTick.set(e.tick, [...(byTick.get(e.tick) ?? []), e])
-  const result: ScenarioResult = { engine, kit: opts.kit, hashes: [], dumps: {}, applied: [], skipped: [], stepMs: 0, final: { players: [] } }
+  const result: ScenarioResult = { engine, kit: opts.kit, hashes: [], fingerprints: [], dumps: {}, applied: [], skipped: [], stepMs: 0, final: { players: [] } }
   const dumpAt = new Set(opts.dumpAt ?? [])
   const clock = typeof performance !== 'undefined' ? () => performance.now() : () => Date.now()
 
   for (let tick = 0; tick < opts.ticks; tick++) {
     if (opts.rejoinAt === tick) {
-      const text = snapshotText(runtime.world)
+      const text = worldToJson(runtime.world)
       result.snapshotBytes = text.length
       runtime = rejoin(text, design)
     }
@@ -220,6 +212,7 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
     result.stepMs += clock() - t0
     const text = worldState(runtime.world)
     result.hashes.push(hash(text))
+    result.fingerprints.push(worldFingerprint(runtime.world))
     if (dumpAt.has(tick)) result.dumps[tick] = text
   }
 

@@ -22,7 +22,7 @@
  *
  * No trigonometry except detmath's, no clock, no randomness: a replay lands on the same laps.
  */
-import { TILE_SIZE, parseGridCopyId, type BrickDef, type PrimitiveCtx, type PrimitiveTable, type RuntimeApi, type Stmt, type Target, type TileLayer, type World } from './contracts'
+import { TILE_SIZE, parseGridCopyId, type BrickDef, type LapState, type PrimitiveCtx, type PrimitiveTable, type RuntimeApi, type Stmt, type Target, type TileLayer, type World } from './contracts'
 import { atan2Deg } from './detmath'
 
 // ------------------------------------------------------------------------------------------------ the loop
@@ -125,14 +125,16 @@ export function computeRaceLoop(tiles: TileLayer | undefined, bricks: Iterable<B
 const gateOf = (length: number, d: number): number => Math.min(3, Math.floor((d * 4) / length))
 const ALL_GATES = 0b1110
 
-/** One loop per running world: the grid never changes during a Play. */
-const loops = new WeakMap<World, RaceLoop>()
+/**
+ * One loop per set of bricks and grid. Copies of a world (a rewind, a keyframe) share both, so they share the loop; an
+ * edit replaces `world.bricks` or `world.tiles` with new objects, so the loop is worked out again.
+ */
+const loops = new WeakMap<World['bricks'], { tiles: World['tiles']; loop: RaceLoop }>()
 export function raceLoopOf(world: World): RaceLoop {
-  let loop = loops.get(world)
-  if (!loop) {
-    loop = computeRaceLoop(world.tiles, Object.values(world.bricks))
-    loops.set(world, loop)
-  }
+  const known = loops.get(world.bricks)
+  if (known && known.tiles === world.tiles) return known.loop
+  const loop = computeRaceLoop(world.tiles, Object.values(world.bricks))
+  loops.set(world.bricks, { tiles: world.tiles, loop })
   return loop
 }
 
@@ -146,30 +148,12 @@ function cellAt(world: World, x: number, y: number): [number, number] | null {
 
 // ------------------------------------------------------------------------------------------------ laps and places
 
-export interface LapState {
-  /** Laps finished. */
-  lap: number
-  /** Bit per hidden gate passed this lap. */
-  gates: number
-  /** Last known distance round the loop (kept while off the road). */
-  d: number
-  onFinish: boolean
-  /** Tick each lap finished on. */
-  lapTicks: number[]
-}
+export type { LapState }
 
-const laps = new WeakMap<Target, LapState>()
-const lapsOf = (t: Target): LapState => {
-  let s = laps.get(t)
-  if (!s) {
-    s = { lap: 0, gates: 0, d: 0, onFinish: false, lapTicks: [] }
-    laps.set(t, s)
-  }
-  return s
-}
+const lapsOf = (t: Target): LapState => (t.lap ??= { lap: 0, gates: 0, d: 0, onFinish: false, lapTicks: [] })
 
 /** A racer's laps so far (for tests and the Stage's lap counter). */
-export const raceLapState = (t: Target): LapState | undefined => laps.get(t)
+export const raceLapState = (t: Target): LapState | undefined => t.lap
 
 /** Bricks that move themselves are racers; painted grid cells never are. */
 export const isRacer = (t: Target): boolean => !t.isStage && t.visible && !!t.body?.selfMove && !(t.copyId && parseGridCopyId(t.copyId) && !t.isClone)
@@ -305,19 +289,19 @@ function directionAlongTrack(ctx: PrimitiveCtx): number {
 
 // ------------------------------------------------------------------------------------------------ ground under me
 
-/** Grid character -> brick name, per world. */
-const groundNames = new WeakMap<World, Map<string, string>>()
+/** Grid character -> brick name, per set of bricks (an edit replaces `world.bricks`). */
+const groundNames = new WeakMap<World['bricks'], Map<string, string>>()
 
 function groundUnder(ctx: PrimitiveCtx): string {
   const world = ctx.runtime.world
   const cell = cellAt(world, ctx.target.x, ctx.target.y)
   const ch = cell ? (world.tiles as TileLayer).data[cell[1]]?.[cell[0]] ?? '.' : '.'
   if (ch === '.') return 'Grass'
-  let names = groundNames.get(world)
+  let names = groundNames.get(world.bricks)
   if (!names) {
     names = new Map()
     for (const b of Object.values(world.bricks)) if (b.grid) names.set(b.grid.char, b.name)
-    groundNames.set(world, names)
+    groundNames.set(world.bricks, names)
   }
   return names.get(ch) ?? 'Grass'
 }
@@ -325,6 +309,6 @@ function groundUnder(ctx: PrimitiveCtx): string {
 export const racePrimitives: PrimitiveTable = {
   race_groundunder: groundUnder,
   race_trackdirection: directionAlongTrack,
-  race_lapsdone: (ctx) => (ctx.target.isStage ? 0 : laps.get(ctx.target)?.lap ?? 0),
+  race_lapsdone: (ctx) => (ctx.target.isStage ? 0 : ctx.target.lap?.lap ?? 0),
   race_myplace: (ctx) => placeOf(ctx.runtime.world, ctx.target),
 }

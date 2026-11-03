@@ -113,6 +113,7 @@ export class Runtime implements RuntimeApi {
     this.world = world
     this.primitives = primitives
     this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [], afterTick: lifecycle.afterTick ?? [], afterGreenFlag: lifecycle.afterGreenFlag ?? [] }
+    this._nextThreadId = Math.max(1, world.nextThreadId ?? 1)
     if (this.world.threads && this.world.threads.length > 0) {
       this.restoreThreadsFromWorld()
     } else {
@@ -143,9 +144,12 @@ export class Runtime implements RuntimeApi {
       warpOpCount: t.warpOpCount,
       isStackClick: t.isStackClick,
     }))
+    this.world.nextThreadId = this._nextThreadId
   }
 
   restoreThreadsFromWorld(): void {
+    // A saved world numbers its next script itself; older snapshots fall back to the highest live id + 1 below.
+    if (this.world.nextThreadId !== undefined) this._nextThreadId = Math.max(1, this.world.nextThreadId)
     if (!this.world.threads) return
     const allTargets = [this.world.stage, ...this.world.targets]
     const targetMap = new Map<string, Target>(allTargets.map((t) => [t.id, t]))

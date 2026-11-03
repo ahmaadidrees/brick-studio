@@ -20,8 +20,6 @@ import type {
 
 const BUBBLE_LIMIT = 330
 
-const bubbleIds = new WeakMap<Target, number>()
-
 function asNumber(value: unknown): number {
   if (typeof value === 'number') return Number.isNaN(value) ? 0 : value
   const n = Number(value)
@@ -171,9 +169,8 @@ export function formatBubble(text: unknown): string {
 }
 
 function nextBubbleId(target: Target): number {
-  const id = (bubbleIds.get(target) ?? 0) + 1
-  bubbleIds.set(target, id)
-  return id
+  target.bubbleId = (target.bubbleId ?? 0) + 1
+  return target.bubbleId
 }
 
 function showBubble(runtime: RuntimeApi, target: Target, kind: 'say' | 'think', text: unknown): number {
@@ -202,7 +199,7 @@ function sayFor(ctx: PrimitiveCtx, kind: 'say' | 'think') {
     return YIELD
   }
   if (ctx.runtime.nowMs() < (ctx.frame.endMs as number)) return YIELD
-  if (bubbleIds.get(ctx.target) === ctx.frame.bubbleId) clearBubble(ctx.runtime, ctx.target)
+  if (ctx.target.bubbleId === ctx.frame.bubbleId) clearBubble(ctx.runtime, ctx.target)
 }
 
 /** Percent size clamped from the costume and the level, the way a 480×360 stage clamps to 5..540 on a 100×100 costume. */

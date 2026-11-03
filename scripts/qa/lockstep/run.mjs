@@ -81,9 +81,10 @@ async function inBrowser(b, options) {
   } finally { await browser.close() }
 }
 
+/** The first tick where either fingerprint differs (the full text one, or the cheap one rooms would send). */
 function firstMismatch(a, b) {
   const n = Math.min(a.hashes.length, b.hashes.length)
-  for (let i = 0; i < n; i++) if (a.hashes[i] !== b.hashes[i]) return i
+  for (let i = 0; i < n; i++) if (a.hashes[i] !== b.hashes[i] || a.fingerprints[i] !== b.fingerprints[i]) return i
   return a.hashes.length === b.hashes.length ? -1 : n
 }
 

@@ -330,6 +330,39 @@ export interface Target {
   dragging?: boolean
   /** Platformer extension state (step 3). Absent until a Platformer block touches this target. Clones copy it. */
   body?: Body
+  /*
+   * Game state that used to live in module WeakMaps (docs/qa/hackable-rooms M0): kept on the target so a saved world
+   * (a room's keyframe, a rewind) carries it. Plain data only. Clones start without any of it, as they always did.
+   */
+  /** Looks: counts this target's say/think bubbles, so a timed one clears only itself. */
+  bubbleId?: number
+  /** Self-move: what the last "move … until I hit something" stopped at (null: nothing). Missing: it never moved. */
+  lastHit?: SavedBump | null
+  /** Self-move: "on ground?" at the end of the last tick, for the landing and leaving hats. */
+  wasOnGround?: boolean
+  /** Hackable Racing: this racer's laps so far (core/race.ts). */
+  lap?: LapState
+}
+
+/** A bump kept in the world: the side, and the solid's target id (null for a level wall or the floor). */
+export interface SavedBump {
+  side: 'top' | 'bottom' | 'left' | 'right'
+  otherId: string | null
+  /** The solid's brick, so its name is still known if it is gone by the time the bump is told. */
+  otherBrickId?: string
+}
+
+/** Hackable Racing: one racer's progress round the loop (core/race.ts). */
+export interface LapState {
+  /** Laps finished. */
+  lap: number
+  /** Bit per hidden gate passed this lap. */
+  gates: number
+  /** Last known distance round the loop (kept while off the road). */
+  d: number
+  onFinish: boolean
+  /** Tick each lap finished on. */
+  lapTicks: number[]
 }
 
 // ---------------------------------------------------------------- Platformer extension (step 3)
@@ -456,6 +489,12 @@ export interface World {
   hostClock: HostClock | null
   /** Serialized interpreter threads (optional snapshot representation). */
   threads?: SerializedThread[]
+  /** The id the next started script gets, so a restored world numbers its scripts as the original would. */
+  nextThreadId?: number
+  /** Platformer: between a green flag and a stop, "every tick" scripts start each tick. */
+  everyTick?: boolean
+  /** Self-move: bumps told this tick with "tell what I hit", started by the next physics step. Mover id first. */
+  toldBumps?: { moverId: string; bump: SavedBump }[]
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives
