@@ -6,6 +6,7 @@
  * label of their own) always stays on the top view, and an old save whose labels differ simply shows as it always did.
  */
 import { HERO_BRICK_ID, HERO_MOVEMENT_HATS, heroMovementLabels } from '../hero/heroBrick'
+import { CAR_BRICK_ID, CAR_DRIVING_HATS, RACER_BRICK_ID, carDrivingLabels, racerDrivingLabels } from '../race/carBrick'
 
 export interface ScriptSection {
   readonly id: string
@@ -17,9 +18,11 @@ export interface ScriptSection {
   labels(): ReadonlySet<string>
 }
 
-/** Sections by the catalog brick they belong to (a remix keeps its original's). The Racing Car can add its own here. */
+/** Sections by the catalog brick they belong to (a remix keeps its original's: "My Car" folds like the Car). */
 const BRICK_SECTIONS: Readonly<Record<string, readonly ScriptSection[]>> = {
   [HERO_BRICK_ID]: [{ id: 'how-i-move', title: 'How I move', hats: HERO_MOVEMENT_HATS, labels: heroMovementLabels }],
+  [CAR_BRICK_ID]: [{ id: 'how-i-drive', title: 'How I drive', hats: CAR_DRIVING_HATS, labels: carDrivingLabels }],
+  [RACER_BRICK_ID]: [{ id: 'how-i-drive', title: 'How I drive', hats: CAR_DRIVING_HATS, labels: racerDrivingLabels }],
 }
 
 export function sectionsForBrick(brick: { id: string; remixOf?: string } | null | undefined): readonly ScriptSection[] {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ALL_SCRIPTS, back, breadcrumb, currentProccode, currentScript, currentSection, drillInto, goToDepth, isScriptList, isTop, labelData, openScript, openSection, plainLabel, proccodeWords, pruneMissing, readLabel, splitLabel, TOP_VIEW } from './layers'
+import { createCarWorkspace, createRacerWorkspace } from '../race/carBrick'
 
 describe('layered code view: the drill-in and back state machine', () => {
   it('starts at the top, with no definition on screen', () => {
@@ -136,5 +137,18 @@ describe('layered code view: the drill-in and back state machine', () => {
     expect(plainLabel('Forget an old jump press, one tick at a time')).toBe('Forget an old jump press, a moment at a time')
     expect(splitLabel('Jump buffer: pressing jump just before I land still counts')).toEqual({ name: 'Early jump', detail: 'pressing jump just before I land still counts' })
     expect(splitLabel('Read the arrow keys, x and space')).toEqual({ name: 'Read the arrow keys, x and space', detail: '' })
+  })
+
+  it('draws the Car\'s engine words plainly too, and leaves no "tick" in any Car or racer label', () => {
+    expect(plainLabel('Grip and drift: my tyres stop only some of a slide each tick, and on ice hardly any'))
+      .toBe('Grip and drift: my tyres stop only some of a slide each moment, and on ice hardly any')
+    expect(splitLabel('Start each tick with the normal numbers: road speed, and on rails (no sliding)'))
+      .toEqual({ name: 'Start each moment with the normal numbers', detail: 'road speed, and on rails (no sliding)' })
+    // Only whole words: "ticket" and a kid's "Tick tock" stay as they are.
+    expect(plainLabel('My ticket each ticket')).toBe('My ticket each ticket')
+    const tops = (ws: { blocks?: unknown }) => (ws.blocks as { blocks: Array<{ data?: string }> }).blocks
+    for (const ws of [createCarWorkspace(), createRacerWorkspace()]) {
+      for (const b of tops(ws)) expect(plainLabel(readLabel(b.data)), readLabel(b.data)).not.toMatch(/\bticks?\b/i)
+    }
   })
 })

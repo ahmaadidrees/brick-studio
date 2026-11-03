@@ -133,7 +133,8 @@ export function labelData(text: string): string | undefined {
 
 /**
  * A script label in plain words, for drawing and lists only (the saved label, which folds a script into its section, never
- * changes). The Hero's older labels use game-maker words: "p speed", "Coyote time", "Jump buffer", "tick".
+ * changes). The Hero's older labels use game-maker words: "p speed", "Coyote time", "Jump buffer", "tick"; the Car's say
+ * "each tick".
  */
 const PLAIN_WORDS: ReadonlyArray<readonly [RegExp, string]> = [
   [/^Coyote time:/, 'Late jump:'],
@@ -142,6 +143,8 @@ const PLAIN_WORDS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bone tick at a time\b/g, 'a moment at a time'],
   [/\bevery tick\b/g, 'over and over'],
   [/\bStart each tick\b/g, 'Start each moment'],
+  // The Car's: "my tyres stop only some of a slide each tick".
+  [/\beach tick\b/g, 'each moment'],
 ]
 
 export function plainLabel(label: string): string {

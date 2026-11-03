@@ -26,6 +26,7 @@ import type { BrickDef, Costume, VariableDecl } from '../../core/contracts'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { Blocks, type BlockJson, type Conn, type MyBlock } from '../blockBuilder'
 import { costumeFromImage, imageFromRows } from '../pixels'
+import { readLabel } from '../code/layers'
 
 // -----------------------------------------------------------------------------
 // The knobs, converted from car.ts DEFAULT_CAR_FEEL ("Kart") to ticks
@@ -255,7 +256,7 @@ function driverWorkspace(prefix: string, controls: (b: CarBlocks) => void): Work
     b.turnBy(v('turn')),
   ])
 
-  b.every('Split my speed into forward (the way I point) and sideways (sliding)', [
+  b.every('Split my speed: forward (the way I point) and sideways (sliding)', [
     b.set('fwd', forwardNow()),
     b.set('side', b.sub(b.mul(b.xSpeed(), b.cosDir()), b.mul(b.ySpeed(), b.sinDir()))),
   ])
@@ -371,4 +372,36 @@ export function createRacerBrick(): { brick: BrickDef; workspace: WorkspaceJson;
     workspace,
     diagnostics,
   }
+}
+
+// -----------------------------------------------------------------------------
+// "How I drive": the labels the code editor folds (studio/code/sections.ts)
+// -----------------------------------------------------------------------------
+
+/** The hats of a driver's driving scripts: the basics and feel scripts all run "over and over". */
+export const CAR_DRIVING_HATS: readonly string[] = ['platformer_everytick']
+
+function drivingLabels(workspace: WorkspaceJson): ReadonlySet<string> {
+  const tops = (workspace.blocks as { blocks: Array<{ type: string; data?: string }> }).blocks
+  return new Set(tops.filter((b) => CAR_DRIVING_HATS.includes(b.type)).map((b) => readLabel(b.data)).filter(Boolean))
+}
+
+let carLabels: ReadonlySet<string> | undefined
+let racerLabels: ReadonlySet<string> | undefined
+
+/**
+ * The labels of the Car's driving scripts (reading the keys, the basics and the feel scripts), read from
+ * `createCarWorkspace` itself so the list can never drift. The code editor folds the scripts with these labels into one
+ * "How I drive" entry; the start, countdown and last-lap scripts and the My Block stay on the top view.
+ *
+ * Saved Cars keep the labels they were made with, so changing a label here drops old Cars' scripts out of the fold:
+ * carBrick.test.ts pins them.
+ */
+export function carDrivingLabels(): ReadonlySet<string> {
+  return (carLabels ??= drivingLabels(createCarWorkspace()))
+}
+
+/** The same for a Computer racer: "Drive along the track" instead of the arrow keys. */
+export function racerDrivingLabels(): ReadonlySet<string> {
+  return (racerLabels ??= drivingLabels(createRacerWorkspace()))
 }
