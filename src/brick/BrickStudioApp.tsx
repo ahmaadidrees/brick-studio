@@ -84,6 +84,7 @@ import './brick-studio.css'
 import './touch-layout.css'
 import './desktop-layout.css'
 import { installActiveWorldRecovery } from './activeWorldRecovery'
+import { hackableHref } from '../platformer/lab/studio/persist/hackableProjects'
 
 // Lets AppErrorBoundary capture the open world (local, class, or live) from the
 // store before a crash unmounts the studio. Idempotent, so module re-evaluation is safe.
@@ -1414,7 +1415,7 @@ export default function BrickStudioApp({
         if (cancelled) return
         // A 2D level opens in the 2D builder, never as a 3D build.
         if (isPlatformerDocument(world.document)) { window.location.replace(`/2d/build?world=${encodeURIComponent(world.id)}`); return }
-        if (world.format === 'hackable') { window.location.replace(`/2d/hackable?world=${encodeURIComponent(world.id)}`); return }
+        if (world.format === 'hackable') { window.location.replace(hackableHref.world(world.id, world.kit)); return }
         if (!world.document) throw new Error('This world did not include a complete build.')
         await openCloudWorld(world.document, world)
       } catch (reason) {
