@@ -278,14 +278,31 @@ export class Runtime implements RuntimeApi {
     for (const hook of this.lifecycle.afterGreenFlag ?? []) hook(this)
   }
 
-  pressKey(key: string): void {
+  /**
+   * A key goes down. With `player` (rooms, core/players.ts) it is that player's: their Hero's "when key pressed"
+   * scripts start, and every brick that is no one's; other players' Heroes don't hear it.
+   */
+  pressKey(key: string, player?: number): void {
+    const slot = player === undefined ? undefined : this.world.players?.find((p) => p.num === player)
+    // A key from someone who is not (or no longer) in the game changes nothing.
+    if (player !== undefined && !slot) return
+    if (slot && !slot.keys.includes(key)) slot.keys.push(key)
     this.world.keysDown.add(key)
-    this.startHats('event_whenkeypressed', { fields: { KEY_OPTION: key } })
+    this.startHats('event_whenkeypressed', {
+      fields: { KEY_OPTION: key },
+      ...(slot ? { only: (t: Target) => t.player === undefined || t.player === slot.num } : {}),
+    })
   }
 
-  releaseKey(key: string): void {
-    this.world.keysDown.delete(key)
-    this.world.keysDown.delete(key.toLowerCase())
+  /** A key comes up. In a room it stays in `world.keysDown` while another player still holds it. */
+  releaseKey(key: string, player?: number): void {
+    const slot = player === undefined ? undefined : this.world.players?.find((p) => p.num === player)
+    if (player !== undefined && !slot) return
+    const names = [key, key.toLowerCase()]
+    if (slot) slot.keys = slot.keys.filter((k) => !names.includes(k))
+    for (const name of names) {
+      if (!this.world.players?.some((p) => p.keys.includes(name))) this.world.keysDown.delete(name)
+    }
   }
 
   clickTarget(target: Target): void {
@@ -362,7 +379,7 @@ export class Runtime implements RuntimeApi {
     return thread
   }
 
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target }): ThreadHandle[] {
+  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[] {
     const restartExisting = this.shouldRestartExistingThreads(opcode)
     const started: ThreadHandle[] = []
 
@@ -372,6 +389,7 @@ export class Runtime implements RuntimeApi {
       : [...this.world.targets].reverse().concat([this.world.stage])
 
     for (const target of targetsToCheck) {
+      if (opts?.only && !opts.only(target)) continue
       const brick = this.world.bricks[target.brickId]
       if (!brick) continue
 

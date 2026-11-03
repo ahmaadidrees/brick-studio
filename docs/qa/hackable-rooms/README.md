@@ -208,7 +208,12 @@ and I see "used in 12 rooms".
 4. **Literacy unlocks:** yes or no, and can the teacher override them?
 5. **Sharing beyond the class:** never, later with teacher approval, or open to a school?
 
-## Next step
+## Status
+
+- **M0 done 2026-11-03:** see `M0.md`.
+- **Next:** M1.
+
+## Next step (as first written)
 
 **M0.** First, the state fixes, so `scripts/qa/lockstep/run.mjs --strict-rejoin` goes green. Then per-player
 keys and several Heroes, with the sync test extended to two players. Nothing in M0 changes what a kid sees.

@@ -36,11 +36,26 @@ vm.runInThisContext(code)
 const L = globalThis.Lockstep
 
 /**
- * Each kit's timeline: a kid's keys, "Play again" every 600 ticks (the Hero reaches the flag in about 20 seconds),
- * "Coin now worth 5" at tick 300, and a knob turned at tick 750, before the late joiner arrives.
+ * Each kit's timelines. Both have "Play again" every 600 ticks (the Hero reaches the flag in about 20 seconds),
+ * "Coin now worth 5" at tick 300, and a knob turned at tick 750, before the late joiner arrives at the halfway tick.
+ * - solo: one keyboard, no players (a game outside a room, as today).
+ * - room: Maya plays from the start, Sam joins at 100, Lee joins at 400 and leaves at 1000, Maya leaves at 1500;
+ *   each presses their own keys.
  */
-function timeline(kit) {
-  const events = L.kidInput(kit, TICKS, kit === 'race' ? 7 : 3)
+function timeline(kit, scenario) {
+  const events = []
+  if (scenario === 'solo') events.push(...L.kidInput(kit, TICKS, kit === 'race' ? 7 : 3))
+  else {
+    const players = [
+      { num: 1, name: 'Maya', seed: 3, from: 0, to: Math.min(1500, TICKS) },
+      { num: 2, name: 'Sam', seed: 11, from: 100, to: TICKS },
+      { num: 3, name: 'Lee', seed: 17, from: 400, to: Math.min(1000, TICKS) },
+    ].filter((p) => p.from < TICKS)
+    // Joins first, so a player's first keys on their join tick come after it (the sort below keeps this order).
+    for (const p of players) events.push({ tick: p.from, kind: 'join', player: p.num, name: p.name })
+    for (const p of players) if (p.to < TICKS) events.push({ tick: p.to, kind: 'leave', player: p.num })
+    for (const p of players) events.push(...L.kidInput(kit, TICKS, p.seed + (kit === 'race' ? 4 : 0), p.num, p.from, p.to))
+  }
   for (let tick = 600; tick < TICKS; tick += 600) events.push({ tick, kind: 'flag' })
   events.push({ tick: 300, kind: 'edit-program', what: 'Stage: change by 1 → by 5 (nothing to change)' })
   events.push({ tick: 750, kind: 'edit-knob', what: 'player knob x 1.3 (nothing to change)' })
@@ -99,9 +114,10 @@ await mkdir(OUT, { recursive: true })
 const summary = { ticks: TICKS, rejoinAt: REJOIN_AT, node: process.version, kits: {} }
 let failed = false
 
-for (const kit of ['platformer', 'race']) {
+for (const [kit, scenario] of [['platformer', 'solo'], ['platformer', 'room'], ['race', 'solo'], ['race', 'room']]) {
+  const name = `${kit} ${scenario}`
   const projectText = L.starterText(kit)
-  const events = timeline(kit)
+  const events = timeline(kit, scenario)
   const opts = { projectText, kit, ticks: TICKS, events }
   const runs = [L.runScenario(`Node ${process.version}`, opts), L.runScenario(`Node ${process.version} again`, opts)]
   for (const b of browsers) {
@@ -135,12 +151,12 @@ for (const kit of ['platformer', 'race']) {
   if (rows.some((r) => r.error)) failed = true
   if (STRICT_REJOIN && rejoinAt >= 0) failed = true
 
-  summary.kits[kit] = {
-    events: events.length, keyEvents: events.filter((e) => e.kind === 'down' || e.kind === 'up').length, restarts: events.filter((e) => e.kind === 'flag').map((e) => e.tick),
+  summary.kits[name] = {
+    events: events.length, keyEvents: events.filter((e) => e.kind === 'down' || e.kind === 'up').length, restarts: events.filter((e) => e.kind === 'flag').map((e) => e.tick), players: events.filter((e) => e.kind === 'join' || e.kind === 'leave').map((e) => `${e.kind} ${e.player} @${e.tick}`),
     applied: ref.applied, skipped: ref.skipped, runs: rows, mismatchExplain,
     rejoin: { snapshotBytes: rejoinRun.snapshotBytes, matches: rejoinAt < 0, firstMismatchTick: rejoinAt < 0 ? null : rejoinAt, explain: rejoinExplain },
   }
-  console.log(`\n${kit}: ${events.length} events (${summary.kits[kit].keyEvents} keys); ${ref.applied.join('; ') || 'no edits applied'}`)
+  console.log(`\n${name}: ${events.length} events (${summary.kits[name].keyEvents} keys); ${ref.applied.join('; ') || 'no edits applied'}`)
   for (const r of rows) console.log(`  ${r.engine.padEnd(28)} ${r.error ? `ERROR ${r.error}` : r.matches ? `same on all ${TICKS} ticks` : `DIFFERS from tick ${r.firstMismatchTick}`}${r.stepMsPerTick != null ? `  ${r.stepMsPerTick} ms/tick` : ''}`)
   console.log(`  late joiner at tick ${REJOIN_AT} (${rejoinRun.snapshotBytes} bytes): ${rejoinAt < 0 ? 'same to the end' : `DIFFERS from tick ${rejoinAt}`}`)
   if (rejoinExplain) console.log(`    first difference:\n      kept:     …${rejoinExplain.a}\n      rejoined: …${rejoinExplain.b}`)

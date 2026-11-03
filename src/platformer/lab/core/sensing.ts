@@ -84,12 +84,20 @@ function toScratchKey(arg: Value): string {
   return text.toLowerCase()
 }
 
+/** The keys a target hears: its player's in a room (core/players.ts), otherwise every key that is down. */
+function keysFor(ctx: PrimitiveCtx): ReadonlySet<string> {
+  const world = ctx.runtime.world
+  const num = ctx.target.player
+  if (num === undefined || !world.players) return world.keysDown
+  return new Set(world.players.find((p) => p.num === num)?.keys ?? [])
+}
+
 function keyPressed(ctx: PrimitiveCtx): boolean {
   const option = keyOption(ctx)
-  if (option === 'any') return ctx.runtime.world.keysDown.size > 0
+  const down = keysFor(ctx)
+  if (option === 'any') return down.size > 0
   const key = toScratchKey(option)
   if (key === '') return false
-  const down = ctx.runtime.world.keysDown
   if (down.has(key)) return true
   // Hosts that stored Scratch's uppercase letter still match.
   return key.length === 1 && down.has(key.toUpperCase())

@@ -342,6 +342,20 @@ export interface Target {
   wasOnGround?: boolean
   /** Hackable Racing: this racer's laps so far (core/race.ts). */
   lap?: LapState
+  /**
+   * Rooms (core/players.ts): the player whose Hero this is (or a clone of it). Its "key pressed?" and "when key pressed"
+   * read that player's keys only. Missing: not anyone's, so it hears every player's keys (and, alone, the keyboard).
+   */
+  player?: number
+}
+
+/** Rooms: one player in the game, in the order they joined. */
+export interface PlayerSlot {
+  /** The room's player number, from 1. */
+  num: number
+  name: string
+  /** Keys this player holds, Scratch names (like World.keysDown). */
+  keys: string[]
 }
 
 /** A bump kept in the world: the side, and the solid's target id (null for a level wall or the floor). */
@@ -468,7 +482,10 @@ export interface World {
   /** Sprites back-to-front (draw order). The stage is not in this list. */
   targets: Target[]
   bricks: Record<string, BrickDef>
-  /** Scratch key names: 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'a'..'z', '0'..'9'. */
+  /**
+   * Scratch key names: 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'a'..'z', '0'..'9'. In a room,
+   * every key some player holds.
+   */
   keysDown: Set<string>
   mouse: Mouse
   answer: string
@@ -493,6 +510,8 @@ export interface World {
   nextThreadId?: number
   /** Platformer: between a green flag and a stop, "every tick" scripts start each tick. */
   everyTick?: boolean
+  /** Rooms: the players, in join order. Missing outside a room; then World.keysDown is the one keyboard. */
+  players?: PlayerSlot[]
   /** Self-move: bumps told this tick with "tell what I hit", started by the next physics step. Mover id first. */
   toldBumps?: { moverId: string; bump: SavedBump }[]
 }
@@ -520,8 +539,11 @@ export interface RuntimeApi {
   requestRedraw(): void
   /** Seeded uniform float in [0, 1). */
   random(): number
-  /** Start every matching hat. Restart/ignore rules for already-running scripts follow H02–H06. */
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target }): ThreadHandle[]
+  /**
+   * Start every matching hat. Restart/ignore rules for already-running scripts follow H02–H06. `only` skips targets
+   * (rooms: a player's key starts hats only on their own Hero and on bricks that are no one's).
+   */
+  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[]
   /** Starts event_whenbroadcastreceived scripts for `message` (case-insensitive match, like Scratch). */
   broadcast(message: string): ThreadHandle[]
   stopAll(): void

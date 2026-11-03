@@ -7,7 +7,7 @@
  * game never changes a brick in place (an edit replaces it), so a copy shares them, and JSON leaves them out because
  * every player already has the project.
  */
-import type { ExecutionFrame, SerializedThread, Target, World } from './contracts'
+import type { ExecutionFrame, SerializedThread, World } from './contracts'
 
 // ------------------------------------------------------------------------------------------------ copy (rewind)
 
@@ -81,16 +81,21 @@ export function worldFromJson(text: string, bricks: World['bricks']): World {
  */
 export function worldFingerprint(world: World): number {
   const h = new Hasher()
-  h.num(world.tick); h.num(world.timerStartTick); h.num(world.rngState); h.num(world.cloneCount); h.num(world.nextTargetId)
-  h.str(world.answer)
-  h.value([...world.keysDown].sort())
-  h.value(world.everyTick ?? false)
-  h.value(world.toldBumps ?? null)
-  h.value(world.askQueue)
-  h.target(world.stage)
-  h.num(world.targets.length)
-  for (const t of world.targets) h.target(t)
-  const threads = world.threads ?? []
+  const w = world as unknown as Record<string, unknown>
+  // Every field of the world, so state added later is covered too. Bricks and the grid are the project (every player
+  // has it); scripts are hashed by where they are in their blocks.
+  for (const key of Object.keys(w).sort()) {
+    const value = w[key]
+    if (value === undefined || key === 'bricks' || key === 'tiles') continue
+    h.str(key)
+    if (key === 'keysDown') h.value([...world.keysDown].sort())
+    else if (key === 'threads') hashThreads(h, world.threads ?? [])
+    else h.value(value)
+  }
+  return h.done()
+}
+
+function hashThreads(h: Hasher, threads: SerializedThread[]): void {
   h.num(threads.length)
   for (const t of threads) {
     h.num(t.id); h.str(t.targetId); h.str(t.scriptId ?? ''); h.str(t.status); h.value(t.done); h.num(t.warpOpCount)
@@ -100,8 +105,6 @@ export function worldFingerprint(world: World): number {
       h.str(f.loopType ?? ''); h.num(f.loopTimesRemaining ?? -1); h.value(f.stmtMemory ?? null)
     }
   }
-  h.num(world.nextThreadId ?? 0)
-  return h.done()
 }
 
 class Hasher {
@@ -146,11 +149,6 @@ class Hasher {
       return
     }
     this.str(String(v))
-  }
-
-  target(t: Target): void {
-    // Every field but the id is plain data, so hash the target as a whole (keys sorted, undefined skipped).
-    this.value(t)
   }
 
   done(): number {

@@ -886,6 +886,11 @@ function gridTargets(design: LevelDesign, bricks: Record<string, BrickDef>): Tar
   return out
 }
 
+/** A fresh painted copy's target, as Play makes it (rooms: core/players.ts makes each player's Hero this way). */
+export function targetForCopy(placement: CopyPlacement, brick: BrickDef | undefined): Target {
+  return copyTarget(placement, 0, brick)
+}
+
 function copyTarget(placement: CopyPlacement, index: number, brick: BrickDef | undefined): Target {
   const locals = brick ? localsFrom(brick.program, placement.knobs) : { variables: {}, lists: {} }
   const costumeCount = brick?.costumes?.length ?? 0

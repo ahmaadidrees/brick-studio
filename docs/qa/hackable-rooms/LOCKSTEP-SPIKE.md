@@ -4,6 +4,10 @@ The owner said "Yes, start both" (the rooms design doc and this test). The quest
 browser can run the same Hackable game and stay identical, so that a room only has to share key presses and edits.
 Safari matters most, because iPads run it.
 
+> **Update, M0 (same day):** the late joiner is fixed. The game state below now lives in the world, and the test runs
+> four timelines, including three-player rooms. All of them match across engines, and every late joiner matches to
+> the end. See `M0.md`. The rest of this page is the test as first run.
+
 **Answer: yes for the game itself. Late joiners don't work yet.**
 - Node, Chrome 156 and WebKit 26.5 (Safari's engine) produce the same game on every one of 1,800 ticks, in both games.
   That held through a live code edit, a knob edit and two restarts.

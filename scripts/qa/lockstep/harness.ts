@@ -13,6 +13,7 @@
 import type { LevelDesign, Stmt, Value, World } from '../../../src/platformer/lab/core/contracts'
 import { worldFingerprint, worldFromJson, worldToJson } from '../../../src/platformer/lab/core/snapshot'
 import { createRuntime, type Runtime } from '../../../src/platformer/lab/core'
+import { addPlayer, removePlayer } from '../../../src/platformer/lab/core/players'
 import { exportProjectJson, importProjectJson } from '../../../src/platformer/lab/studio/persist/projectIo'
 import { createStarterProject } from '../../../src/platformer/lab/studio/starter'
 import { createRaceStarterProject } from '../../../src/platformer/lab/studio/race/raceProject'
@@ -21,7 +22,11 @@ export type Kit = 'platformer' | 'race'
 
 /** One thing a room puts in order: a key going down or up, or a code or knob edit, applied before tick `tick` runs. */
 export type RoomEvent =
-  | { tick: number; kind: 'down' | 'up'; key: string }
+  /** `player`: whose key (rooms). Missing: the one keyboard of a game with no players. */
+  | { tick: number; kind: 'down' | 'up'; key: string; player?: number }
+  /** A player joins or leaves the room (core/players.ts). */
+  | { tick: number; kind: 'join'; player: number; name: string }
+  | { tick: number; kind: 'leave'; player: number }
   /** "Play again": the room restarts everyone's game from the project as edited so far, as the studio's Play does. */
   | { tick: number; kind: 'flag' }
   | { tick: number; kind: 'edit-program'; what: string }
@@ -97,7 +102,7 @@ function stable(value: unknown): string {
 export function worldState(world: World): string {
   return stable({
     tick: world.tick, timerStartTick: world.timerStartTick, rngState: world.rngState, cloneCount: world.cloneCount,
-    nextTargetId: world.nextTargetId, answer: world.answer, keysDown: world.keysDown, askQueue: world.askQueue,
+    nextTargetId: world.nextTargetId, answer: world.answer, keysDown: world.keysDown, askQueue: world.askQueue, players: world.players,
     everyTick: world.everyTick, toldBumps: world.toldBumps, nextThreadId: world.nextThreadId,
     stage: world.stage, targets: world.targets,
     threads: (world.threads ?? []).map((th) => ({
@@ -182,6 +187,26 @@ function rejoin(snapshot: string, design: LevelDesign): Runtime {
 
 const PLAYER_BRICK: Record<Kit, string> = { platformer: 'brick_hero', race: 'brick_car' }
 
+/** Where every player's Hero (or Car) starts: the painted one in the project. */
+function spawnOf(design: LevelDesign, kit: Kit) {
+  const spawn = design.copies.find((c) => c.brickId === PLAYER_BRICK[kit])
+  if (!spawn) throw new Error(`The project has no ${PLAYER_BRICK[kit]}`)
+  return spawn
+}
+
+/**
+ * "Play again" in a room: a fresh game from the project as edited so far, the same players in the same order (before
+ * the green flag, so it starts every Hero), still holding the keys they held.
+ */
+function playAgain(old: Runtime, design: LevelDesign, kit: Kit): Runtime {
+  const runtime = createRuntime(design)
+  const players = old.world.players ?? []
+  for (const p of players) addPlayer(runtime, p, spawnOf(design, kit))
+  runtime.greenFlag()
+  for (const p of players) for (const key of p.keys) runtime.pressKey(key, p.num)
+  return runtime
+}
+
 export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResult {
   const design = designOf(opts.projectText, opts.kit)
   let runtime = createRuntime(design)
@@ -199,9 +224,11 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
       runtime = rejoin(text, design)
     }
     for (const e of byTick.get(tick) ?? []) {
-      if (e.kind === 'down') runtime.pressKey(e.key)
-      else if (e.kind === 'up') runtime.releaseKey(e.key)
-      else if (e.kind === 'flag') { runtime = createRuntime(design); runtime.greenFlag() }
+      if (e.kind === 'down') runtime.pressKey(e.key, e.player)
+      else if (e.kind === 'up') runtime.releaseKey(e.key, e.player)
+      else if (e.kind === 'join') addPlayer(runtime, { num: e.player, name: e.name }, spawnOf(design, opts.kit))
+      else if (e.kind === 'leave') removePlayer(runtime, e.player)
+      else if (e.kind === 'flag') runtime = playAgain(runtime, design, opts.kit)
       else if (e.kind === 'edit-program' || e.kind === 'edit-knob') {
         const did = e.kind === 'edit-program' ? editProgram(runtime.world, design) : editKnob(runtime.world, design, PLAYER_BRICK[opts.kit])
         ;(did ? result.applied : result.skipped).push(`tick ${tick}: ${did ?? e.what}`)
@@ -228,7 +255,7 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
 // ------------------------------------------------------------------------------------------------ the timeline
 
 /** A kid's key presses for `ticks` ticks, from a seed: mostly forward, some turning back, jumps or steering. */
-export function kidInput(kit: Kit, ticks: number, seed: number): RoomEvent[] {
+export function kidInput(kit: Kit, ticks: number, seed: number, player?: number, from = 0, to = ticks): RoomEvent[] {
   let s = seed >>> 0
   const rand = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 2 ** 32 }
   const events: RoomEvent[] = []
@@ -236,12 +263,12 @@ export function kidInput(kit: Kit, ticks: number, seed: number): RoomEvent[] {
   const set = (tick: number, key: string, down: boolean) => {
     if (down === held.has(key)) return
     if (down) held.add(key); else held.delete(key)
-    events.push({ tick, kind: down ? 'down' : 'up', key })
+    events.push({ tick, kind: down ? 'down' : 'up', key, ...(player !== undefined ? { player } : {}) })
   }
   const forward = kit === 'race' ? 'up arrow' : 'right arrow'
   const back = kit === 'race' ? 'down arrow' : 'left arrow'
   const extras = kit === 'race' ? ['left arrow', 'right arrow'] : ['space', 'x']
-  for (let tick = 0; tick < ticks; tick += 1 + Math.floor(rand() * 6)) {
+  for (let tick = from; tick < to; tick += 1 + Math.floor(rand() * 6)) {
     const r = rand()
     set(tick, forward, r < 0.8)
     set(tick, back, r >= 0.92)
