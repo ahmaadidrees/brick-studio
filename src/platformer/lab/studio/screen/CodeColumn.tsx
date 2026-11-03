@@ -56,7 +56,8 @@ export function CodeColumn({ store, templates: given }: { store: StudioStore; te
           <span className="cl-tabs-ind" aria-hidden="true" data-at={TABS.findIndex((t) => t.id === tab)} data-of={3} />
         </div>
       </header>
-      {!brick.grid && screens.powers && <PowersBar store={store} brick={brick} />}
+      {/* A kit without powers (Hackable Racing) has no "+ Power"; a power a brick already has (from a file) still shows. */}
+      {!brick.grid && (screens.powers || !!brick.powers?.length) && <PowersBar store={store} brick={brick} canAdd={screens.powers} />}
       <div className="cl-code-body">
         {tab === 'code' && <CodeEditor store={store} docked />}
         {tab === 'costumes' && <CostumeEditor store={store} />}

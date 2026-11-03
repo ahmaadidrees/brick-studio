@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { readLabel } from '../code/layers'
-import { CAR_BRICK_ID, CAR_BUILD_KNOB_IDS, CAR_KNOBS, carVariableId, createCarBrick, createRacerBrick } from './carBrick'
+import { CAR_BRICK_ID, CAR_BUILD_KNOB_IDS, CAR_KNOBS, carDrivingLabels, carVariableId, createCarBrick, createCarWorkspace, createRacerBrick, createRacerWorkspace, racerDrivingLabels } from './carBrick'
+import { workspaceFingerprint } from '../remix'
 import { boostField, carRunner, fieldDesign, hackableCarRunner, hold, measureCar, openField, speeds, type Runner } from '../../feel/race/carMetrics'
 
 type Block = Record<string, unknown>
@@ -95,3 +96,42 @@ describe('each feel script switches off, and the car still drives', () => {
     expect(measureCar(hackableCarRunner).grassTop).toBeCloseTo(86.4, 6)
   })
 })
+
+/**
+ * The Car as saved in kids' projects from R1 on. Code folds its driving scripts into "How I drive" by their saved labels,
+ * and an upgrade of an untouched Car would recognise it by its blocks' fingerprint. Changing either below means saved
+ * Cars no longer match: add the old fingerprint to an EARLIER_CAR_FINGERPRINTS list (remix.ts, like the Hero's) and keep
+ * the old labels folding before you update these pins.
+ */
+describe('the Car as saved (pinned for later upgrades)', () => {
+  const labelsOf = (ws: WorkspaceJson) => tops(ws).map((b) => `${b.type} | ${label(b)}`)
+
+  it('has the blocks fingerprint of R1', () => {
+    // f3157bf8 since a202bb8; the label fix in R1 lane 3 changed no block (labels are not in the fingerprint).
+    expect(workspaceFingerprint(createCarWorkspace())).toBe('f3157bf8')
+    expect(workspaceFingerprint(createRacerWorkspace())).toBe('3f8004eb')
+  })
+
+  it('has the labels of R1, in order', () => {
+    expect(labelsOf(createCarWorkspace())).toEqual(CAR_LABELS_R1)
+    expect([...carDrivingLabels()]).toEqual(CAR_LABELS_R1.filter((l) => l.startsWith('platformer_everytick | ')).map((l) => l.slice('platformer_everytick | '.length)))
+    expect([...racerDrivingLabels()]).toEqual(labelsOf(createRacerWorkspace()).filter((l) => l.startsWith('platformer_everytick | ')).map((l) => l.slice('platformer_everytick | '.length)))
+  })
+})
+
+const CAR_LABELS_R1: readonly string[] = [
+  'event_whenflagclicked | When the race starts: no gravity, I move myself',
+  'event_whenbroadcastreceived | When the countdown says go: I can drive',
+  'platformer_everytick | Read the arrow keys: left and right steer, up is gas, down is brake',
+  'platformer_everytick | Start each tick with the normal numbers: road speed, and on rails (no sliding)',
+  'platformer_everytick | Off-road slowdown: grass and dirt are slower than road',
+  'platformer_everytick | Grip and drift: my tyres stop only some of a slide each tick, and on ice hardly any',
+  "platformer_everytick | Steer: turn when I'm rolling, the other way when I reverse",
+  'platformer_everytick | Split my speed: forward (the way I point) and sideways (sliding)',
+  'platformer_everytick | Boost pads: a boost pad shoots me forward, then the extra speed fades',
+  'platformer_everytick | Gas and brakes: gas speeds me up to my top speed, brakes slow me and then reverse, and I coast to a stop',
+  'platformer_everytick | Grip: sideways sliding fades by my grip',
+  'platformer_everytick | Drive: move, and bounce off barriers (go inside to see how)',
+  'procedures_definition | Drive and bounce off barriers: turn my two speeds into x and y speeds, move, bounce off anything solid',
+  'race_whenlap | When I finish my last lap: stop, and put my name on the results',
+]

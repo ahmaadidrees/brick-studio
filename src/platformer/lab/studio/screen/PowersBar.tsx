@@ -17,9 +17,11 @@ const credit = (credits: string[]) => (credits.length <= 1 ? `from ${credits[0] 
 
 /**
  * Code's Powers row: each power snapped onto this brick (name, who made it, On/Off, Take off), and "+ Power" to snap one
- * on from Code Lab's own, My powers or a file, or to make one from this brick's scripts.
+ * on from Code Lab's own, My powers or a file, or to make one from this brick's scripts. With `canAdd` false (a kit with
+ * no powers yet, like Hackable Racing) there is no "+ Power": the row only shows powers a brick already has, so they can
+ * still be switched off or taken off.
  */
-export function PowersBar({ store, brick, shelfApi, session }: { store: StudioStore; brick: BrickDef } & ShelfOverrides) {
+export function PowersBar({ store, brick, shelfApi, session, canAdd = true }: { store: StudioStore; brick: BrickDef; canAdd?: boolean } & ShelfOverrides) {
   const workspace = useStudio(store, (s) => s.project.workspaces[brick.id])
   const [open, setOpen] = useState<null | 'pick' | 'make'>(null)
   // The snap whose "Take off" is asking first, because the kid changed its blocks.
@@ -57,9 +59,9 @@ export function PowersBar({ store, brick, shelfApi, session }: { store: StudioSt
           </span>
         )
       })}
-      <button type="button" className="cl-chip-btn cl-power-add" aria-expanded={open !== null} onClick={() => setOpen(open ? null : 'pick')}><Plus size={14} aria-hidden="true" /> Power</button>
-      {open === 'pick' && <PowerPicker store={store} brick={brick} shelf={shelf} onMake={() => setOpen('make')} onClose={() => setOpen(null)} />}
-      {open === 'make' && <PowerMaker store={store} brick={brick} shelf={shelf} onClose={() => setOpen(null)} />}
+      {canAdd && <button type="button" className="cl-chip-btn cl-power-add" aria-expanded={open !== null} onClick={() => setOpen(open ? null : 'pick')}><Plus size={14} aria-hidden="true" /> Power</button>}
+      {canAdd && open === 'pick' && <PowerPicker store={store} brick={brick} shelf={shelf} onMake={() => setOpen('make')} onClose={() => setOpen(null)} />}
+      {canAdd && open === 'make' && <PowerMaker store={store} brick={brick} shelf={shelf} onClose={() => setOpen(null)} />}
     </div>
   )
 }
