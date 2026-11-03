@@ -2,11 +2,12 @@ import { browserClassroomClient, ClassroomError, type ClassroomClientSurface } f
 import type { CloudSaveStatus } from '../../../../classroom/cloudAutosave'
 import type { ClassroomWorld } from '../../../../classroom/contracts'
 import type { StudioProject } from '../store'
-import { ACCOUNT_DOCUMENT_MAX_BYTES } from './hackableProjects'
+import { designKit } from '../../core/contracts'
+import { ACCOUNT_DOCUMENT_MAX_BYTES, newProjectName } from './hackableProjects'
 import { checkedHackableDocument, projectFromDocument, type CheckedDocument } from './hackableSave'
 
 /*
- * Hackable Platformer projects in an account: ordinary classroom worlds whose document wraps the project's save, so
+ * Hackable projects (Platformer and Racing) in an account: ordinary classroom worlds whose document wraps the project's save, so
  * My projects, copies, checkpoints and sharing with the class work as they do for the other kinds. No live rooms yet.
  */
 
@@ -15,7 +16,7 @@ export const TOO_BIG = 'This project is too big for your account. Save it as a f
 /** The account never keeps a project that would not open again (the same promise as saving on this computer). */
 export const NOT_RIGHT = 'We could not save your last change because something in this project is not right. Your earlier save is safe. Try undoing your last change.'
 
-const titleOf = (project: StudioProject) => project.design.name.trim().slice(0, 80) || 'My platformer'
+const titleOf = (project: StudioProject) => project.design.name.trim().slice(0, 80) || newProjectName(designKit(project.design))
 
 /** The document to send, or the kid's reason it cannot be sent. */
 function accountDocument(project: StudioProject): Extract<CheckedDocument, { ok: true }> {
@@ -60,7 +61,7 @@ export function mayWorkLater(error: unknown): boolean {
 /** Thrown when the world opens but holds another kind of project (the caller sends it to that kind's page). */
 export class NotHackableError extends Error {
   constructor(readonly world: ClassroomWorld) {
-    super('This project is not a Hackable Platformer.')
+    super('This project is not a Hackable project.')
   }
 }
 

@@ -38,6 +38,9 @@ export function upgradeLegacySaveText(text: string): string {
     const design = env?.design
     const data = design?.tiles?.data
     if (!design || !Array.isArray(data) || !Array.isArray(design.bricks)) return text
+    // Saves from before step 7 had no kit. A save that names one (a race track) is never one of them, and its own
+    // characters ('B' is a Boost pad there) must never be rewritten into Platformer bricks.
+    if (design.kit !== undefined) return text
 
     const owned = new Set<string>()
     for (const b of design.bricks) if (typeof b?.grid?.char === 'string') owned.add(b.grid.char)

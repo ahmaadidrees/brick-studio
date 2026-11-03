@@ -10,7 +10,8 @@ import {
 import type { StudioProject } from '../store'
 import { HACKABLE_FILE_MAX_CHARS, HACKABLE_SAVE_MAX_CHARS, isHackableDocument } from './hackableProjects'
 import { parseSaveText } from './repairSave'
-import { kitNotReady } from '../../kits'
+import { KITS, kitNotReady } from '../../kits'
+import { designKit, type KitId } from '../../core/contracts'
 import { openedNote } from './openChecks'
 
 export function createProjectEnvelope(project: StudioProject): SavedProjectEnvelope {
@@ -76,11 +77,13 @@ export type ImportResult =
 /** What the kid reads when a file will not open. */
 export const FILE_ERRORS = {
   notProject: 'That file is not a project file.',
-  tooBig: `That file is too big to open. A Hackable Platformer file can be up to ${Math.floor(HACKABLE_SAVE_MAX_CHARS / 1024 / 1024)} MB.`,
+  tooBig: `That file is too big to open. A Hackable project file can be up to ${Math.floor(HACKABLE_SAVE_MAX_CHARS / 1024 / 1024)} MB.`,
   newer: 'That project was made with a newer version of Brickgineers. Refresh the page and try again.',
   damaged: 'That file is damaged, so it could not be opened.',
   power: 'That file is a power. Open it with + Power in Code.',
   otherKind: (kind: string) => `That file is ${kind}. Open it from My projects.`,
+  /** A Hackable file of another game, opened over this project (a project keeps its game; My projects opens it as a new one). */
+  otherGame: (kit: KitId) => `That file is a ${KITS[kit].name} project. Open it from My projects.`,
 } as const
 
 /** What My projects calls each kind (src/projects/projectFile.ts), for "That file is a 3D build". */
@@ -90,7 +93,7 @@ const PROJECT_FILE_FORMAT = 'brickgineers'
 const POWER_FILE_KIND = 'brickgineers-power'
 
 /**
- * The save text inside any file this app writes for a Hackable Platformer: its own "Save File" (the bare save), the
+ * The save text inside any file this app writes for a Hackable project: its own "Save File" (the bare save), the
  * `.brickgineers` file My projects downloads, or an account document. Other files get the kid's reason.
  */
 function saveTextOf(text: string): { ok: true; text: string } | { ok: false; error: string } {
@@ -130,9 +133,10 @@ function reasonFor(problems: DesignProblem[]): string {
 }
 
 /**
- * Parses and validates an untrusted file's text into a StudioProject.
+ * Parses and validates an untrusted file's text into a StudioProject. With `kit` (the open project's), a file of another
+ * Hackable game is refused: it would take the place of this project, which keeps its game (an account refuses the change).
  */
-export function importProjectJson(text: string): ImportResult {
+export function importProjectJson(text: string, kit?: KitId): ImportResult {
   const unwrapped = saveTextOf(text)
   if (!unwrapped.ok) return { ok: false, error: unwrapped.error }
   // Step 6/6b files painted engine tiles; give them the standard grid bricks first (step 7). A file holding a
@@ -141,6 +145,7 @@ export function importProjectJson(text: string): ImportResult {
   if (!result.ok) return { ok: false, error: reasonFor(result.problems), problems: result.problems }
   const notReady = kitNotReady(result.save.design)
   if (notReady) return { ok: false, error: notReady }
+  if (kit && designKit(result.save.design) !== kit) return { ok: false, error: FILE_ERRORS.otherGame(designKit(result.save.design)) }
 
   const project = { design: result.save.design, workspaces: result.save.workspaces ?? {} }
   const notice = openedNote(project, result.replaced)
@@ -151,7 +156,7 @@ export function importProjectJson(text: string): ImportResult {
  * Reads a File / Blob object and imports it into a StudioProject.
  * Supports modern `file.text()`, `FileReader`, and `Response(file).text()` fallbacks.
  */
-export async function importProjectFile(file: File | Blob): Promise<ImportResult> {
+export async function importProjectFile(file: File | Blob, kit?: KitId): Promise<ImportResult> {
   try {
     let text: string
     if (typeof (file as { text?: unknown }).text === 'function') {
@@ -168,7 +173,7 @@ export async function importProjectFile(file: File | Blob): Promise<ImportResult
     } else {
       throw new Error('No file reading API available')
     }
-    return importProjectJson(text)
+    return importProjectJson(text, kit)
   } catch (err) {
     console.warn('Code Lab: could not read the file:', err)
     return { ok: false, error: 'That file could not be read. Try choosing it again.' }

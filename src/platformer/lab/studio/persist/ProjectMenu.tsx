@@ -3,7 +3,8 @@ import { Download, RotateCcw, Upload } from 'lucide-react'
 import { setStorageNotice } from './notice'
 import { releaseSaveHold } from '../storage'
 import { exportProjectFile, importProjectFile } from './projectIo'
-import { createStarterProject } from '../starter'
+import { designKit, type KitId } from '../../core/contracts'
+import { screensFor } from '../kitScreens'
 import type { StudioProject, StudioStore } from '../store'
 import './projectMenu.css'
 
@@ -12,10 +13,19 @@ export interface ProjectMenuProps {
   className?: string
 }
 
+/** What "Start over" starts from, in each game's words. */
+const START_OVER: Record<'platformer' | 'race', { what: string; done: string }> = {
+  platformer: { what: 'the starter level', done: 'Started over with the starter level.' },
+  race: { what: 'the beginner track', done: 'Started over with the beginner track.' },
+}
+const startOverOf = (kit: KitId) => (kit === 'race' ? START_OVER.race : START_OVER.platformer)
+
 export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showConfirmReset, setShowConfirmReset] = useState(false)
   const [pendingOpen, setPendingOpen] = useState<{ project: StudioProject; notice?: string } | null>(null)
+  // A project's game never changes (Open File refuses another game's file), so this is read once per render.
+  const startOver = startOverOf(designKit(store.getState().project.design))
 
   const handleExport = () => {
     const project = store.getState().project
@@ -33,7 +43,8 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const result = await importProjectFile(file)
+    // A project keeps its game: a file of another one opens from My projects instead.
+    const result = await importProjectFile(file, designKit(store.getState().project.design))
     if (result.ok) {
       // Opening a file replaces this whole world: ask first (confirmOpen below).
       setPendingOpen({ project: result.project, notice: result.notice })
@@ -73,10 +84,11 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
   }
 
   const handleResetToStarter = () => {
-    // Starting over keeps the project's name: it is still the same project in My projects.
-    const name = store.getState().project.design.name
-    const starter = createStarterProject()
-    replaceProject({ ...starter, design: { ...starter.design, name: name || starter.design.name } }, 'reset-success', 'Started over with the starter level.')
+    // Starting over keeps the project's name and its game: it is still the same project in My projects.
+    const design = store.getState().project.design
+    const name = design.name
+    const starter = screensFor(design).starter()
+    replaceProject({ ...starter, design: { ...starter.design, name: name || starter.design.name } }, 'reset-success', startOverOf(designKit(design)).done)
     setShowConfirmReset(false)
   }
 
@@ -118,8 +130,8 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
           type="button"
           className="project-menu-btn project-menu-btn-danger"
           onClick={() => setShowConfirmReset(true)}
-          aria-label="Start over with the starter level"
-          title="Start over with the starter level"
+          aria-label={`Start over with ${startOver.what}`}
+          title={`Start over with ${startOver.what}`}
         >
           <RotateCcw size={16} aria-hidden="true" />
           <span>Start over</span>
@@ -144,7 +156,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
 
       {showConfirmReset && (
         <div className="project-menu-confirm-dialog" role="dialog" aria-label="Confirm reset">
-          <p className="project-menu-confirm-text">Start over with the starter level? You can undo it right after.</p>
+          <p className="project-menu-confirm-text">Start over with {startOver.what}? You can undo it right after.</p>
           <div className="project-menu-confirm-actions">
             <button
               type="button"
