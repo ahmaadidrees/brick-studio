@@ -1,5 +1,7 @@
 import type { BrickDef, VariableDecl } from '../../core/contracts'
 import { HERO_KNOB_GROUPS, HERO_KNOBS, HERO_OLD_VARIABLE_NAMES } from '../hero/heroBrick'
+import { CAR_BRICK_ID, RACER_BRICK_ID, RACER_TOP_SPEED } from '../race/carBrick'
+import { driverKnobSpec } from '../race/carPresets'
 
 /** Slider ranges for Knobs: picked from the variable's current value. */
 export interface KnobRange {
@@ -37,14 +39,24 @@ export function formatKnob(value: number): string {
  * value, the "More sliders" groups, and names an older version of the brick used in its code.
  */
 export interface BrickKnobSpec {
-  knobs: ReadonlyArray<{ id: string; name: string; hint?: string; value: number }>
+  /**
+   * `min`, `max` and `step` fix a knob's slider range (the Car's); without them the range is built from the built-in
+   * value (knobRange), as for the Hero.
+   */
+  knobs: ReadonlyArray<{ id: string; name: string; hint?: string; value: number; min?: number; max?: number; step?: number }>
   groups: ReadonlyArray<{ id: string; label: string; knobIds: readonly string[] }>
   oldNames?: Readonly<Record<string, string>>
+  /** Don't say a knob's old code name under its slider (the Car's "boost ticks" is shown as "boost time"). */
+  quietOldNames?: boolean
+  /** Buttons that set several knobs at once (the Car's Kart / Drifty / On rails): variable id -> value. */
+  presets?: ReadonlyArray<{ id: string; name: string; hint?: string; values: Readonly<Record<string, number>> }>
 }
 
 /** Keyed by catalog brick id. A remix ("My Hero") uses its original's entry. */
 export const BRICK_KNOB_SPECS: Readonly<Record<string, BrickKnobSpec>> = {
   brick_hero: { knobs: HERO_KNOBS, groups: HERO_KNOB_GROUPS, oldNames: HERO_OLD_VARIABLE_NAMES },
+  [CAR_BRICK_ID]: driverKnobSpec('car'),
+  [RACER_BRICK_ID]: driverKnobSpec('racer', RACER_TOP_SPEED),
 }
 
 /**
@@ -88,11 +100,23 @@ export function knobStart(v: VariableDecl, spec: BrickKnobSpec = knobSpecFor()):
   return known ? known.value : (v.value as number)
 }
 
-/** The slider range for one knob: from its start value, stretched to hold the current value. */
+/**
+ * The slider range for one knob: the spec's own range when it has one, else one from its start value; either way
+ * stretched to hold the current value, so a saved number is never clipped. Dragging stays inside it, so it never grows.
+ */
 export function sliderRange(v: VariableDecl, spec: BrickKnobSpec = knobSpecFor()): KnobRange {
-  const start = knobRange(knobStart(v, spec))
+  const known = spec.knobs.find((k) => k.id === v.id)
+  const start = known && known.min !== undefined && known.max !== undefined
+    ? { min: known.min, max: known.max, step: known.step ?? knobRange(known.value).step }
+    : knobRange(knobStart(v, spec))
   const current = v.value as number
   return { min: Math.min(start.min, current), max: Math.max(start.max, current), step: start.step }
+}
+
+/** The preset every one of whose numbers the brick has now, if any (that button shows as pressed). */
+export function activePreset(variables: readonly VariableDecl[], spec: BrickKnobSpec = knobSpecFor()): string | null {
+  const found = spec.presets?.find((p) => Object.entries(p.values).every(([id, value]) => variables.find((v) => v.id === id)?.value === value))
+  return found?.id ?? null
 }
 
 /**
@@ -105,5 +129,5 @@ export function knobWords(v: VariableDecl, spec: BrickKnobSpec = knobSpecFor()):
   const oldName = spec.oldNames?.[v.id]
   if (!known || (v.name !== known.name && v.name !== oldName)) return { label: v.name }
   if (!known.hint) return { label: known.name }
-  return { label: known.name, hint: v.name === known.name ? known.hint : `${known.hint} In the code it is called “${v.name}”.` }
+  return { label: known.name, hint: v.name === known.name || spec.quietOldNames ? known.hint : `${known.hint} In the code it is called “${v.name}”.` }
 }
