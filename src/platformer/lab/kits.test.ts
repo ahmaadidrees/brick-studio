@@ -5,6 +5,7 @@ import { validateDesign } from './core/project'
 import { parse, serialize } from './core/save'
 import { KITS, kitNotReady, kitOf, kitReady } from './kits'
 import { createStarterProject } from './studio/starter'
+import { createRaceStarterProject } from './studio/race/raceProject'
 import { StudioStore, type StudioProject } from './studio/store'
 import { builtInPowers, fits, forGame, makePower, powerFromFile, powerToFile, whyNot, type PowerBrick } from './studio/powers/powers'
 import { checkedHackableDocument, projectFromDocument, projectFromText } from './studio/persist/hackableSave'
@@ -45,23 +46,33 @@ describe('kits: which Hackable game a project is', () => {
     expect(validateDesign(design)).toEqual([expect.objectContaining({ path: 'kit', code: 'bad-value' })])
   })
 
-  it('only the Platformer opens in the studio yet: Racing and 3D are named, and refused politely', () => {
+  it('the Platformer and Racing (R1) open in the studio; 3D is named, and refused politely', () => {
     expect(kitReady('platformer')).toBe(true)
-    expect(kitReady('race')).toBe(false)
+    expect(kitReady('race')).toBe(true)
     expect(kitReady('3d')).toBe(false)
     expect(() => play(createStarterProject().design)).not.toThrow()
-    // Racing's engine runs headless (R1); its screens wait for the class notes. 3D has no engine yet.
-    expect(() => createRuntime(asKit('race').design)).not.toThrow()
+    expect(() => createRuntime(createRaceStarterProject().design)).not.toThrow()
+    // 3D has no engine yet.
     expect(() => createRuntime(asKit('3d').design)).toThrow(/3d/)
     expect(kitNotReady(createStarterProject().design)).toBeNull()
-    expect(kitNotReady(asKit('race').design)).toMatch(/Hackable Racing/)
+    expect(kitNotReady(createRaceStarterProject().design)).toBeNull()
     expect(kitNotReady(asKit('3d').design)).toMatch(/Hackable 3D/)
   })
 
-  it('a race file opened in the studio says what it is instead of opening as a Platformer', () => {
-    const opened = importProjectJson(exportProjectJson(asKit('race')))
-    expect(opened).toEqual({ ok: false, error: expect.stringMatching(/Hackable Racing/) })
+  it('a race file opens in the studio as a race track, never as a Platformer; a 3D file says what it is', () => {
+    const race = importProjectJson(exportProjectJson(createRaceStarterProject()))
+    expect(race.ok && race.project.design.kit).toBe('race')
     expect(importProjectJson(exportProjectJson(createStarterProject())).ok).toBe(true)
+    expect(importProjectJson(exportProjectJson(asKit('3d')))).toEqual({ ok: false, error: expect.stringMatching(/Hackable 3D/) })
+  })
+
+  it('a file of the other game, opened over a project, says what it is: a project keeps its game', () => {
+    const raceText = exportProjectJson(createRaceStarterProject())
+    const platformerText = exportProjectJson(createStarterProject())
+    expect(importProjectJson(raceText, 'platformer')).toEqual({ ok: false, error: 'That file is a Hackable Racing project. Open it from My projects.' })
+    expect(importProjectJson(platformerText, 'race')).toEqual({ ok: false, error: 'That file is a Hackable Platformer project. Open it from My projects.' })
+    expect(importProjectJson(raceText, 'race').ok).toBe(true)
+    expect(importProjectJson(platformerText, 'platformer').ok).toBe(true)
   })
 
   it('names and addresses for each kit', () => {

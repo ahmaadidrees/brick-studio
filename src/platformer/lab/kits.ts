@@ -2,9 +2,9 @@
  * The Hackable kits (docs/qa/hackable-modes): one studio and one save format, three games. A project's kit comes from
  * its own design (`design.kit`), never from the address it was opened at, so a saved project always opens as itself.
  *
- * Only the Platformer is ready. Racing (R1) and 3D (D1) are listed so their projects and powers can be named and
- * refused politely; each turns `ready` on when its toolbox, Build drawer and Stage land. Racing's engine runs already
- * (core/race.ts), headless only, until the owner's class notes settle its screens.
+ * The Platformer and Racing (R1, docs/qa/hackable-modes/R1-SCREENS.md) are ready. 3D (D1) is listed so its projects
+ * and powers can be named and refused politely; it turns `ready` on when its engine, toolbox, Build drawer and Stage
+ * land.
  */
 import { designKit, type KitId, type LevelDesign } from './core/contracts'
 import { hasKitEngine } from './core'
@@ -21,7 +21,7 @@ export interface KitInfo {
 
 export const KITS: Readonly<Record<KitId, KitInfo>> = {
   platformer: { id: 'platformer', name: 'Hackable Platformer', route: '/2d/hackable', ready: true },
-  race: { id: 'race', name: 'Hackable Racing', route: '/2d/hackable-race', ready: false },
+  race: { id: 'race', name: 'Hackable Racing', route: '/2d/hackable-race', ready: true },
   '3d': { id: '3d', name: 'Hackable 3D', route: '/3d/hackable', ready: false },
 }
 
