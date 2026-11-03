@@ -179,7 +179,7 @@ function lava(): GridBrickTemplate {
   const bubble: MyBlock = { proccode: 'bubble', argumentNames: [] }
   const burn: MyBlock = { proccode: 'burn the Hero', argumentNames: [] }
   b.flag('When the level starts: bubble, and burn the Hero that touches me', [b.forever([b.call(bubble), b.call(burn)])])
-  b.define(bubble, 'Show the next costume every 6th tick', [
+  b.define(bubble, 'Show the next costume every 6th time around', [
     b.change(frame, 1),
     b.when(b.eq(b.mod(b.v(frame), 6), 0), [b.nextCostume()]),
   ])

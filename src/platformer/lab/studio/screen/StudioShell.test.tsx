@@ -148,6 +148,24 @@ describe('the shell: Build · Code · Play', () => {
     expect(store.getState().cardTab).toBe('sliders')
     expect(screen.getByText('Code needs a bigger screen')).toBeTruthy()
   })
+
+  it('on a small screen the brick card ignores touches for a moment after it opens, so the selecting tap cannot move a slider', () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+      const store = new StudioStore(createStarterProject())
+      render(<StudioShell store={store} />)
+      act(() => store.selectCopy('copy_walker_fast'))
+      expect(slot('inspector').classList.contains('cl-settling')).toBe(true)
+      act(() => { vi.advanceTimersByTime(400) })
+      expect(slot('inspector').classList.contains('cl-settling')).toBe(false)
+      // Choosing another brick while the card is open doesn't lock it again.
+      act(() => store.selectCopy(store.getState().project.design.copies.find((c) => c.id !== 'copy_walker_fast')!.id))
+      expect(slot('inspector').classList.contains('cl-settling')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('the Bricks drawer', () => {
@@ -296,10 +314,10 @@ describe('grid bricks: paint, select a cell, open code, Remove', () => {
     expect(within(card).queryByRole('slider')).toBeNull()
   })
 
-  it('Open its code goes to Code on that brick; Build comes back with the cell still selected', () => {
+  it('See inside goes to Code on that brick; Build comes back with the cell still selected', () => {
     const store = paintRowOfQ()
     press(store, 8 + 16 * 4, 40)
-    fireEvent.click(within(screen.getByRole('region', { name: '? block in this level' })).getByRole('button', { name: /Open its code/ }))
+    fireEvent.click(within(screen.getByRole('region', { name: '? block in this level' })).getByRole('button', { name: /See inside/ }))
     const q = store.getState().project.design.bricks.find((b) => b.name === '? block')!
     expect(store.getState().selectedBrickId).toBe(q.id)
     expect(store.getState().runtime).not.toBeNull()
@@ -401,7 +419,7 @@ describe('one Hero, one Goal (limit 1)', () => {
     expect(within(card).getByText(/One per level/)).toBeTruthy()
     expect(within(card).getAllByRole('slider')).toHaveLength(4)
     expect(within(card).queryByRole('group', { name: 'Which ones change' })).toBeNull()
-    fireEvent.click(within(card).getByRole('button', { name: /Open its code/ }))
+    fireEvent.click(within(card).getByRole('button', { name: /See inside/ }))
     expect(store.getState().selectedBrickId).toBe('brick_hero')
     expect(store.getState().cardTab).toBe('code')
   })
@@ -488,11 +506,14 @@ describe('one Hero, one Goal (limit 1)', () => {
   })
 })
 
-describe('+ New brick: one step, then type its name', () => {
-  it('New brick in the drawer makes "My brick 1", opens it in Code, and selects the name to type over', () => {
+describe('+ New brick in Code: one step, then type its name', () => {
+  const newInCode = () => fireEvent.click(within(screen.getByRole('region', { name: 'In this level' })).getByRole('button', { name: 'New brick' }))
+
+  it('New brick in "In this level" makes "My brick 1", keeps it in Code, and selects the name to type over', () => {
     const { store } = storeWithBrick()
     render(<StudioShell store={store} />)
-    fireEvent.click(within(screen.getByLabelText('Brick shapes')).getByRole('button', { name: 'New brick' }))
+    mode('Code')
+    newInCode()
     const s = store.getState()
     const made = s.project.design.bricks.find((b) => b.name === 'My brick 1')!
     expect(made).toBeTruthy()
@@ -513,9 +534,9 @@ describe('+ New brick: one step, then type its name', () => {
     const { store } = storeWithBrick()
     render(<StudioShell store={store} />)
     mode('Code')
-    fireEvent.click(within(screen.getByRole('region', { name: 'In this level' })).getByRole('button', { name: 'New brick' }))
+    newInCode()
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Brick name' }), { key: 'Enter' })
-    fireEvent.click(within(screen.getByRole('region', { name: 'In this level' })).getByRole('button', { name: 'New brick' }))
+    newInCode()
     const id = store.getState().selectedBrickId
     expect(store.brick(id)!.name).toBe('My brick 2')
     const name = screen.getByRole('textbox', { name: 'Brick name' })
@@ -528,7 +549,8 @@ describe('+ New brick: one step, then type its name', () => {
   it('"Start from…" gives the fresh brick a template\'s blocks and look, and it keeps its name', () => {
     const { store } = storeWithBrick()
     render(<StudioShell store={store} templates={[fakeTemplate]} />)
-    fireEvent.click(within(screen.getByLabelText('Brick shapes')).getByRole('button', { name: 'New brick' }))
+    mode('Code')
+    newInCode()
     const id = store.getState().selectedBrickId
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Brick name' }), { key: 'Escape' })
     const start = screen.getByRole('group', { name: 'Start from a brick that works' })

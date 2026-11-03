@@ -1,5 +1,5 @@
 import { Eraser, MousePointer2, Plus, Redo2, Undo2 } from 'lucide-react'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ALL_CATEGORY, BRICK_DRAWER_LABELS, PartPicker, type DrawerItem } from '../../../../shell'
 import { useStudio, type StudioStore } from '../store'
 import {
@@ -16,8 +16,8 @@ import {
 } from '../builder/catalog'
 import type { History } from '../builder/history'
 import { copyToMove, limitOf } from '../builder/limits'
-import { createNewBrick } from '../builder/newBrick'
 import { CostumeThumb } from '../builder/tileArt'
+import { NewBrickSheet } from './NewBrickSheet'
 
 const DRAWER_CATEGORIES = [{ id: ALL_CATEGORY, label: 'All' }, ...CATALOG_CATEGORIES]
 const CATEGORY_LABEL = new Map(CATALOG_CATEGORIES.map((c) => [c.id as string, c.label]))
@@ -47,9 +47,11 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
   const searchText = useCallback((item: DrawerItem) => `${item.id} ${item.name} ${CATEGORY_LABEL.get(item.category) ?? ''}`, [])
   const active = erasing ? null : activeEntryId(brushBrickId, bricks)
   const selecting = !erasing && !brushBrickId
+  const [making, setMaking] = useState(false)
 
   const choose = (id: string) => {
-    if (id === NEW_BRICK_ID) return void createNewBrick(store)
+    // A new brick never needs Code: pick a picture, name it, and it is armed here (NewBrickSheet).
+    if (id === NEW_BRICK_ID) return setMaking(true)
     onErasing(false)
     // Picking the armed brick again puts it down: back to Select.
     if (id === active) return store.setBrush(null)
@@ -86,6 +88,7 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
       <div className="cl-drawer-picker">
         <PartPicker items={items} categories={DRAWER_CATEGORIES} activeId={active} onChoose={choose} labels={BRICK_DRAWER_LABELS} denseCatalog searchText={searchText} />
       </div>
+      <NewBrickSheet store={store} open={making} onClose={() => setMaking(false)} onMade={() => { onErasing(false); onPicked?.() }} />
     </section>
   )
 }

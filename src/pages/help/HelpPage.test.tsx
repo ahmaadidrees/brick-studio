@@ -13,7 +13,7 @@ describe('/help', () => {
     }
     expect(screen.getByText(/your draft is saved in this browser/i)).toBeInTheDocument()
     expect(screen.getByText(/a room expires about two hours after the last activity/i)).toBeInTheDocument()
-    expect(screen.getByText(/a teacher can close collaboration at any time; the work is kept/i)).toBeInTheDocument()
+    expect(screen.getByText(/a teacher can pause building together at any time; the work is kept/i)).toBeInTheDocument()
   })
 
   it('has how-to, teacher and privacy sections at their anchors, with no domain text and no fake claims', () => {

@@ -67,7 +67,7 @@ describe('has the kid changed a snapped power?', () => {
     const ws = throughBlockly(store, 'brick_hero')
     const i = ws.blocks.blocks.findIndex((b) => b.id === snap.blockIds[0])
     const text = JSON.stringify(ws.blocks.blocks[i])
-    // Hop's tick script checks "hop count > hop every ticks"; the kid turns the > into a <.
+    // Hop's tick script checks "hop count > hop wait time"; the kid turns the > into a <.
     const edited = text.replace(/"type":"operator_gt"/, '"type":"operator_lt"')
     expect(edited).not.toBe(text)
     ws.blocks.blocks[i] = JSON.parse(edited)

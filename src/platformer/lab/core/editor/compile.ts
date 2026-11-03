@@ -12,6 +12,7 @@ import type {
   VariableDecl,
 } from '../contracts'
 import { isHatOpcode } from './definitions'
+import { isKnownBlockType } from './knownBlocks'
 
 export interface Diagnostic {
   message: string
@@ -112,8 +113,19 @@ const REMOVED_BLOCKS: Readonly<Record<string, string>> = {
     'The "touching tile" block is gone: every painted block is a brick now. Use "touching [brick]?" from Sensing instead.',
 }
 
-function noteRemovedBlock(type: string, block: WorkspaceBlockJson, diagnostics: Diagnostic[]): void {
-  const message = Object.hasOwn(REMOVED_BLOCKS, type) ? REMOVED_BLOCKS[type] : undefined
+export function isRemovedBlockType(type: string): boolean {
+  return Object.hasOwn(REMOVED_BLOCKS, type)
+}
+
+/** What the kid reads on a block this version does not have (a file made elsewhere, or by a newer version). */
+export const UNKNOWN_BLOCK_MESSAGE = 'This block isn’t part of Brickgineers, so it can’t run.'
+
+/**
+ * A removed block, or one this version never had, still compiles (it does nothing, a reporter answers empty, exactly
+ * as before) but says so, so it never silently does nothing.
+ */
+function noteBlockType(type: string, block: WorkspaceBlockJson, diagnostics: Diagnostic[]): void {
+  const message = isRemovedBlockType(type) ? REMOVED_BLOCKS[type] : isKnownBlockType(type) ? undefined : UNKNOWN_BLOCK_MESSAGE
   if (message === undefined) return
   diagnostics.push({ message, severity: 'warning', code: 'block.unknown', blockId: typeof block.id === 'string' ? block.id : undefined })
 }
@@ -168,7 +180,7 @@ function compileExpr(
   }
 
   // 3. Reporter / Boolean blocks
-  noteRemovedBlock(type, target, diagnostics)
+  noteBlockType(type, target, diagnostics)
   const inputs: Inputs = {}
   if (isRecord(target.inputs)) {
     for (const [name, inputConn] of Object.entries(target.inputs)) {
@@ -213,7 +225,7 @@ function compileStmt(
   const type = block.type
   if (typeof type !== 'string') return null
 
-  noteRemovedBlock(type, block, diagnostics)
+  noteBlockType(type, block, diagnostics)
   const fields = extractFields(block)
   const inputs: Inputs = {}
   let branches: Stmt[][] | undefined
@@ -479,6 +491,12 @@ export function compileWorkspace(
       if (proc) {
         procedures.push(proc)
       }
+      continue
+    }
+
+    // A block this version does not have, on its own: that it cannot run comes first.
+    if (!isKnownBlockType(type) && !isRemovedBlockType(type)) {
+      noteBlockType(type, block, diagnostics)
       continue
     }
 

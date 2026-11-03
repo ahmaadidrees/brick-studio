@@ -428,7 +428,7 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(screen.getByText('Mr. Idrees closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
+    expect(screen.getByText('Mr. Idrees paused building together. Class worlds come back when it starts again.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Shared by classmates' })).not.toBeInTheDocument()
     expect(screen.queryByRole('article', { name: 'Sky Bridge' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Search projects')).not.toBeInTheDocument()
@@ -440,7 +440,7 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(screen.getByText('Your teacher closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
+    expect(screen.getByText('Your teacher paused building together. Class worlds come back when it starts again.')).toBeInTheDocument()
   })
 
   it('keeps all invitations in the default library, newest first, without an initial arrival banner', async () => {
@@ -606,6 +606,14 @@ describe('teacher', () => {
     // "My worlds" is not a class, so it never overwrites the remembered one.
     fireEvent.click(within(rail).getByRole('button', { name: /^My projects/ }))
     expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
+  })
+
+  it('tells a teacher their own class is paused and links to where they resume it', async () => {
+    draw(createFakeWorldsClient({ session: teacherSession, classes: [{ ...FIXTURE_CLASS, collaborationOpen: false }] }), { view: 'class' })
+    await settled()
+    expect(screen.getByText(/Building together is paused for Period 3 Makers/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Resume it on the class page' })).toHaveAttribute('href', `/class?classId=${FIXTURE_CLASS.id}`)
+    expect(screen.queryByText(/closed collaboration|paused building together/)).not.toBeInTheDocument()
   })
 
   it('falls back to the first class when the remembered one is gone', async () => {

@@ -14,9 +14,9 @@ import { BrickName } from './BrickName'
 
 /**
  * Build's right column, shown while something in the level is selected: the brick's name, Sliders · Look, "Every
- * Walker / Just this one", and Open its code. Plain words only; values are rounded for display.
+ * Walker / Just this one", and See inside. Plain words only; values are rounded for display.
  */
-export function Inspector({ store, history, compact = false }: { store: StudioStore; history?: History; compact?: boolean }) {
+export function Inspector({ store, history, compact = false, noCode = compact }: { store: StudioStore; history?: History; compact?: boolean; noCode?: boolean }) {
   const copyId = useStudio(store, (s) => s.selectedCopyId)
   const design = useStudio(store, (s) => s.project.design)
   const tab = useStudio(store, (s) => s.cardTab)
@@ -103,7 +103,7 @@ export function Inspector({ store, history, compact = false }: { store: StudioSt
       <div className="cl-inspector-body cl-fade" key={shownTab}>
         {shownTab === 'look' ? <>
           <ul className="cl-costumes" aria-label="Costumes">{brick.costumes.map((costume) => <li key={costume.name}><CostumeThumb asset={costume.asset} box={56} /><span>{costume.name}</span></li>)}</ul>
-          {!compact && <button type="button" className="cl-btn" onClick={() => { store.setScreen('code', brick.id); store.setEditorTab('costumes') }}>Change costumes</button>}
+          {!noCode && <button type="button" className="cl-btn" onClick={() => { store.setScreen('code', brick.id); store.setEditorTab('costumes') }}>Change costumes</button>}
         </> : <>
           {perCopy && <div className="cl-seg" role="group" aria-label="Which ones change">
             <button type="button" aria-pressed={scope === 'all'} onClick={() => store.setSliderScope('all')}>Every {brick.name}</button>
@@ -130,10 +130,10 @@ export function Inspector({ store, history, compact = false }: { store: StudioSt
         </>}
       </div>
 
-      {!compact && <button type="button" className="cl-btn cl-btn-primary cl-open-code" title="Open its code (double-click a brick)" onClick={() => store.setScreen('code', brick.id)}>
-        <Code2 size={17} aria-hidden="true" /> Open its code
+      {!noCode && <button type="button" className="cl-btn cl-btn-primary cl-open-code" title="See inside: its code and costumes (or double-click the brick)" onClick={() => store.setScreen('code', brick.id)}>
+        <Code2 size={17} aria-hidden="true" /> See inside
       </button>}
-      {compact && <p className="cl-note">Code needs a bigger screen. Sliders and Look work here; open this level on a laptop, Chromebook or tablet to change its code.</p>}
+      {noCode && <p className="cl-note">Code needs a bigger screen. Sliders and Look work here; open this level on a laptop, Chromebook or tablet to change its code.</p>}
 
       {confirm && <div className="cl-confirm cl-pop" role="dialog" aria-modal="true" aria-label="Back to the original?">
         <strong>Back to the original?</strong>

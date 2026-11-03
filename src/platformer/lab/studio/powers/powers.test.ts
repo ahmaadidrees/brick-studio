@@ -147,8 +147,8 @@ describe('making a power and sharing it as a file', () => {
     const made = makePower(store.getState().project, 'brick_hero', { name: 'Late jump', by: 'Ana', what: 'jump just after a ledge', blockIds: [coyote.id] })
     expect(made).toMatchObject({ name: 'Late jump', credits: ['Ana'], fits: 'brick' })
     expect(made.blocks).toHaveLength(1)
-    expect(made.variables.map((v) => v.name).sort()).toEqual(['late jump left', 'late jump ticks'])
-    expect(made.variables.find((v) => v.name === 'late jump ticks')!.value).toBe(hero.program.variables.find((v) => v.id === 'late_ticks')!.value)
+    expect(made.variables.map((v) => v.name).sort()).toEqual(['late jump left', 'late jump time'])
+    expect(made.variables.find((v) => v.name === 'late jump time')!.value).toBe(hero.program.variables.find((v) => v.id === 'late_ticks')!.value)
   })
 
   it('a power made from scripts another power added credits that power\'s maker first', () => {

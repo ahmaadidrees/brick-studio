@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../classroom/ConfirmDialog'
 import { TextInput } from '../../classroom/fields'
 import { readForm } from '../../classroom/panelShared'
 import type { ClassPageClass } from './classPageData'
+import { PAUSED_NOTICE, PauseDialog } from './PauseDialog'
 
 type Props = {
   currentClass: ClassPageClass
@@ -43,13 +44,13 @@ export function SettingsTab({ currentClass, busy, onPatch, onCreateClass }: Prop
         onChange={() => onPatch({ enrollmentOpen: !currentClass.enrollmentOpen }, currentClass.enrollmentOpen ? 'New students cannot join. Existing accounts still work.' : 'New students can join with the class code.')}
       />
       <div className="class-setting-row">
-        <div><div className="class-setting-title"><strong id="class-setting-collaboration">Building together</strong></div><small>{currentClass.collaborationOpen ? 'Students can open shared worlds and build in them.' : 'Shared worlds are closed to students. Their saved work is preserved.'}</small></div>
+        <div><div className="class-setting-title"><strong id="class-setting-collaboration">Building together</strong></div><small>{currentClass.collaborationOpen ? 'Students can open shared worlds and build in them.' : 'Paused: shared worlds are closed to students. Their saved work is kept.'}</small></div>
         {currentClass.collaborationOpen
           ? <button type="button" role="switch" className="classroom-switch" aria-checked aria-labelledby="class-setting-collaboration" disabled={busy} onClick={() => setConfirm('collaboration')}>
             <span className="classroom-switch-track" aria-hidden="true"><span className="classroom-switch-knob" /></span>
             <span className="classroom-switch-state">On</span>
           </button>
-          : <button type="button" role="switch" className="classroom-switch" aria-checked={false} aria-labelledby="class-setting-collaboration" disabled={busy} onClick={() => onPatch({ collaborationOpen: true }, 'Building together is open.')}>
+          : <button type="button" role="switch" className="classroom-switch" aria-checked={false} aria-labelledby="class-setting-collaboration" disabled={busy} onClick={() => onPatch({ collaborationOpen: true }, 'Building together is back on.')}>
             <span className="classroom-switch-track" aria-hidden="true"><span className="classroom-switch-knob" /></span>
             <span className="classroom-switch-state">Off</span>
           </button>}
@@ -57,10 +58,10 @@ export function SettingsTab({ currentClass, busy, onPatch, onCreateClass }: Prop
       <SwitchRow
         id="class-setting-sharing"
         title="Students can share their own builds"
-        description={sharingOn ? 'A student can show a build to the class as look-only or build-together.' : 'Students keep their builds private. Anything already shared stops showing.'}
+        description={sharingOn ? 'A student can show a build to the class as look-only or build-together, and put bricks on the class shelf.' : 'Students keep their builds private. Anything already shared stops showing, and the class shelf is closed to students.'}
         checked={sharingOn}
         busy={busy}
-        onChange={() => onPatch({ studentsCanShare: !sharingOn }, sharingOn ? 'Students can no longer share their builds with the class.' : 'Students can share their builds with the class.')}
+        onChange={() => onPatch({ studentsCanShare: !sharingOn }, sharingOn ? 'Students can no longer share builds or bricks with the class.' : 'Students can share builds and bricks with the class.')}
       />
       <SwitchRow
         id="class-setting-names"
@@ -86,18 +87,7 @@ export function SettingsTab({ currentClass, busy, onPatch, onCreateClass }: Prop
       <p className="class-help">Each class gets its own code, roster and settings.</p>
       <div className="class-actions"><Button type="submit" variant="secondary" loading={busy} loadingLabel="Creating…">Create class</Button></div>
     </form>
-    <ConfirmDialog
-      open={confirm === 'collaboration'}
-      title="Close building together?"
-      description={`Shared worlds in ${currentClass.name} close to students right away.`}
-      confirmLabel="Close now"
-      cancelLabel="Keep open"
-      busy={busy}
-      onCancel={() => setConfirm(null)}
-      onConfirm={() => { setConfirm(null); onPatch({ collaborationOpen: false }, 'Building together is closed. Saved worlds are preserved.') }}
-    >
-      <p>Students in shared worlds are disconnected right away. Saved worlds stay and you keep access.</p>
-    </ConfirmDialog>
+    <PauseDialog open={confirm === 'collaboration'} className={currentClass.name} busy={busy} onCancel={() => setConfirm(null)} onConfirm={() => { setConfirm(null); onPatch({ collaborationOpen: false }, PAUSED_NOTICE) }} />
     <ConfirmDialog
       open={confirm === 'rotate'}
       title="Get a new class code?"

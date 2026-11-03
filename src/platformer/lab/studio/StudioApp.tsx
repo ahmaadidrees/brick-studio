@@ -317,15 +317,24 @@ function OpenProject({ opened }: { opened: Opened }) {
   // keeps its own changes as a copy instead, so both are kept.
   const localFlush = useRef<((force?: boolean) => void) | null>(null)
   const localId = home.kind === 'local' ? home.id : null
+  // What the chip says for this browser: "Saving…" from a change until it is written, then "Saved on this computer".
+  const [localSave, setLocalSave] = useState<LocalSave>('saved')
   useEffect(() => {
     if (!localId) return
+    setLocalSave('saved')
     let pictured = 0
     const afterSave = (project: StudioProject) => {
+      setLocalSave('saved')
       const now = Date.now()
       const picture = now - pictured > 10_000 ? stagePicture() : undefined
       if (picture) pictured = now
       touchHackableEntry(localId, project.design.name, undefined, picture)
     }
+    let shown = store.getState().project
+    const unsubscribeChip = store.subscribe(() => {
+      const project = store.getState().project
+      if (project !== shown) { shown = project; setLocalSave('saving') }
+    })
     const onConflict = (project: StudioProject, theirs: string | null) => {
       const kept = keepLocalCopy(project)
       const elsewhere = theirs === null ? 'This project was removed in another tab' : 'This project was also changed in another tab'
@@ -350,11 +359,11 @@ function OpenProject({ opened }: { opened: Opened }) {
         ? { id: 'tab-removed', type: 'info', sticky: true, message: 'This project was removed in another tab. If you change something here, it is kept as a new project.', actions: [{ label: 'OK', run: clearStorageNotice }] }
         : { id: 'tab-newer', type: 'info', sticky: true, message: 'This project was changed in another tab.', actions: [{ label: 'Show the newer one', run: () => window.location.reload() }, { label: 'OK', run: clearStorageNotice }] })
     }
-    const watch = watchAndSave(store, { key: projectKey(localId), afterSave, onConflict, onChangedElsewhere })
+    const watch = watchAndSave(store, { key: projectKey(localId), afterSave, onSaveFailed: () => setLocalSave('error'), onConflict, onChangedElsewhere })
     // Changes made while a new project was being kept are saved now.
     if (savedFirst && store.getState().project !== savedFirst) watch.flush(true)
     localFlush.current = watch.flush
-    return () => { localFlush.current = null; watch() }
+    return () => { localFlush.current = null; unsubscribeChip(); watch() }
     // savedFirst only matters when this project starts saving here, so it is not a dependency.
   }, [localId, store])
 
@@ -502,18 +511,28 @@ function OpenProject({ opened }: { opened: Opened }) {
   const signedIn = !!browserClassroomClient.getSession()
   const saveStatus: HeaderSaveStatus = saver
     ? saver.conflicted
-      ? { source: { kind: 'cloud', status: copyFailed ? 'error' : 'saving' }, detail: copyFailed ? 'Your changes here are not saved yet. Press This project, then Save File, so you do not lose them.' : 'Keeping your changes here as a copy.' }
-      : { source: { kind: 'cloud', status: saver.status }, detail: saver.status === 'error' ? saver.error : saver.status === 'saved' ? 'Your latest changes are saved to your account.' : 'Saving your latest changes to your account.' }
+      ? copyFailed
+        ? { source: { kind: 'cloud', status: 'error' }, detail: 'Your changes here are not saved yet. Press This project, then Save File, so you do not lose them.', explain: SAVE_WORDS.conflictFailed }
+        : { source: { kind: 'cloud', status: 'saving' }, detail: 'Keeping your changes here as a copy.', explain: SAVE_WORDS.conflict }
+      : saver.status === 'error'
+        ? { source: { kind: 'cloud', status: 'error' }, detail: saver.error, explain: `${saver.error} ${SAVE_WORDS.accountRetry}` }
+        : saver.status === 'saved'
+          ? { source: { kind: 'cloud', status: 'saved' }, detail: 'Your latest changes are saved to your account.', explain: SAVE_WORDS.account }
+          : { source: { kind: 'cloud', status: saver.status }, detail: 'Saving your latest changes to your account.', explain: SAVE_WORDS.accountSaving }
     : home.kind === 'viewer'
-      ? { source: { kind: 'local', error: 'Not saved' }, detail: 'This project belongs to someone else, so changes here are not saved. Make your own copy to keep them.' }
+      ? { source: { kind: 'local', error: 'Not saved' }, detail: 'This project belongs to someone else, so changes here are not saved. Make your own copy to keep them.', explain: SAVE_WORDS.viewer }
       : home.kind === 'unsaved'
-        ? { source: { kind: 'local', error: 'Not saved' }, detail: 'This project is not saved. Press This project, then Save File, so you do not lose it.' }
+        ? { source: { kind: 'local', error: 'Not saved' }, detail: 'This project is not saved. Press This project, then Save File, so you do not lose it.', explain: SAVE_WORDS.notSaved }
         : home.kind === 'local' && home.pending
-          ? { source: { kind: 'cloud', status: 'pending' }, detail: 'Saved on this computer for now. We keep trying to put it in your account.' }
+          ? { source: { kind: 'cloud', status: 'pending' }, detail: 'Saved on this computer for now. We keep trying to put it in your account.', explain: SAVE_WORDS.waitingForAccount }
           : home.kind === 'new' && signedIn
             // Nothing is in the account until its first save works: never "Saved" before the account says so.
-            ? { source: { kind: 'cloud', status: 'pending' }, detail: 'Your project is saved to your account as soon as you change something.' }
-            : { source: { kind: 'local' } }
+            ? { source: { kind: 'cloud', status: 'pending' }, detail: 'Your project is saved to your account as soon as you change something.', explain: SAVE_WORDS.newAccount }
+            : home.kind === 'local'
+              ? localSave === 'error'
+                ? { source: { kind: 'local', error: 'Not saved' }, detail: 'Your latest change could not be saved on this computer.', explain: SAVE_WORDS.localFailed }
+                : { source: { kind: 'local', state: localSave }, explain: SAVE_WORDS.local }
+              : { source: { kind: 'local' }, explain: SAVE_WORDS.newLocal }
 
   return (
     <div className="studio-screen">
@@ -522,10 +541,31 @@ function OpenProject({ opened }: { opened: Opened }) {
         saveStatus={saveStatus}
         onRenameProject={home.kind === 'viewer' ? undefined : async (title) => store.renameProject(title)}
         onLeave={saveBeforeLeaving}
+        firstRunTips
         banner={home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined}
       />
     </div>
   )
+}
+
+type LocalSave = 'saving' | 'saved' | 'error'
+
+const KEEP_A_FILE = 'To keep a copy somewhere else, open the ⋯ menu (This project) and press Save File.'
+
+/** What tapping the save chip says: where this project lives, and what to do. One or two short sentences each. */
+export const SAVE_WORDS = {
+  local: `This project is saved in this browser, on this computer only. ${KEEP_A_FILE}`,
+  newLocal: `This project is saved in this browser, on this computer only, as soon as you change something. ${KEEP_A_FILE}`,
+  localFailed: 'Your latest change could not be saved on this computer. Open the ⋯ menu (This project) and press Save File, so you do not lose it.',
+  account: 'This project is saved to your account. Sign in on any computer to open it from My projects.',
+  accountSaving: 'Saving your latest changes to your account. Keep this tab open until it says Saved.',
+  accountRetry: 'We keep trying. Keep this tab open until it says Saved.',
+  newAccount: 'This project is saved to your account as soon as you change something.',
+  waitingForAccount: 'This project is saved on this computer for now. We keep trying to put it in your account.',
+  conflict: 'A newer version was saved somewhere else, so your changes here are being kept as a copy.',
+  conflictFailed: 'Your changes here are not saved yet. Open the ⋯ menu (This project) and press Save File, so you do not lose them.',
+  viewer: 'This is someone else’s project, so changes here are not saved. Press Make my own copy to keep them.',
+  notSaved: 'This project is not saved. Open the ⋯ menu (This project) and press Save File, so you do not lose it.',
 }
 
 /**

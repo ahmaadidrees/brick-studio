@@ -5,11 +5,12 @@
  * power. Taking it off removes exactly those. Everything here is pure: it takes a project and returns a new one.
  */
 import type { BrickDef, SnappedPower, VariableDecl } from '../../core/contracts'
+import { checkPowerPayload, checkPowerText, POWER_KIND, type PowerCheck } from '../../core/contentRules'
 import { compileWorkspace } from '../../core/editor/compile'
 import { Blocks, type BlockJson } from '../blockBuilder'
 import { STAGE_ID, type StudioProject } from '../store'
 
-export const POWER_FILE_KIND = 'brickgineers-power'
+export const POWER_FILE_KIND = POWER_KIND
 
 /** A power's own variable or list. */
 export interface PowerVariable {
@@ -400,26 +401,51 @@ export function powerToFile(power: PowerBrick): string {
   return JSON.stringify(power, null, 2)
 }
 
-/** Read a power file. Returns null for anything that is not one (kids open all sorts of files). */
-export function powerFromFile(text: string): PowerBrick | null {
-  let v: unknown
-  try { v = JSON.parse(text) } catch { return null }
-  if (!isRecord(v) || v.kind !== POWER_FILE_KIND || v.version !== 1) return null
-  if (typeof v.name !== 'string' || !v.name.trim() || !Array.isArray(v.blocks) || !Array.isArray(v.variables) || !Array.isArray(v.credits)) return null
-  if (v.fits !== 'brick' && v.fits !== 'stage') return null
-  if (!v.blocks.every((b) => isRecord(b) && typeof b.type === 'string')) return null
-  if (!v.variables.every((x) => isRecord(x) && typeof x.id === 'string' && typeof x.name === 'string')) return null
+export type PowerRead = { ok: true; power: PowerBrick } | { ok: false; message: string }
+
+/** A power checked in full (core/contentRules.ts), as this app keeps it; or why it cannot snap on, in the kid's words. */
+function powerFrom(check: PowerCheck): PowerRead {
+  if (!check.ok) return { ok: false, message: check.message }
+  const v = check.power
   return {
-    kind: POWER_FILE_KIND,
-    version: 1,
-    id: typeof v.id === 'string' ? v.id : slug(v.name),
-    name: v.name.trim().slice(0, 40),
-    credits: v.credits.filter((c): c is string => typeof c === 'string').map((c) => c.slice(0, 40)),
-    what: typeof v.what === 'string' ? v.what.slice(0, 200) : '',
-    fits: v.fits,
-    blocks: v.blocks as BlockJson[],
-    variables: v.variables as PowerVariable[],
+    ok: true,
+    power: {
+      kind: POWER_FILE_KIND,
+      version: 1,
+      id: v.id ?? slug(v.name),
+      name: v.name.trim().slice(0, 40),
+      credits: v.credits.map((c) => c.slice(0, 40)),
+      what: v.what?.slice(0, 200) ?? '',
+      fits: v.fits,
+      blocks: v.blocks as BlockJson[],
+      variables: v.variables as PowerVariable[],
+    },
   }
+}
+
+/**
+ * Read a power file, checking all of it: its shape, that it is for this game, its size, and that every block in it is
+ * one this version has. Kids open all sorts of files, and classmates (or a helper) write them.
+ */
+export function readPowerFile(text: string): PowerRead {
+  return powerFrom(checkPowerText(text))
+}
+
+/** A power from the class shelf (already JSON), checked the same way; older shelf items were only checked in outline. */
+export function readPowerPayload(payload: unknown): PowerRead {
+  return powerFrom(checkPowerPayload(payload))
+}
+
+/** Read a power file. Returns null for anything that is not a power this version can snap on. */
+export function powerFromFile(text: string): PowerBrick | null {
+  const read = readPowerFile(text)
+  return read.ok ? read.power : null
+}
+
+/** Why this power cannot snap on (a block this version does not have, a damaged part), or null when it can. */
+export function powerProblem(power: PowerBrick): string | null {
+  const check = checkPowerPayload(power)
+  return check.ok ? null : check.message
 }
 
 // ------------------------------------------------------------------------------------------------ built-in powers
@@ -465,7 +491,7 @@ function dash(): PowerBrick {
   return builtIn('dash', 'Dash', 'Press z for a quick burst of speed, then wait a moment before the next one.', [tick], [
     { id: 'wait', name: 'dash wait', value: 0 },
     { id: 'speed', name: 'dash speed', value: 14, showInBuild: true },
-    { id: 'cooldown', name: 'dash cooldown ticks', value: 20 },
+    { id: 'cooldown', name: 'dash rest time', value: 20 },
   ])
 }
 
@@ -477,7 +503,7 @@ function hop(): PowerBrick {
   ])
   return builtIn('hop', 'Hop', 'Every so often, jump. Snap it onto a Walker for a hopping enemy.', [tick], [
     { id: 'count', name: 'hop count', value: 0 },
-    { id: 'every', name: 'hop every ticks', value: 45 },
+    { id: 'every', name: 'hop wait time', value: 45 },
     { id: 'height', name: 'hop height', value: 8, showInBuild: true },
   ])
 }

@@ -2,6 +2,7 @@
 import type { BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
+import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
 
 type Original = { brick: BrickDef; workspace: unknown }
@@ -222,21 +223,76 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
  */
 export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65']
 
+let currentHeroFingerprint: string | undefined
+
 /**
  * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly
  * an earlier original moves to the current original. Slider values the kid tuned are kept for every variable that
  * still exists, and so are its costumes and sounds.
+ *
+ * A built-in Hero whose blocks are exactly the current original but whose variables still have their old engine-word
+ * names ("p speed") gets the plain names; nothing else about it changes. Blocks point at variables by id, so no block
+ * loses its variable either way. A Hero with other blocks keeps the names it has (`HERO_OLD_VARIABLE_NAMES`).
  */
 export function upgradeUntouchedHero(project: StudioProject): StudioProject {
   const hero = project.design.bricks.find((b) => b.id === 'brick_hero')
   const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
-  if (!hero || !original || !EARLIER_HERO_FINGERPRINTS.includes(workspaceFingerprint(project.workspaces[hero.id]))) return project
+  if (!hero || !original) return project
+  const fingerprint = workspaceFingerprint(project.workspaces[hero.id])
+  currentHeroFingerprint ??= workspaceFingerprint(original.workspace)
+  if (fingerprint === currentHeroFingerprint) return plainHeroNames(project, hero)
+  if (!EARLIER_HERO_FINGERPRINTS.includes(fingerprint)) return project
   const tuned = new Map(hero.program.variables.map((v) => [v.id, v.value]))
   const fresh = clone(original)
-  const variables = fresh.brick.program.variables.map((v) => (tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+  // A brick that reads a Hero variable by its old name ("p speed of Hero") keeps it working: the Hero keeps old names.
+  const keepOld = readsByName(project, hero.program.variables.filter((v) => HERO_OLD_VARIABLE_NAMES[v.id] === v.name).map((v) => v.name))
+  const named = <T extends { id: string; name: string }>(v: T): T => (keepOld && HERO_OLD_VARIABLE_NAMES[v.id] ? { ...v, name: HERO_OLD_VARIABLE_NAMES[v.id] } : v)
+  const variables = fresh.brick.program.variables.map((v) => named(tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
   const upgraded: BrickDef = { ...hero, program: { ...fresh.brick.program, variables } }
+  const workspace = keepOld ? renameWorkspaceVariables(fresh.workspace, named) : fresh.workspace
   return {
     design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? upgraded : b)) },
-    workspaces: { ...project.workspaces, [hero.id]: fresh.workspace },
+    workspaces: { ...project.workspaces, [hero.id]: workspace },
   }
+}
+
+/**
+ * The current Hero saved before its variables had plain names: rename them, only when every one of them still has its
+ * old name in both the brick and its blocks (a kid who renamed one has made the names their own) and no brick reads one
+ * by name. Values, blocks and everything else stay as they are.
+ */
+function plainHeroNames(project: StudioProject, hero: BrickDef): StudioProject {
+  const fresh = new Map(catalogOriginal(hero)!.brick.program.variables.map((v) => [v.id, v.name]))
+  const workspace = workspaceObject(project.workspaces[hero.id])
+  const declared = record(workspace) && Array.isArray(workspace.variables) ? workspace.variables.filter(record) : []
+  const old = Object.entries(HERO_OLD_VARIABLE_NAMES)
+  const holdsOld = (list: ReadonlyArray<Record<string, unknown>>) => old.every(([id, name]) => list.find((v) => v.id === id)?.name === name)
+  if (!holdsOld(hero.program.variables as unknown as Array<Record<string, unknown>>) || !holdsOld(declared)) return project
+  if (readsByName(project, old.map(([, name]) => name))) return project
+  const named = <T extends { id: string; name: string }>(v: T): T => (HERO_OLD_VARIABLE_NAMES[v.id] ? { ...v, name: fresh.get(v.id) ?? v.name } : v)
+  const renamed: BrickDef = { ...hero, program: { ...hero.program, variables: hero.program.variables.map(named) } }
+  return {
+    design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? renamed : b)) },
+    workspaces: { ...project.workspaces, [hero.id]: renameWorkspaceVariables(workspace, named) },
+  }
+}
+
+function renameWorkspaceVariables(workspace: unknown, named: <T extends { id: string; name: string }>(v: T) => T): unknown {
+  if (!record(workspace) || !Array.isArray(workspace.variables)) return workspace
+  return { ...workspace, variables: workspace.variables.map((v: unknown) => (record(v) && typeof v.id === 'string' && typeof v.name === 'string' ? named(v as { id: string; name: string }) : v)) }
+}
+
+/** Whether any brick's "[property] of [brick]" block names one of these variables (it finds the variable by its name). */
+function readsByName(project: StudioProject, names: string[]): boolean {
+  if (names.length === 0) return false
+  const wanted = new Set(names)
+  const found = (value: unknown): boolean => {
+    if (Array.isArray(value)) return value.some(found)
+    if (!record(value) || ArrayBuffer.isView(value)) return false
+    return Object.entries(value).some(([key, v]) => {
+      if (key === 'PROPERTY') return (typeof v === 'string' && wanted.has(v)) || (record(v) && (wanted.has(String(v.name)) || wanted.has(String(v.id))))
+      return found(v)
+    })
+  }
+  return found([project.design.stage, ...project.design.bricks].map((b) => b.program)) || found(Object.values(project.workspaces).map(workspaceObject))
 }

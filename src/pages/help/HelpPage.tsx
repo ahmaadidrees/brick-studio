@@ -24,7 +24,7 @@ const FAQ = [
   },
   {
     question: 'Can we build together?',
-    answer: 'Yes. As a guest, choose Build together to create a room and copy its invite link; anyone with the link can join while the room is open to new people. In a class, the teacher creates class and group worlds that students find in My Class, no link needed. A teacher can close collaboration at any time; the work is kept.',
+    answer: 'Yes. As a guest, choose Build together to create a room and copy its invite link; anyone with the link can join while the room is open to new people. In a class, the teacher creates class and group worlds that students find in My Class, no link needed. A teacher can pause building together at any time; the work is kept.',
   },
 ] as const
 
@@ -85,9 +85,9 @@ export function HelpPage() {
             <dt>Getting started</dt>
             <dd>Sign in with your teacher account, create a class, and give students its enrollment code. Students choose a username and password; no student email address is needed. Continue with your teacher Google account, or use email and password.</dd>
             <dt>Controls you run</dt>
-            <dd>Close enrollment, close collaboration, set a temporary password, suspend or reactivate a student, and restore an earlier checkpoint of a shared world.</dd>
+            <dd>Close joining, pause building together, set a temporary password, suspend or reactivate a student, and restore an earlier checkpoint of a shared world.</dd>
             <dt>How shared worlds work</dt>
-            <dd>Create a whole-class or group world from any build. Students find it in My Class and join; no invite link is needed, and a student who was removed from a group cannot rejoin by link. Shared worlds stay open only while you keep collaboration open. Close it whenever you like: students can no longer open shared worlds, their contributions are kept, and you can still review the world.</dd>
+            <dd>Create a whole-class or group world from any build. Students find it in My Class and join; no invite link is needed, and a student who was removed from a group cannot rejoin by link. Shared worlds stay open only while building together is on. Pause it whenever you like with Pause building at the top of My class: students can no longer open shared worlds, their contributions are kept, and you can still review the world. Resume building opens them again.</dd>
             <dt>The class shelf</dt>
             <dd>A student who builds a new power can share it on the class shelf. You check it first; the shelf shows who made it and how many classmates use it.</dd>
           </dl>

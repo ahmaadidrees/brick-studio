@@ -294,6 +294,25 @@ describe('Storage & Autosave (storage.ts)', () => {
     expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toContain('copy2')
     watch()
   })
+
+  it('says when a save worked and when it did not, so the save chip never says Saved over a failed write', () => {
+    vi.useFakeTimers()
+    const store = new StudioStore(createStarterProject())
+    const afterSave = vi.fn()
+    const onSaveFailed = vi.fn()
+    const watch = watchAndSave(store, { debounceMs: 100, storage: memoryStorage, afterSave, onSaveFailed })
+    store.addCopy('brick_coin', 300, 300)
+    vi.advanceTimersByTime(150)
+    expect([afterSave.mock.calls.length, onSaveFailed.mock.calls.length]).toEqual([1, 0])
+    watch()
+
+    const full = new QuotaStorage()
+    const watchFull = watchAndSave(store, { debounceMs: 100, storage: full, afterSave, onSaveFailed })
+    store.addCopy('brick_coin', 320, 300)
+    vi.advanceTimersByTime(150)
+    expect([afterSave.mock.calls.length, onSaveFailed.mock.calls.length]).toEqual([1, 1])
+    watchFull()
+  })
 })
 
 describe('unreadable saves are held, not overwritten (s8 blockers)', () => {

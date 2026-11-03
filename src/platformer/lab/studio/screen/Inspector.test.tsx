@@ -45,6 +45,14 @@ describe('Build inspector', () => {
     expect(screen.getByRole('slider', { name: 'speed' })).toBeTruthy()
   })
 
+  it('on a Duo (compact, but Code is offered) it still has See inside and no "bigger screen" note', () => {
+    const { store } = selectedWalker()
+    render(<Inspector store={store} compact noCode={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /See inside/ }))
+    expect(screen.queryByText(/Code needs a bigger screen/)).toBeNull()
+    expect(store.getState().cardTab).toBe('code')
+  })
+
   it('rounds what a slider shows, never the value itself', () => {
     const { store } = selectedWalker()
     store.setBrickSlider(walkerId, speedId, 3.14159)
@@ -58,16 +66,16 @@ describe('Build inspector', () => {
     store.selectCopy('copy_hero')
     render(<Inspector store={store} />)
     expect(screen.getAllByRole('slider')).toHaveLength(4)
-    expect(screen.getByRole('button', { name: /More sliders for the Hero/ }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByRole('button', { name: /More sliders \(/ }).getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByRole('group', { name: 'Which ones change' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     expect(screen.queryByRole('button', { name: 'Remove this Hero' })).toBeNull()
   })
 
-  it('Open its code goes to Code on this brick; Change costumes opens its Costumes', () => {
+  it('See inside goes to Code on this brick; Change costumes opens its Costumes', () => {
     const { store } = selectedWalker()
     render(<Inspector store={store} />)
-    fireEvent.click(screen.getByRole('button', { name: /Open its code/ }))
+    fireEvent.click(screen.getByRole('button', { name: /See inside/ }))
     expect(store.getState().cardTab).toBe('code')
     expect(store.getState().selectedBrickId).toBe(walkerId)
     act(() => store.setScreen('build'))
@@ -103,7 +111,7 @@ describe('Build inspector', () => {
   it('on a phone, sliders and Look stay, and it explains that code needs a bigger screen', () => {
     const { store } = selectedWalker()
     render(<Inspector store={store} compact />)
-    expect(screen.queryByRole('button', { name: /Open its code/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /See inside/ })).toBeNull()
     expect(screen.getByText(/Code needs a bigger screen/)).toBeTruthy()
     expect(screen.getByRole('slider', { name: 'speed' })).toBeTruthy()
   })

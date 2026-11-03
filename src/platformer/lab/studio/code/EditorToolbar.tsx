@@ -45,7 +45,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <span className="code-target-label">
           {isStage ? 'Stage' : targetName}
         </span>
-        {isStage && <span className="code-stage-tag">Global</span>}
+        {isStage && <span className="code-stage-tag">Whole level</span>}
       </div>
 
       {/* Creation Actions */}
@@ -74,7 +74,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           type="button"
           className="code-toolbar-action-btn code-btn-proc"
           onClick={onOpenProcedureModal}
-          title="Make a custom block"
+          title="Make your own block"
         >
           <span className="code-btn-icon">🧱</span>
           <span>+ Block</span>
@@ -134,8 +134,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           type="button"
           className="code-toolbar-icon-btn"
           onClick={onResetZoom}
-          title="Reset zoom and center view"
-          aria-label="Reset zoom"
+          title="Back to normal size, in the middle"
+          aria-label="Center the code"
         >
           🎯 Center
         </button>
@@ -144,7 +144,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       {/* Status Badges */}
       <div className="code-toolbar-group code-toolbar-status-group">
         {knobsCount > 0 && !isStage && (
-          <div className="code-knobs-pill" title={`${knobsCount} sliders appear in the brick card`}>
+          <div className="code-knobs-pill" title={`${knobsCount === 1 ? 'This slider shows' : 'These sliders show'} when you pick this brick in Build`}>
             <span>🎛️ {knobsCount} {knobsCount === 1 ? 'slider' : 'sliders'}</span>
           </div>
         )}
@@ -154,9 +154,9 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             type="button"
             className={`code-diagnostics-badge-btn ${showDiagnostics ? 'active' : ''}`}
             onClick={onToggleDiagnostics}
-            title={`${diagnosticsCount} block notices`}
+            title={`${diagnosticsCount} ${diagnosticsCount === 1 ? 'block needs' : 'blocks need'} a look`}
           >
-            <span>⚠️ {diagnosticsCount} {diagnosticsCount === 1 ? 'Notice' : 'Notices'}</span>
+            <span>⚠️ {diagnosticsCount} to check</span>
           </button>
         )}
       </div>

@@ -177,6 +177,32 @@ a.ui-button[aria-disabled="true"] { cursor: default; }
 .ui-save-status-busy { color: var(--primary-strong); background: var(--primary-soft); }
 .ui-save-status-error { color: var(--danger-text); background: var(--danger-soft); border-color: var(--danger); }
 .ui-save-status-offline { color: var(--danger-text); background: var(--danger-soft); border-color: var(--danger); }
+/* A pill that explains itself (explain prop): a button, with the words in a small card under it. */
+.ui-save-status-wrap { position: relative; display: inline-flex; align-items: center; min-width: 0; max-width: 100%; flex: 0 1 auto; }
+.ui-save-status-wrap > .ui-save-status-button { font: inherit; font-size: 12.5px; font-weight: 800; line-height: 1.2; cursor: pointer; }
+.ui-save-status-button:hover { border-color: currentColor; }
+.ui-save-status-button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (pointer: coarse) { .ui-save-status-button.ui-save-status-auto { min-width: 40px; min-height: 40px; } }
+.ui-save-status-pop {
+  position: absolute;
+  z-index: var(--z-toast);
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(300px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: normal;
+}
+.ui-save-status-pop strong { display: block; margin-bottom: 4px; font-size: 14px; font-weight: 800; }
+.ui-save-status-pop p { margin: 0; }
 
 /* ---------- Sheet / dialog ---------- */
 .ui-sheet-root { position: fixed; inset: 0; z-index: var(--z-dialog); display: flex; justify-content: flex-end; align-items: stretch; pointer-events: none; }

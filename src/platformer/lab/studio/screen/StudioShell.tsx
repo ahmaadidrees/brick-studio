@@ -1,4 +1,4 @@
-import { Box, Code2, Eraser, Hammer, MoreHorizontal, Pause, Play, RotateCcw, Undo2, X } from 'lucide-react'
+import { Box, CircleHelp, Code2, Eraser, Hammer, MoreHorizontal, Pause, Play, RotateCcw, Undo2, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { AppHeader } from '../../../../shell'
 import type { HeaderSaveStatus } from '../../../../shell/AppHeader'
@@ -18,12 +18,16 @@ import { BuildDrawer, PaintStrip } from './BuildDrawer'
 import { CodeColumn } from './CodeColumn'
 import { Inspector } from './Inspector'
 import { LevelBricks } from './LevelBricks'
+import { FirstRunTips, HelpSheet } from './StudioHelp'
+import { markTipsSeen, tipsSeen } from './firstRunTips'
 import type { BrickTemplate } from '../templates'
 import '../builder/builder.css'
 import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
 const LEAVE_WAIT_MS = 5000
+/** How long the small-screen brick card ignores touches after it opens (longer than a tap's trailing click). */
+const INSPECTOR_SETTLE_MS = 400
 const assignLocation = (href: string) => window.location.assign(href)
 const LOCAL_SAVE: HeaderSaveStatus = { source: { kind: 'local' } }
 const PHONE = '(max-width: 767px)'
@@ -47,7 +51,7 @@ const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode;
  *   Code:  palette and scripts · the level at the top right with "In this level" below it.
  *   Play:  the level fills the screen.
  */
-export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner, onLeave, navigate = assignLocation }: {
+export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner, onLeave, navigate = assignLocation, firstRunTips = false }: {
   store: StudioStore
   templates?: readonly BrickTemplate[]
   /** Where the project saves to (this browser unless the page says otherwise). */
@@ -59,6 +63,8 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   onLeave?: () => Promise<unknown> | void
   /** Leaves the page (tests pass a stand-in). */
   navigate?: (href: string) => void
+  /** Show the Build · Code · Play tips if this browser has not seen them (the page turns this on; tests leave it off). */
+  firstRunTips?: boolean
 }) {
   const screen = useStudio(store, screenOf)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
@@ -79,7 +85,21 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const [erasing, setErasingState] = useState(session.erasing)
   const setErasing = (on: boolean) => { session.erasing = on; setErasingState(on) }
   const [sheet, setSheet] = useState(false)
+  // On a small screen the brick card slides up under the finger that selected the brick. For a moment after it opens it
+  // ignores touches, so that same tap can't land on a slider and change it.
+  const [settling, setSettling] = useState(false)
+  const inspecting = screen === 'build' && selectedCopyId !== null
+  useEffect(() => {
+    if (!inspecting || !phone) return
+    setSettling(true)
+    const t = setTimeout(() => setSettling(false), INSPECTOR_SETTLE_MS)
+    return () => { clearTimeout(t); setSettling(false) }
+  }, [inspecting, phone])
   const [note, setNote] = useState<string | null>(null)
+  const [help, setHelp] = useState(false)
+  // Shown once per browser: remembered as soon as they show, so a reload does not bring them back (Help does).
+  const [tips, setTips] = useState(() => firstRunTips && !tipsSeen())
+  useEffect(() => { if (tips) markTipsSeen() }, [tips])
   // The logo and My projects save first, then go (after LEAVE_WAIT_MS at most, so a slow save never traps the kid; a
   // save still unfinished then is covered by the page's own "Leave site?" warning).
   const leaving = useRef(false)
@@ -154,7 +174,6 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
     return () => window.removeEventListener('keydown', onKey)
   }, [store, history, session])
 
-  const inspecting = screen === 'build' && selectedCopyId !== null
   return (
     <div className={`p2d-game p2d-studio cl-shell${phone ? ' cl-phone' : ''}${touch ? ' cl-touch' : ''}`} data-screen={screen} data-inspecting={inspecting ? 'yes' : 'no'} data-sheet={sheet ? 'open' : 'closed'}>
       <div className="p2d-header builder-header">
@@ -173,9 +192,12 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           canExplore
           modeLock={{ locked: false }}
           modeSwitch={<ModeTabs screen={screen} noCode={noCode} onChange={go} />}
-          onOpenHelp={() => {}}
+          onOpenHelp={() => setHelp(true)}
           onGoHome={() => leave('/')}
-          worldMenu={() => (
+          worldMenu={() => <>
+            <Button variant="quiet" iconOnly icon={<CircleHelp size={20} />} aria-label="Help" title="Help" className="cl-help-trigger" onClick={() => setHelp(true)}>
+              Help
+            </Button>
             <Menu
               label="This project"
               align="end"
@@ -189,7 +211,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
             >
               <ProjectMenu store={store} className="builder-project" />
             </Menu>
-          )}
+          </>}
         />
       </div>
 
@@ -213,6 +235,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'play' && <PlayFeedback store={store} />}
           {screen === 'play' && touch && runtime && !paused && <PlayTouchControls runtime={runtime} />}
+          {tips && screen === 'build' && <FirstRunTips phone={phone} noCode={noCode} onClose={() => setTips(false)} />}
         </div>
 
         {/* Phones and a Duo: the Bricks sheet is closed most of the time, so Undo and Erase stay out here in their own
@@ -230,8 +253,8 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           </div>
         )}
 
-        <div className="cl-slot cl-slot-inspector" inert={!inspecting ? true : undefined}>
-          {inspecting && <Inspector store={store} history={history} compact={phone} />}
+        <div className={`cl-slot cl-slot-inspector${settling ? ' cl-settling' : ''}`} inert={!inspecting ? true : undefined}>
+          {inspecting && <Inspector store={store} history={history} compact={phone} noCode={noCode} />}
         </div>
 
         <div className="cl-slot cl-slot-level" inert={screen !== 'code' ? true : undefined}>
@@ -239,6 +262,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
         </div>
 
         {phone && sheet && screen === 'build' && <button type="button" className="cl-sheet-close" aria-label="Close bricks" onClick={() => setSheet(false)}><X size={18} /></button>}
+        <HelpSheet open={help} onClose={() => setHelp(false)} onShowTips={() => { setHelp(false); go('build'); setTips(true) }} />
         {(note || remixNotice) && (
           <div className="cl-toast cl-rise" role="status">
             {note ?? remixNotice}

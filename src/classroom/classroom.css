@@ -125,7 +125,7 @@
 
 /* ---------- Roster (board 13) ---------- */
 .classroom-roster { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-.classroom-roster-head, .classroom-roster-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.3fr) auto; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.classroom-roster-head, .classroom-roster-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.3fr) minmax(44px, auto); align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
 .classroom-roster-head { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); background: var(--surface-2); }
 .classroom-roster-row + .classroom-roster-row, .classroom-roster-head + .classroom-roster-row, .classroom-row + .classroom-row { border-top: 1px solid var(--border); }
 .classroom-roster-row strong, .classroom-roster-username { min-width: 0; overflow-wrap: anywhere; }
@@ -247,7 +247,9 @@
 .classroom-invite-details p { font-size: 13px; }
 .classroom-invite-details label { display: grid; gap: 6px; font-size: 13px; }
 .classroom-invite-details button { margin-top: 8px; }
-.classroom-roster-row { grid-template-columns: 1fr 1fr auto auto auto; }
+/* Two buttons per row (Edit student, Reset password) need a fifth column; the ⋯ menu's rows keep the header's four. */
+.classroom-roster-buttons .classroom-roster-head, .classroom-roster-buttons .classroom-roster-row { grid-template-columns: 1fr 1fr auto auto auto; }
+.classroom-roster-buttons .classroom-roster-head > span:last-child { grid-column: span 2; }
 @media(max-width:600px) { .classroom-roster-row { display:flex; flex-wrap:wrap; gap:10px; } }
 .classroom-class-navigation > .classroom-invite { grid-column: 1 / -1; }
 .classroom-class-navigation { align-items: start; }

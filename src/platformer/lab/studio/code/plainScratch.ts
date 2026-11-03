@@ -15,7 +15,7 @@ type Conn = { block: Json } | { shadow: Json }
 export interface PlainScratchCard {
   /** The Platformer opcode this card explains. */
   opcode: string
-  /** Short noun for the title: "How <name> works in plain Scratch". Falls back to the block's own text. */
+  /** Short noun for the title: "How <name> works". Falls back to the block's own text. */
   name: string
   /** Two or three kid-words sentences. */
   explanation: string
@@ -117,7 +117,7 @@ function gravityCard(): PlainScratchCard {
     opcode: 'platformer_setgravity',
     name: 'turn gravity on',
     explanation:
-      'Gravity is a number added to your y speed every tick, so a falling brick drops faster and faster until it reaches a top speed. ' +
+      'Gravity is a number added to your y speed over and over, 30 times a second, so a falling brick drops faster and faster until it reaches a top speed. ' +
       'Scratch has no gravity, so you keep a "gravity on" variable and a forever loop that does the falling. ' +
       '"turn gravity off" is the same, with "gravity on" set to 0.',
     workspace: workspace([place(fall, 20, 20)], [V.gravityOn, V.ySpeed]),
@@ -143,7 +143,7 @@ function solidCard(): PlainScratchCard {
     name: 'solid',
     explanation:
       'A solid brick is one that other bricks cannot walk through. Scratch has no solid, so the brick you want to be solid keeps a "solid" note, ' +
-      'and every mover checks "touching" and steps back out each tick. In Scratch that touching is by pixels; the Platformer blocks use the brick\'s box, so landing and wall stops are exact. ' +
+      'and every mover checks "touching" and steps back out, over and over. In Scratch that touching is by pixels; the Platformer blocks use the brick\'s box, so landing and wall stops are exact. ' +
       '"solid [only on top]" makes a one-way platform: bricks land on it when they fall onto it, but jump up through it or walk through its side. ' +
       'In plain Scratch the mover only steps back when its y speed is below 0, which is the second script.',
     workspace: workspace([place(mark, 20, 20), place(mover, 20, 120), place(oneWay, 20, 280)], [V.solid, V.xSpeed, V.ySpeed]),
@@ -158,8 +158,8 @@ function setSpeedCard(): PlainScratchCard {
     opcode: 'platformer_setspeed',
     name: 'set x speed',
     explanation:
-      'A speed is just a variable. "set x speed to 5" stores a 5; something has to move you by it, so plain Scratch adds a forever loop that changes x by your x speed every tick. ' +
-      'The y speed works the same way, with "change y by". The Platformer blocks run that moving loop for you, once per tick.',
+      'A speed is just a variable. "set x speed to 5" stores a 5; something has to move you by it, so plain Scratch adds a forever loop that changes x by your x speed over and over. ' +
+      'The y speed works the same way, with "change y by". The Platformer blocks run that moving loop for you, 30 times a second.',
     workspace: workspace([place(s, 20, 20)], [V.xSpeed]),
     extras: { ...NO_EXTRAS, variables: [V.xSpeed] },
   }
@@ -232,7 +232,7 @@ function whenBumpCard(): PlainScratchCard {
     name: 'when I bump',
     explanation:
       'This hat runs its blocks when the brick runs into something. In plain Scratch you watch for it yourself: a forever loop checks "touching", and when it is true you broadcast a message, with a hat that listens for it. ' +
-      'The Platformer hat also tells you which side was hit and by what, once per tick, without the loop. ' +
+      'The Platformer hat also tells you which side was hit and by what, without the loop. ' +
       'Both bricks hear about it: when the Hero jumps into a ? block from below, the Hero gets "bump [bottom] of [? block]" and the ? block gets "bump [top] of [Hero]". In plain Scratch each one would need its own forever loop with "touching".',
     workspace: workspace([place(watch, 20, 20), place(hat, 20, 190)], []),
     extras: { ...NO_EXTRAS, bricks: ['Wall'], messages: ['bumped'] },
@@ -244,10 +244,10 @@ function everyTickCard(): PlainScratchCard {
   const loop = b.flag([b.forever([b.change(V.xSpeed, 1)])])
   return {
     opcode: 'platformer_everytick',
-    name: 'every tick',
+    name: 'over and over',
     explanation:
-      '"every tick" runs its blocks once each tick, 30 times a second, while the level plays. In plain Scratch you use a forever loop under the green flag. ' +
-      'The Platformer hat is steadier: a forever loop can run more than once in a tick when nothing on screen changes, but "every tick" always runs exactly once, and the scripts run in the order you made them. That is what lets small feel scripts each do one job.',
+      '"over and over" runs its blocks 30 times a second while the level plays. In plain Scratch you use a forever loop under the green flag. ' +
+      'The Platformer hat is steadier: a forever loop can sometimes run twice in a row when nothing on screen changes, but "over and over" runs exactly once each time, and the scripts take turns in the order you made them. That is what lets small feel scripts each do one job.',
     workspace: workspace([place(loop, 20, 20)], [V.xSpeed]),
     extras: { ...NO_EXTRAS, variables: [V.xSpeed] },
   }
@@ -303,7 +303,7 @@ function selfMoveCards(): PlainScratchCard[] {
       opcode: 'platformer_setmover',
       name: 'move me with',
       explanation:
-        'In plain Scratch every sprite moves itself with its own blocks. The Platformer can do it for you: every tick it adds the speeds, pulls down with gravity and stops you at solids. ' +
+        'In plain Scratch every sprite moves itself with its own blocks. The Platformer can do it for you: 30 times a second it adds the speeds, pulls down with gravity and stops you at solids. ' +
         '"move me with [my own blocks]" turns that off for this brick, so its own scripts move it, the Scratch way, and you can change how walls and floors work.',
       workspace: workspace([place(moveLoop, 20, 20)], vars),
       extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },

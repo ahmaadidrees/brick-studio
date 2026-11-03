@@ -3,16 +3,21 @@ import type { StudioProject } from '../store'
 import { HACKABLE_FORMAT, isHackableDocument, saveHackableText, type HackableDocument, type HackableSaveResult, type HackableStorage, type PendingWorld } from './hackableProjects'
 import { exportProjectJson, projectStorageText } from './projectIo'
 import { openableSaveText, parseSaveText } from './repairSave'
+import { announceOpened } from './openChecks'
 
 /* Opening and writing Hackable Platformer projects: the part of hackableProjects.ts that needs the game's own parser. */
 
 /**
- * A project's save text read back, upgraded the way Code Lab always upgrades a save (and with any picture the game
- * refuses put right, persist/repairSave.ts); null when it is unreadable.
+ * A project's save text read back, upgraded the way Code Lab always upgrades a save (and with any picture or sound the
+ * game refuses put right, persist/repairSave.ts); null when it is unreadable.
  */
 export function projectFromText(text: string): StudioProject | null {
   const result = parseSaveText(text)
-  return result.ok ? upgradeUntouchedHero({ design: result.save.design, workspaces: result.save.workspaces ?? {} }) : null
+  if (!result.ok) return null
+  const project = upgradeUntouchedHero({ design: result.save.design, workspaces: result.save.workspaces ?? {} })
+  // Blocks this version does not have, or pictures and sounds put right as it opened: the kid hears about it.
+  announceOpened(project, result.replaced)
+  return project
 }
 
 /** An account world's document as a project; null when it is not a Hackable project or will not open. */
