@@ -33,7 +33,7 @@ import { gridCopyId } from '../core/contracts'
 import { builderSession } from './builder/session'
 import { addCopyEdit, moveCopyEdit, removeCopyEdit, tileStrokeEdit, type History, type TileChange } from './builder/history'
 import { cellsOnLine, decidePress, tileCharAt, worldToCell, type BuildTool, type Cell, type PressDecision } from './builder/tilePaint'
-import { clampToLevel, copyBox, landingSpot } from './builder/placement'
+import { clampToLevel, copyBox, landingPose, landingSpot } from './builder/placement'
 import {
   globalImageCache,
   renderBuildMode,
@@ -175,6 +175,8 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     startWorldY: number
     startCopyX: number
     startCopyY: number
+    /** moveCopy: the copy's direction when picked up (a car may turn to face the track when dropped). */
+    startCopyDirection: number | undefined
     /** paint: the tile being painted and the cells changed so far (one undo step). */
     paintChar: string
     paintLast: Cell | null
@@ -192,6 +194,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     startWorldY: 0,
     startCopyX: 0,
     startCopyY: 0,
+    startCopyDirection: undefined,
     paintChar: '.',
     paintLast: null,
     changes: [],
@@ -457,6 +460,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       startWorldY: wy,
       startCopyX: 0,
       startCopyY: 0,
+      startCopyDirection: undefined,
       paintChar: '.',
       paintLast: null,
       changes: [],
@@ -476,10 +480,11 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     dragRef.current.changes.push({ col: cell.col, row: cell.row, from, to: ch })
   }
 
-  /** Put a brick down where the kid pressed: inside the level, and a Hero never inside the ground. */
+  /** Put a brick down where the kid pressed: inside the level, a Hero never inside the ground, a car clear of barriers and facing along the track. */
   const placeCopy = (brickId: string, x: number, y: number) => {
-    const at = landingSpot(store.getState().project.design, { brickId }, x, y, GRID)
+    const at = landingPose(store.getState().project.design, { brickId }, x, y, GRID)
     const id = store.addCopy(brickId, at.x, at.y)
+    if (at.direction !== undefined) store.updateCopy(id, { direction: at.direction })
     const copy = store.getState().project.design.copies.find((c) => c.id === id)
     if (copy && history) history.push(addCopyEdit(history, copy))
   }
@@ -495,15 +500,18 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     if (drag.mode === 'moveCopy' && drag.moved && selectedCopyId) {
       let copy = store.getState().project.design.copies.find((c) => c.id === selectedCopyId)
       if (copy) {
-        // Dropped: a Hero lands on top of the ground rather than inside it.
-        const at = landingSpot(store.getState().project.design, copy, copy.x, copy.y, GRID)
-        if (at.x !== copy.x || at.y !== copy.y) {
+        // Dropped: a Hero lands on top of the ground rather than inside it; a car clears barriers and faces along the track.
+        const at = landingPose(store.getState().project.design, copy, copy.x, copy.y, GRID)
+        if (at.x !== copy.x || at.y !== copy.y || (at.direction !== undefined && at.direction !== copy.direction)) {
           store.updateCopy(copy.id, at)
           copy = { ...copy, ...at }
         }
       }
-      if (copy && history && (copy.x !== drag.startCopyX || copy.y !== drag.startCopyY)) {
-        history.push(moveCopyEdit(history, copy.id, { x: drag.startCopyX, y: drag.startCopyY }, { x: copy.x, y: copy.y }))
+      const turned = copy !== undefined && copy.direction !== drag.startCopyDirection
+      if (copy && history && (copy.x !== drag.startCopyX || copy.y !== drag.startCopyY || turned)) {
+        history.push(moveCopyEdit(history, copy.id,
+          { x: drag.startCopyX, y: drag.startCopyY, ...(turned ? { direction: drag.startCopyDirection } : {}) },
+          { x: copy.x, y: copy.y, ...(turned ? { direction: copy.direction } : {}) }))
       }
     }
   }
@@ -641,7 +649,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       const decision = decidePress(design, buildTool, wx, wy, { erase: e.button === 2, snap: GRID })
       switch (decision.kind) {
         case 'select-copy': {
-          newDrag('moveCopy', sx, sy, wx, wy, { startCopyX: decision.copy.x, startCopyY: decision.copy.y })
+          newDrag('moveCopy', sx, sy, wx, wy, { startCopyX: decision.copy.x, startCopyY: decision.copy.y, startCopyDirection: decision.copy.direction })
           store.selectCopy(decision.copy.id)
           break
         }
