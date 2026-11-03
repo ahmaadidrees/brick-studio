@@ -1,0 +1,8 @@
+/* The finish line's arrow in Build's inspector. */
+.cl-finish { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; }
+.cl-finish .cl-slider-control { display: flex; align-items: center; gap: 12px; }
+.cl-finish-arrow { flex: none; color: var(--cl-blue, #3e5bd9); transition: transform 200ms ease-out; }
+
+/* The Car's feel presets above its sliders. */
+.ws-presets { margin-bottom: 4px; }
+.ws-preset-hint { display: block; margin-bottom: 8px; }
