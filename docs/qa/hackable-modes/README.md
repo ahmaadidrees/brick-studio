@@ -4,8 +4,8 @@
 - Slice K landed (`K.md`).
 - R1's engine parts landed (`R1-engine.md`): the Car, laps, the Racing blocks, the beginner track and racers, and a
   performance check.
-- R1's screens wait for the class notes.
-- **Branch:** `claude/hackable-modes-proposal`, from main `e4d4930`, which matches production. It is not pushed.
+- R1's screens landed November 2 (`r1/README.md`). Not deployed.
+- **Branch:** `claude/hackable-modes-proposal`, pushed. Main bce7b67 was merged in on November 2, and R1's screens are in (`r1/README.md`).
 - **Mocks:** linked at the end.
 - **The rule this follows:** no code, pushes, deploys or migrations until the owner agrees on scope.
 
