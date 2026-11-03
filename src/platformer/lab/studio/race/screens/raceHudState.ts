@@ -1,0 +1,98 @@
+/**
+ * What Racing's Play HUD shows, read from the running race (no React): the Starter's countdown, the Car's lap, its
+ * place, and the results once the Car finishes. Lane 4 of docs/qa/hackable-modes/R1-SCREENS.md.
+ *
+ * It only reads. The countdown is the Starter's own words (whatever a kid makes it say), mirrored because the Starter
+ * can be off camera. Laps and places come from core/race.ts, the same numbers `laps done` and `my place` report.
+ */
+import type { LevelDesign, Target, World } from '../../../core/contracts'
+import { isRacer, raceLapState, raceLoopOf, racePlace, RACE_LOOP_REASON_TEXT } from '../../../core/race'
+import { isPlayerBrick } from '../../kitScreens'
+import { RACE_GLOBALS } from '../carBrick'
+import { STARTER_BRICK_ID } from '../raceTrack'
+
+/** One line of the results card. */
+export interface RaceStanding {
+  place: number
+  name: string
+  /** Over the line (on the results list); false: still racing. */
+  done: boolean
+  you: boolean
+}
+
+export interface RaceHudState {
+  /** What the Starter is saying while it counts down ("3", "2", "1", "Go!"), or null. */
+  countdown: string | null
+  /** The lap the Car is on, 1 to `laps` (stays at `laps` once it finishes). */
+  lap: number
+  laps: number
+  /** The Car's place, 1 for the leader; 0 when laps can't count or there is no Car. */
+  place: number
+  /** How many racers (cars that drive themselves), the Car included. */
+  racers: number
+  /** The Car has done its last lap. */
+  finished: boolean
+  /** Why laps don't count on this track (the Build chip's words), or null when they do. */
+  noLaps: string | null
+  /** Everyone in order once the Car finishes: the results list first, then whoever is still racing. Empty before. */
+  standings: RaceStanding[]
+}
+
+/** Longer than this, the Starter is not counting down (it is showing the results, or a kid's own message). */
+const COUNTDOWN_MAX = 12
+const DEFAULT_LAPS = 3
+
+export const ordinal = (n: number): string => n + (['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) % 10 === 1 ? 0 : n % 10] || 'th')
+
+const isStarter = (world: World, t: Target): boolean => {
+  if (t.isStage || t.isClone) return false
+  const brick = world.bricks[t.brickId]
+  return !!brick && (brick.id === STARTER_BRICK_ID || brick.remixOf === STARTER_BRICK_ID || brick.name.trim().toLowerCase() === 'starter')
+}
+
+/** A racer's name on the results: its costume's name ("You", "Red racer"), as the results list writes it. */
+export const racerName = (world: World, t: Target): string => world.bricks[t.brickId]?.costumes[t.costumeIndex]?.name ?? world.bricks[t.brickId]?.name ?? ''
+
+/** "2. Red racer" → "Red racer". */
+const entryName = (entry: unknown): string => String(entry).replace(/^\s*\d+\.\s*/, '')
+
+/** The Car: the first placed copy of the kit's player brick (the Car, a remixed "My Car"), as the camera follows. */
+export function raceCarOf(world: World, design: LevelDesign): Target | undefined {
+  const players = new Set(design.bricks.filter((b) => isPlayerBrick(design, b.id)).map((b) => b.id))
+  return world.targets.find((t) => !t.isStage && !t.isClone && players.has(t.brickId))
+}
+
+export function readRaceHud(world: World, design: LevelDesign): RaceHudState {
+  const car = raceCarOf(world, design)
+  const starter = world.targets.find((t) => isStarter(world, t))
+  const said = starter?.bubble?.text.trim() ?? ''
+  const countdown = said && said.length <= COUNTDOWN_MAX && !/^results/i.test(said) ? said : null
+
+  const lapsSetting = Number(world.stage.variables[RACE_GLOBALS.lapsToWin])
+  const laps = Number.isFinite(lapsSetting) && lapsSetting >= 1 ? Math.floor(lapsSetting) : DEFAULT_LAPS
+  const done = car ? raceLapState(car)?.lap ?? 0 : 0
+  const finished = done >= laps
+  const racers = world.targets.filter(isRacer)
+
+  const loop = raceLoopOf(world)
+  const noLaps = loop.ok ? null : RACE_LOOP_REASON_TEXT[loop.reason]
+
+  const results = (world.stage.lists[RACE_GLOBALS.results] ?? []).map(entryName)
+  const carName = car ? racerName(world, car) : ''
+  // A Car that just crossed the line is written on the results a tick later (its lap script runs next tick), or never
+  // if a kid's Car has no results script: it goes after whoever is already on the list.
+  const finishers = finished && !results.includes(carName) ? [...results, carName] : results
+  // After the line `my place` can be passed by a later finisher (R1-engine.md), so a finished Car's place is its line.
+  const place = car ? (finished ? finishers.indexOf(carName) + 1 : racePlace(world, car)) : 0
+
+  let standings: RaceStanding[] = []
+  if (car && finished) {
+    standings = finishers.map((name, i) => ({ place: i + 1, name, done: true, you: name === carName }))
+    const still = racers
+      .filter((t) => !finishers.includes(racerName(world, t)))
+      .sort((a, b) => racePlace(world, a) - racePlace(world, b))
+    for (const t of still) standings.push({ place: standings.length + 1, name: racerName(world, t), done: false, you: false })
+  }
+
+  return { countdown, lap: Math.min(done + 1, laps), laps, place, racers: racers.length, finished, noLaps, standings }
+}
