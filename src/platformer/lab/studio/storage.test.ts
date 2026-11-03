@@ -180,7 +180,7 @@ describe('Storage & Autosave (storage.ts)', () => {
     const notice = getStorageNotice()
     expect(notice).not.toBeNull()
     expect(notice?.type).toBe('quota-error')
-    expect(notice?.message).toContain('computer is full')
+    expect(notice?.message).toContain('no more room for projects on this computer')
   })
 
   it('detects isQuotaError correctly', () => {
@@ -294,6 +294,25 @@ describe('Storage & Autosave (storage.ts)', () => {
     expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toContain('copy2')
     watch()
   })
+
+  it('says when a save worked and when it did not, so the save chip never says Saved over a failed write', () => {
+    vi.useFakeTimers()
+    const store = new StudioStore(createStarterProject())
+    const afterSave = vi.fn()
+    const onSaveFailed = vi.fn()
+    const watch = watchAndSave(store, { debounceMs: 100, storage: memoryStorage, afterSave, onSaveFailed })
+    store.addCopy('brick_coin', 300, 300)
+    vi.advanceTimersByTime(150)
+    expect([afterSave.mock.calls.length, onSaveFailed.mock.calls.length]).toEqual([1, 0])
+    watch()
+
+    const full = new QuotaStorage()
+    const watchFull = watchAndSave(store, { debounceMs: 100, storage: full, afterSave, onSaveFailed })
+    store.addCopy('brick_coin', 320, 300)
+    vi.advanceTimersByTime(150)
+    expect([afterSave.mock.calls.length, onSaveFailed.mock.calls.length]).toEqual([1, 1])
+    watchFull()
+  })
 })
 
 describe('unreadable saves are held, not overwritten (s8 blockers)', () => {
@@ -351,5 +370,107 @@ describe('unreadable saves are held, not overwritten (s8 blockers)', () => {
     expect(mem.getItem(CODE_LAB_STORAGE_KEY)).toBe(good)
     expect(getStorageNotice()?.type).toBe('error')
     expect(getStorageNotice()?.message).toMatch(/earlier save is safe/)
+  })
+})
+
+describe('two tabs on one project (watchAndSave with onConflict)', () => {
+  const KEY = 'code-lab.project.v1:two-tabs'
+  let mem: MemoryStorage
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mem = new MemoryStorage()
+    clearStorageNotice()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  const named = (name: string) => ({ ...createStarterProject(), design: { ...createStarterProject().design, name } })
+  function open(name = 'Lava Castle') {
+    saveProject(named(name), mem, KEY)
+    const store = new StudioStore(loadProject(mem, KEY))
+    const onConflict = vi.fn()
+    const onChangedElsewhere = vi.fn()
+    const watch = watchAndSave(store, { storage: mem, key: KEY, debounceMs: 100, onConflict, onChangedElsewhere })
+    return { store, onConflict, onChangedElsewhere, watch }
+  }
+  const keptName = () => JSON.parse(mem.getItem(KEY)!).design.name
+
+  it('keeps projects compact: the same JSON, about a third of the indented size', () => {
+    const project = createStarterProject()
+    expect(saveProject(project, mem, KEY)).toBe(true)
+    const kept = mem.getItem(KEY)!
+    expect(kept).not.toContain('\n')
+    expect(parse(kept).ok).toBe(true)
+    expect(JSON.parse(kept)).toEqual(JSON.parse(JSON.stringify(JSON.parse(kept))))
+    expect(kept.length).toBeLessThan(250_000)
+  })
+
+  it('saves as usual while no other tab saves', () => {
+    const { store, onConflict, watch } = open()
+    store.renameProject('Mine')
+    vi.advanceTimersByTime(150)
+    expect(keptName()).toBe('Mine')
+    store.renameProject('Mine again')
+    vi.advanceTimersByTime(150)
+    expect(keptName()).toBe('Mine again')
+    expect(onConflict).not.toHaveBeenCalled()
+    watch()
+  })
+
+  it('never writes over a save another tab made since; this tab’s project goes to onConflict instead', () => {
+    const { store, onConflict, watch } = open()
+    // Tab A renames and saves.
+    saveProject(named('Renamed in tab A'), mem, KEY)
+    // Tab B (this one) paints.
+    store.renameProject('Painted in tab B')
+    vi.advanceTimersByTime(150)
+    expect(keptName()).toBe('Renamed in tab A')
+    expect(onConflict).toHaveBeenCalledTimes(1)
+    expect(onConflict.mock.calls[0][0].design.name).toBe('Painted in tab B')
+    expect(JSON.parse(onConflict.mock.calls[0][1]).design.name).toBe('Renamed in tab A')
+    // Nothing more is written here, not even when the tab closes.
+    store.renameProject('Later')
+    watch()
+    expect(keptName()).toBe('Renamed in tab A')
+    expect(onConflict).toHaveBeenCalledTimes(1)
+  })
+
+  it('a project removed in another tab is not brought back over its removal without the caller knowing', () => {
+    const { store, onConflict, watch } = open()
+    mem.removeItem(KEY)
+    store.renameProject('Still here')
+    vi.advanceTimersByTime(150)
+    expect(onConflict).toHaveBeenCalledWith(expect.objectContaining({ design: expect.objectContaining({ name: 'Still here' }) }), null)
+    expect(mem.getItem(KEY)).toBeNull()
+    watch()
+  })
+
+  it('hears another tab’s save at once: a conflict when this tab has changes waiting, otherwise just news', () => {
+    const quiet = open()
+    saveProject(named('From tab A'), mem, KEY)
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: mem.getItem(KEY) }))
+    expect(quiet.onChangedElsewhere).toHaveBeenCalledTimes(1)
+    expect(quiet.onConflict).not.toHaveBeenCalled()
+    quiet.watch()
+
+    const busy = open()
+    busy.store.renameProject('Changed here')
+    saveProject(named('From tab A again'), mem, KEY)
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: mem.getItem(KEY) }))
+    expect(busy.onConflict).toHaveBeenCalledTimes(1)
+    vi.advanceTimersByTime(150)
+    expect(keptName()).toBe('From tab A again')
+    busy.watch()
+  })
+
+  it('the same project written differently (an older indented save made compact) is no conflict', () => {
+    const { store, onConflict, watch } = open()
+    const compact = mem.getItem(KEY)!
+    mem.setItem(KEY, JSON.stringify(JSON.parse(compact), null, 2))
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY, newValue: mem.getItem(KEY) }))
+    store.renameProject('Fine')
+    vi.advanceTimersByTime(150)
+    expect(onConflict).not.toHaveBeenCalled()
+    expect(keptName()).toBe('Fine')
+    watch()
   })
 })

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Blocks, CircleAlert, CircleCheck, Library, LoaderCircle, Plus, Settings, Users } from 'lucide-react'
+import { Blocks, CircleAlert, CircleCheck, Library, LoaderCircle, Pause, Play, Plus, Settings, Users } from 'lucide-react'
 import { createBrickStudioDocument } from '@brick-studio/core'
 import { Button, SegmentedControl, Sheet } from '../../ui'
 import type { ClassroomCheckpoint, ClassroomStudent, ClassroomWorldMember } from '../../classroom/contracts'
 import { ManageStudentForm } from '../../classroom/RosterView'
 import { errorMessage } from '../../classroom/panelShared'
+import { shelfClient } from '../../classroom/shelfClient'
 import '../../classroom/classroom.css'
 import { AppHeader, clearRememberedTeacherClass, displayNameFor, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import {
@@ -13,6 +14,7 @@ import {
   type ClassPageClient, type ClassPageClass, type ClassPageWorld,
 } from './classPageData'
 import { FirstRun } from './FirstRun'
+import { PAUSED_NOTICE, PauseDialog } from './PauseDialog'
 import { StudentsTab } from './StudentsTab'
 import { WorldsTab } from './WorldsTab'
 import { SettingsTab } from './SettingsTab'
@@ -61,7 +63,8 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   const [classId, setClassId] = useState('')
   const [tab, setTab] = useState<ClassTab>('students')
   const [students, setStudents] = useState<ClassroomStudent[]>([])
-  const [studentsLoading, setStudentsLoading] = useState(false)
+  // Starts true so the Students tab doesn't flash the full code card before the roster says the class has students.
+  const [studentsLoading, setStudentsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [editingStudent, setEditingStudent] = useState<ClassroomStudent | null>(null)
   /** The temporary password just saved, shown large until the teacher has read it out. */
@@ -72,6 +75,9 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   /** Stays on the stepper until the teacher leaves it, even though the class now exists. */
   const [firstRunDone, setFirstRunDone] = useState(false)
   const [createdClass, setCreatedClass] = useState<ClassPageClass | null>(null)
+  /** Bricks waiting for the teacher on this class's shelf, for the tab's count; null until known. */
+  const [shelfWaiting, setShelfWaiting] = useState<number | null>(null)
+  const [confirmPause, setConfirmPause] = useState(false)
   /** `?classId=` on the URL; consumed the first time the classes load. */
   const requestedClassId = useRef(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('classId'))
   const studentFocus = useRef<'password' | null>(null)
@@ -112,6 +118,18 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
       .then(result => { if (!cancelled) setStudents(result) })
       .catch(failure => { if (!cancelled) setError(errorMessage(failure)) })
       .finally(() => { if (!cancelled) setStudentsLoading(false) })
+    return () => { cancelled = true }
+  }, [client, classId, teacher])
+
+  // The Shelf tab says how many bricks are waiting before the teacher opens it. The tab itself keeps the count
+  // current while it is open; a failed check just leaves the count off.
+  useEffect(() => {
+    setShelfWaiting(null)
+    if (!teacher || !classId) return
+    let cancelled = false
+    shelfClient(client).list(classId)
+      .then(result => { if (!cancelled) setShelfWaiting((result.items ?? []).filter(item => item.status === 'pending').length) })
+      .catch(() => { /* the count stays off */ })
     return () => { cancelled = true }
   }, [client, classId, teacher])
 
@@ -208,17 +226,21 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
             </ul>
             <Button variant="quiet" size="sm" icon={<Plus size={16} />} onClick={() => { setTab('settings'); setEditingStudent(null); setSelectedWorld(null) }}>New class</Button>
             <hr className="class-rail-divider" />
-            <Button variant="quiet" size="sm" href="/worlds">My worlds</Button>
+            <Button variant="quiet" size="sm" href="/projects">My projects</Button>
           </nav>
           <main className="class-page-main" aria-labelledby="class-name-title">
             {currentClass ? <>
               <div className="class-head">
                 <h1 id="class-name-title">{currentClass.name}</h1>
                 <div className="class-head-chips">
-                  <span className={`class-chip class-chip-${currentClass.enrollmentOpen ? 'on' : 'off'}`}>Enrollment {currentClass.enrollmentOpen ? 'open' : 'closed'}</span>
-                  <span className={`class-chip class-chip-${currentClass.collaborationOpen ? 'on' : 'off'}`}>Collaboration {currentClass.collaborationOpen ? 'open' : 'closed'}</span>
+                  <span className={`class-chip class-chip-${currentClass.enrollmentOpen ? 'on' : 'off'}`}>Joining {currentClass.enrollmentOpen ? 'open' : 'closed'}</span>
+                  <span className={`class-chip class-chip-${currentClass.collaborationOpen ? 'on' : 'off'}`}>Building together {currentClass.collaborationOpen ? 'on' : 'paused'}</span>
                   {typeof currentClass.buildingNow === 'number' && <span className="class-chip class-chip-live">{currentClass.buildingNow} building now</span>}
                 </div>
+                {/* "Hands off keyboards": pausing is one button here, not Settings → switch → confirm. */}
+                {currentClass.collaborationOpen
+                  ? <Button className="class-head-pause" variant="secondary" size="sm" icon={<Pause size={16} />} disabled={busy} onClick={() => setConfirmPause(true)}>Pause building</Button>
+                  : <Button className="class-head-pause" variant="primary" size="sm" icon={<Play size={16} />} disabled={busy} onClick={() => onPatch({ collaborationOpen: true }, 'Building together is back on.')}>Resume building</Button>}
               </div>
               <SegmentedControl<ClassTab>
                 label="Class sections"
@@ -229,14 +251,14 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
                 options={[
                   { value: 'students', label: 'Students', icon: <Users size={16} />, disabled: busy },
                   { value: 'worlds', label: 'Worlds', icon: <Blocks size={16} />, disabled: busy },
-                  { value: 'shelf', label: 'Shelf', icon: <Library size={16} />, disabled: busy },
+                  { value: 'shelf', label: shelfWaiting ? `Shelf · ${shelfWaiting} waiting` : 'Shelf', icon: <Library size={16} />, disabled: busy },
                   { value: 'settings', label: 'Settings', icon: <Settings size={16} />, disabled: busy },
                 ]}
               />
               {editingStudent
                 ? <ManageStudentForm student={editingStudent} busy={busy} headingRef={detailHeading} onSubmit={values => onUpdateStudent(editingStudent, values)} onToggleSuspend={() => onToggleSuspend(editingStudent)} onCancel={() => setEditingStudent(null)} />
                 : tab === 'students'
-                  ? <StudentsTab currentClass={currentClass} students={students} studentsLoading={studentsLoading} search={search} busy={busy} shared={shared} onSearch={setSearch} onManageStudent={onManageStudent} onToggleHidden={onToggleHidden} onToggleSuspend={onToggleSuspend} onViewSettings={() => setTab('settings')} />
+                  ? <StudentsTab currentClass={currentClass} students={students} studentsLoading={studentsLoading} search={search} busy={busy} shared={shared} onSearch={setSearch} onManageStudent={onManageStudent} onToggleHidden={onToggleHidden} onToggleSuspend={onToggleSuspend} />
                   : tab === 'worlds'
                     ? <WorldsTab
                       currentClass={currentClass}
@@ -261,11 +283,12 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
                       })}
                     />
                     : tab === 'shelf'
-                      ? <ShelfTab key={currentClass.id} client={client} currentClass={currentClass} busy={busy} run={run} onNotice={setNotice} onError={setError} onPatch={onPatch} />
+                      ? <ShelfTab key={currentClass.id} client={client} currentClass={currentClass} busy={busy} run={run} onNotice={setNotice} onError={setError} onPatch={onPatch} onWaitingChange={setShelfWaiting} />
                       : <SettingsTab currentClass={currentClass} busy={busy} onPatch={onPatch} onCreateClass={onCreateClass} />}
             </> : <p className="class-help" role="status">Pick a class from the list, or create one in Settings.</p>}
           </main>
         </div>}
+    {currentClass && <PauseDialog open={confirmPause} className={currentClass.name} busy={busy} onCancel={() => setConfirmPause(false)} onConfirm={() => { setConfirmPause(false); onPatch({ collaborationOpen: false }, PAUSED_NOTICE) }} />}
     {issued && <Sheet
       open
       variant="dialog"
@@ -280,3 +303,4 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
     </Sheet>}
   </div>
 }
+

@@ -59,7 +59,7 @@ function shelfClient({ failList = false } = {}) {
 
 async function openShelf(client: ClassPageClient) {
   render(<ClassPage client={client} navigate={vi.fn()} />)
-  fireEvent.click(await screen.findByRole('radio', { name: 'Shelf' }))
+  fireEvent.click(await screen.findByRole('radio', { name: /^Shelf/ }))
   return screen.findByRole('list', { name: 'Bricks waiting for you' })
 }
 
@@ -85,6 +85,17 @@ it('puts a waiting brick on the shelf', async () => {
   expect(screen.queryByRole('list', { name: 'Bricks waiting for you' })).not.toBeInTheDocument()
   expect(screen.getByText(/Nothing waiting/)).toBeInTheDocument()
   expect(screen.getByText('“Double jump” is on the shelf. The class can use it now.')).toBeInTheDocument()
+  expect(await screen.findByRole('radio', { name: 'Shelf' })).toBeChecked()
+})
+
+it('the Shelf tab says how many bricks wait before the teacher opens it', async () => {
+  const { client } = shelfClient()
+  render(<ClassPage client={client} navigate={vi.fn()} />)
+  expect(await screen.findByRole('radio', { name: 'Shelf · 1 waiting' })).not.toBeChecked()
+  fireEvent.click(screen.getByRole('radio', { name: 'Shelf · 1 waiting' }))
+  const waiting = await screen.findByRole('list', { name: 'Bricks waiting for you' })
+  fireEvent.click(within(card(waiting, 'Double jump')).getByRole('button', { name: 'Not now' }))
+  expect(await screen.findByRole('radio', { name: 'Shelf' })).toBeChecked()
 })
 
 it('"Not now" hides a waiting brick', async () => {
@@ -155,7 +166,8 @@ it('shows a failed shelf load as the page error with a way to try again', async 
   expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
 })
 
-const listCalls = (calls: Call[]) => calls.filter(([path, method]) => path === '/classes/class-1/shelf' && method === 'GET').length
+/** The tab's own list requests: the first GET is the class page counting what waits, for the tab's label. */
+const listCalls = (calls: Call[]) => calls.filter(([path, method]) => path === '/classes/class-1/shelf' && method === 'GET').length - 1
 
 it('Refresh shows a brick a student just shared, and an open Peek stays open', async () => {
   const { client, calls, add } = shelfClient()

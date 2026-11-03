@@ -1,20 +1,4 @@
-import {
-  ArrowRight,
-  Cloud,
-  Code2,
-  Library,
-  Compass,
-  Flag,
-  FolderOpen,
-  KeyRound,
-  LogIn,
-  Menu,
-  Play,
-  Plus,
-  SlidersHorizontal,
-  Square,
-  X,
-} from 'lucide-react'
+import { ArrowRight, Code2, Flag, FolderOpen, LogIn, Menu, Play, Plus, Square, X } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { BRAND_NAME, BrandLockup } from '../../brand'
@@ -50,6 +34,7 @@ export type LandingPageProps = {
 const PROJECTS_HREF = '/projects'
 const RACE_STARTER_HREF = '/2d/build?new=1&kit=race-starter'
 const HACKABLE_HREF = '/2d/hackable?new=1'
+const HELP_HREF = '/help'
 
 /*
  * Account links open the join page in the mode they ask for. They used to go through
@@ -141,16 +126,6 @@ function HackableStill() {
 
 /* ------------------------------------------------------------ building --- */
 
-function SectionHeading({ eyebrow, title, lede, id }: { eyebrow?: string; title: ReactNode; lede?: ReactNode; id: string }) {
-  return (
-    <div className="landing-section-heading">
-      {eyebrow && <span className="landing-eyebrow">{eyebrow}</span>}
-      <h2 id={id}>{title}</h2>
-      {lede && <p>{lede}</p>}
-    </div>
-  )
-}
-
 type CtaLinkProps = {
   href: string
   variant?: 'primary' | 'secondary'
@@ -180,49 +155,10 @@ function StartCta({ href, continueBuild, className }: { href: string; continueBu
 }
 
 /** The strip under the hero: plain facts, no numbers to decode. */
-const FACTS = ['Runs right in the browser', 'Chromebooks, iPads and laptops', 'Nothing to install', 'Students join with a class code'] as const
+const FACTS = ['Chromebooks, iPads and laptops', 'No account needed to start', 'Students join with a class code', 'No student email addresses'] as const
 
-const FAQ = [
-  {
-    question: 'Do students need to know how to code?',
-    answer: (
-      <>
-        No. Everything works without opening the code: build, press Play, share. In the Hackable Platformer every
-        brick's code is there to open when they want it, in blocks like Scratch, and each script can be switched off
-        to see what it does.
-      </>
-    ),
-  },
-  {
-    question: 'Do I need an account?',
-    answer: (
-      <>
-        No. Start building right away as a guest; your draft is saved in this browser. Accounts are for classes:
-        students join with a code from their teacher, then sign in to save worlds online and open class worlds.
-      </>
-    ),
-  },
-  {
-    question: 'Where is my work saved?',
-    answer: (
-      <>
-        Guest builds are saved in this browser on this device, and you can export a copy at any time. When you sign
-        in to a class account, the worlds you save go to your account so you can open them on another device. Guest
-        rooms you share by link are temporary: a room expires about two hours after the last activity.
-      </>
-    ),
-  },
-  {
-    question: 'Can we build together?',
-    answer: (
-      <>
-        Yes. As a guest, choose Build together to create a room and copy its invite link; anyone with the link can join
-        while the room is open to new people. In a class, the teacher creates class and group worlds that students find in My Class, no
-        link needed. A teacher can close collaboration at any time; the work is kept.
-      </>
-    ),
-  },
-] as const
+/** Old in-page anchors for what now lives on /help. */
+const MOVED_TO_HELP: Readonly<Record<string, string>> = { help: 'how', faq: 'faq', privacy: 'privacy' }
 
 /* ---------------------------------------------------------------- page --- */
 
@@ -241,10 +177,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
   const hackId = useId()
   const codeId = useId()
   const teachersId = useId()
-  const faqId = useId()
   const finaleId = useId()
-  const helpId = useId()
-  const privacyId = useId()
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
   const onNavKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
@@ -257,9 +190,12 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
   // This page is a lazy chunk, so a deep link such as /#teachers arrives
   // before its target exists; resolve it once the sections are mounted, and
   // again after the web fonts swap in (their metrics shift what sits above).
+  // Help, the questions and privacy moved to /help: old links follow them there.
   useEffect(() => {
     const hash = window.location.hash
     if (!hash || hash.length < 2) return
+    const moved = MOVED_TO_HELP[hash.slice(1)]
+    if (moved) { window.location.replace(`${HELP_HREF}#${moved}`); return }
     let target: HTMLElement | null = null
     try { target = document.getElementById(decodeURIComponent(hash.slice(1))) } catch { target = null }
     if (!target) return
@@ -296,6 +232,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               <a className="landing-nav-link" href="#two-ways">What you can make</a>
               <a className="landing-nav-link" href={PROJECTS_HREF}>My projects</a>
               <a className="landing-nav-link" href="#teachers">For teachers</a>
+              <a className="landing-nav-link" href={HELP_HREF}>Help</a>
               <a className="landing-nav-link" href={TEACHER_HREF}>Teacher login</a>
             </nav>
           </>
@@ -330,13 +267,15 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
         )}
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero-copy">
-            <span className="landing-eyebrow">3D builds, platformers and race tracks · right in your browser</span>
+            <span className="landing-eyebrow">Free for students · Nothing to install</span>
             <h1 id="landing-hero-title">
-              Snap it together.
+              Build it.
               <br />
-              Then play it.
+              Play it.
+              <br />
+              <span className="landing-hero-hack">Hack it.</span>
             </h1>
-            <p className="landing-hero-lede">Pick a brick, click to place it, press play. Making a 3D build, a platformer or a race track is that easy.</p>
+            <p className="landing-hero-lede">Snap bricks into 3D worlds, platformers and race tracks, then open any brick and change how it works with code blocks.</p>
             <p className="landing-hero-builds">
               <button type="button" className="landing-stud-button landing-stud-button-3d" onClick={() => setNewOpen(true)}>
                 <Plus size={22} aria-hidden="true" />
@@ -367,12 +306,8 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
 
         <section id="two-ways" className="landing-section landing-ways" aria-labelledby={waysId}>
           <div className="landing-ways-head">
-            <h2 id={waysId}>
-              Three ways to build.
-              <br />
-              <span>One set of bricks.</span>
-            </h2>
-            <p>They all save the same way, share with your class the same way, and live together in My projects.</p>
+            <h2 id={waysId}>Three things to make. One set of bricks.</h2>
+            <p>Every project saves the same way, shares with your class the same way, and lives in My projects.</p>
           </div>
           <ul className="landing-ways-grid">
             <li className="landing-way landing-way-3d">
@@ -381,58 +316,46 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
                 widths={[400, 800]}
                 width={800}
                 height={500}
-                sizes="(max-width: 860px) 100vw, 620px"
+                sizes="(max-width: 860px) 100vw, 420px"
                 alt="A 3D brick build on a play table in the Toy Room scene"
                 fallback={<ScenePlaceholder scene="toy-room" />}
               />
               <div className="landing-way-copy">
                 <h3>3D builds</h3>
-                <p>Stack bricks on a plate, pick a scene, then step inside as your character and explore what you built.</p>
-                <ul className="landing-chips" aria-label="3D builds include">
-                  <li>Custom bricks</li>
-                  <li>4 scenes</li>
-                  <li>Walk inside</li>
-                </ul>
-                <StartCta href={studioHref} continueBuild={continueBuild} />
+                <p>Stack bricks on a plate, pick a scene, then walk inside what you built.</p>
+                <p className="landing-way-links">
+                  <StartCta href={studioHref} continueBuild={continueBuild} />
+                </p>
               </div>
             </li>
-            <li className="landing-way landing-way-2d">
+            <li className="landing-way landing-way-2d landing-way-code">
               <BrandPicture
                 name="world-2d"
                 widths={[800]}
                 width={800}
                 height={500}
-                sizes="(max-width: 860px) 100vw, 620px"
+                sizes="(max-width: 860px) 100vw, 420px"
                 alt="A cartoon 2D world built from bricks, with the player bumping a ? brick"
                 fallback={<PixelLevelArt />}
               />
+              <span className="landing-way-tag"><Code2 size={15} aria-hidden="true" /> Code inside</span>
               <div className="landing-way-copy">
                 <h3>Platformers</h3>
-                <p>Place bricks, springs and critters in a side-scrolling world, press Play, and run through it. Cartoon or retro pixel.</p>
-                <ul className="landing-chips" aria-label="Platformers include">
-                  <li>3 starter courses</li>
-                  <li>Up to 16 friends</li>
-                  <li>Touch controls</li>
-                </ul>
-                <p className="landing-cta-row landing-cta-row-compact">
+                <p>Place bricks, springs and critters, press Play and run through it. Open any brick to change how it works.</p>
+                <p className="landing-way-links">
                   <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Make a platformer</CtaLink>
-                  <CtaLink href={PROJECTS_HREF} icon={<Play size={18} />}>Try a starter</CtaLink>
+                  <CtaLink href={HACKABLE_HREF} icon={<Code2 size={18} />}>Open the code</CtaLink>
                 </p>
               </div>
             </li>
             <li className="landing-way landing-way-race">
-              <span className="landing-media landing-media-loaded" style={{ aspectRatio: '1200 / 750' }}>
+              <span className="landing-media landing-media-loaded" style={{ aspectRatio: '800 / 500' }}>
                 <img src={`${MEDIA_BASE}/race-track-1200.webp`} width={1200} height={750} alt="A race track seen from above, with ? blocks, a boost strip, a ramp over the water and cars racing" loading="lazy" decoding="async" />
               </span>
               <div className="landing-way-copy">
                 <h3>Race tracks</h3>
-                <p>Paint a track from above with boosts, ice, jumps and ? blocks, set the laps, then race your class in the same room.</p>
-                <ul className="landing-chips" aria-label="Race tracks include">
-                  <li>3 starter tracks</li>
-                  <li>Items and Walkers</li>
-                  <li>Race together</li>
-                </ul>
-                <p className="landing-cta-row landing-cta-row-compact">
+                <p>Paint a track with boosts, ice and jumps, set the laps, then race your class.</p>
+                <p className="landing-way-links">
                   <CtaLink href={RACE_STARTER_HREF} variant="primary" icon={<Flag size={18} />}>Make a race track</CtaLink>
                   <CtaLink href="/2d/play/speedway" icon={<Play size={18} />}>Race a starter</CtaLink>
                 </p>
@@ -441,166 +364,96 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
           </ul>
         </section>
 
-        <section id="hackable" className="landing-section landing-hack" aria-labelledby={hackId}>
-          <div className="landing-hack-copy">
-            <span className="landing-eyebrow landing-hack-eyebrow">New · Hackable Platformer</span>
-            <h2 id={hackId}>Every brick has code inside.</h2>
-            <p>
-              Open any brick, even your Hero, and change how it works with blocks. Turn things on and off, snap on
-              powers like Double jump, or build a brick nobody else has.
-            </p>
-            <ol className="landing-hack-steps">
-              <li><b>Build it.</b> Bricks, springs, critters, a goal.</li>
-              <li><b>Open it up.</b> Every script has an On/Off switch.</li>
-              <li><b>Change how it plays.</b> Then press Play and try it.</li>
-            </ol>
-            <p className="landing-cta-row landing-cta-row-compact">
-              <CtaLink href={HACKABLE_HREF} variant="primary" icon={<Code2 size={18} />}>Try the Hackable Platformer</CtaLink>
-            </p>
-            <p className="landing-hack-note">No coding needed to start. The code is there when you want it.</p>
-          </div>
-          <div className="landing-hack-art">
-            <HackableStill />
+        <section id="hackable" className="landing-section landing-hack-wrap" aria-labelledby={hackId}>
+          <div className="landing-hack">
+            <div className="landing-hack-copy">
+              <span className="landing-eyebrow landing-hack-eyebrow">The Hackable Platformer</span>
+              <h2 id={hackId}>Every brick has code inside.</h2>
+              <ol className="landing-hack-steps">
+                <li><span><b>Build</b> a level with bricks, springs and a goal.</span></li>
+                <li><span><b>Open</b> any brick, even your Hero, and see its blocks.</span></li>
+                <li><span><b>Change</b> how it plays: a triple jump, faster critters, a brick nobody else has.</span></li>
+              </ol>
+              <p className="landing-hack-cta">
+                <a className="landing-butter-button" href={HACKABLE_HREF}>Try the Hackable Platformer</a>
+                <span className="landing-hack-note">No coding needed to start.</span>
+              </p>
+            </div>
+            <div className="landing-hack-art">
+              <HackableStill />
+              <span className="landing-hack-blocks" aria-hidden="true">
+                <span className="landing-hack-block landing-hack-hat">when I land</span>
+                <span className="landing-hack-block">change <b>jumps left</b> to <i>3</i></span>
+              </span>
+            </div>
           </div>
         </section>
 
         <section className="landing-section landing-friends" aria-labelledby={friendsId}>
-          <div className="landing-friends-copy">
-            <h2 id={friendsId}>Better with friends.</h2>
-            <p>Open a room, copy the link, and everyone builds and plays in the same world at the same time. The owner decides who builds.</p>
-            <ol className="landing-friends-steps">
-              <li>Open a room from any build</li>
-              <li>Share the link with your crew</li>
-              <li>Build, race and explore together</li>
-            </ol>
-            <p className="landing-friends-note">Guest rooms last about two hours after the last activity. In a class, shared worlds live in My Class.</p>
-          </div>
           <div className="landing-friends-art">
             <BrandPicture
               name="scene-brick-valley"
               widths={[400, 800]}
               width={800}
               height={500}
-              sizes="(max-width: 860px) 100vw, 720px"
+              sizes="(max-width: 760px) 100vw, 320px"
               alt="A brick build in the Brick Valley scene"
               fallback={<ScenePlaceholder scene="brick-valley" />}
             />
           </div>
-        </section>
-
-        <section id="teachers" className="landing-section landing-teachers" aria-labelledby={teachersId}>
-          <SectionHeading
-            id={teachersId}
-            eyebrow="For teachers"
-            title="Your whole class, one code away."
-            lede="Class codes, saved student worlds, and controls you run, inside the same builder your students can try as guests."
-          />
-          <ul className="landing-features">
-            <li>
-              <span className="landing-feature-icon landing-feature-icon-blue" aria-hidden="true"><KeyRound size={20} /></span>
-              <h3>Join with a class code</h3>
-              <p>Students enroll with the code you give them and choose a username and password. No student email address is needed.</p>
-            </li>
-            <li>
-              <span className="landing-feature-icon landing-feature-icon-coral" aria-hidden="true"><Cloud size={20} /></span>
-              <h3>Saved worlds in one place</h3>
-              <p>Students save personal worlds to their accounts. Whole-class and group worlds you create appear in My Class for everyone who has access.</p>
-            </li>
-            <li>
-              <span className="landing-feature-icon landing-feature-icon-butter" aria-hidden="true"><SlidersHorizontal size={20} /></span>
-              <h3>Controls you run</h3>
-              <p>Close enrollment, close collaboration, set a temporary password, suspend or reactivate a student, and restore an earlier checkpoint of a shared world.</p>
-            </li>
-            <li>
-              <span className="landing-feature-icon landing-feature-icon-hack" aria-hidden="true"><Library size={20} /></span>
-              <h3>Kids learn to code because they want to</h3>
-              <p>A student who builds a new power can share it on the class shelf. You check it first; the shelf shows who made it and how many classmates use it.</p>
-            </li>
-          </ul>
-          <div className="landing-teachers-grid">
-            <div className="landing-teachers-note">
-              <h3><Compass size={16} aria-hidden="true" />How shared worlds work</h3>
-              <p>
-                Create a whole-class or group world from any build. Students find it in My Class and join; no invite
-                link is needed, and a student who was removed from a group cannot rejoin by link. Shared worlds stay
-                open only while you keep collaboration open. Close it whenever you like: students can no longer open
-                shared worlds, their contributions are kept, and you can still review the world.
-              </p>
-            </div>
-            <div className="landing-teachers-cta">
-              <p className="landing-cta-row landing-cta-row-compact">
-                <CtaLink href={TEACHER_HREF} variant="primary" icon={<LogIn size={18} />}>Teacher sign in</CtaLink>
-                <CtaLink href={studioHref} icon={<Play size={18} />}>Try building first</CtaLink>
-                <CtaLink href={JOIN_HREF} icon={<KeyRound size={18} />}>Join a class</CtaLink>
-              </p>
-              <p className="landing-teachers-hint">Continue with your teacher Google account. Email and password sign-in is also available.</p>
-              <p className="landing-teachers-hint">
-                Teacher accounts are set up in advance by the team running your pilot; this page does not create new teacher accounts.
-              </p>
-            </div>
+          <div className="landing-friends-copy">
+            <h2 id={friendsId}>Better with friends.</h2>
+            <p>Open a room, share the link, and everyone builds and plays in the same world at the same time. The owner decides who builds.</p>
           </div>
         </section>
 
-        <section id="faq" className="landing-section landing-faq" aria-labelledby={faqId}>
-          <h2 id={faqId}>Frequently asked questions</h2>
-          <div className="landing-faq-list">
-            {FAQ.map((item) => (
-              <details key={item.question} className="landing-faq-item">
-                <summary>{item.question}</summary>
-                <p>{item.answer}</p>
-              </details>
-            ))}
+        <section id="teachers" className="landing-teachers" aria-labelledby={teachersId}>
+          <div className="landing-teachers-inner">
+            <span className="landing-eyebrow">For teachers</span>
+            <h2 id={teachersId}>Your whole class, one code away.</h2>
+            <ul className="landing-features">
+              <li>
+                <h3>No student emails</h3>
+                <p>Students join with your class code and pick a username and password.</p>
+              </li>
+              <li>
+                <h3>Work that's saved</h3>
+                <p>Every project saves to the student's account, and class worlds live in one place.</p>
+              </li>
+              <li>
+                <h3>Coding they want to do</h3>
+                <p>A student who makes a new power shares it on the class shelf. You check it first.</p>
+              </li>
+              <li>
+                <h3>No AI</h3>
+                <p>Every brick, level and script is made by a kid. You run the class controls.</p>
+              </li>
+            </ul>
+            <p className="landing-cta-row">
+              <CtaLink href={TEACHER_HREF} variant="primary" icon={<LogIn size={18} />}>Teacher sign in</CtaLink>
+              <CtaLink href={studioHref} icon={<Play size={18} />}>Try building first</CtaLink>
+              <a className="landing-text-link" href={`${HELP_HREF}#teachers`}>How class controls work <ArrowRight size={16} aria-hidden="true" /></a>
+            </p>
+            <p className="landing-teachers-hint">Teacher accounts are set up by the {BRAND_NAME} team for now. Sign in with your teacher Google account or email.</p>
           </div>
         </section>
 
         <section className="landing-finale" aria-labelledby={finaleId}>
           <h2 id={finaleId}>Ready to build?</h2>
-          <p className="landing-cta-row landing-cta-row-compact">
-            <StartCta href={studioHref} continueBuild={continueBuild} />
+          <p className="landing-finale-cta">
+            <a className="landing-butter-button" href={studioHref}>{continueBuild ? 'Continue building' : 'Start building'}</a>
+            <a className="landing-finale-join" href={JOIN_HREF}>Join a class</a>
           </p>
-          <p className="landing-hero-trust">No account needed to start.</p>
         </section>
-
-        <div className="landing-section landing-fineprint">
-          <section id="help" className="landing-fineprint-card" aria-labelledby={helpId}>
-            <h2 id={helpId}>Help</h2>
-            <dl>
-              <dt>Building</dt>
-              <dd>Pick a brick from the drawer and tap or click the plate to place it. Undo and redo sit in the toolbar. Explore switches to your character; walk and jump with the keyboard, or with touch controls on phones and tablets.</dd>
-              <dt>Platformers and race tracks</dt>
-              <dd>Choose New project, then Platformer or Race track. Pick bricks from the Bricks drawer and tap or click to place them, then press Play to run or race through what you made. Signed-in students find every project in My projects and share it with the class the same way.</dd>
-              <dt>Hackable Platformer</dt>
-              <dd>Choose New project, then Hackable Platformer. Build and Play work like a platformer; Code shows the blocks inside the brick you picked. Switch a script off to see what it does, or tap + Power to snap one on. Hackable Platformers save like other projects, but can't be played together in a room yet.</dd>
-              <dt>Saving</dt>
-              <dd>Signed-in students save to their account as they build, and every project is in My projects. Without an account, projects stay on this computer. Any project can be downloaded as a .brickgineers file and imported again later.</dd>
-              <dt>Sharing</dt>
-              <dd>Build together creates a temporary room with an invite link you can copy. Anyone with the link can join while the room is open to new people; the owner can close it. Rooms expire about two hours after the last activity, so export a copy to keep the build.</dd>
-              <dt>Students</dt>
-              <dd>Join a class with your enrollment code and choose a username and password. Returning students sign in with their class code, username and password. Forgot your password? Ask your teacher for a temporary one.</dd>
-              <dt>Teachers</dt>
-              <dd>Sign in with your teacher account, create a class, and give students its enrollment code. Create whole-class or group worlds from My Class and manage students from the roster.</dd>
-            </dl>
-          </section>
-          <section id="privacy" className="landing-fineprint-card" aria-labelledby={privacyId}>
-            <h2 id={privacyId}>Privacy</h2>
-            <p className="landing-fineprint-note">A plain summary of how the app handles your work today. It is not a full privacy policy.</p>
-            <ul>
-              <li>Guest building stores your draft, settings, and character choices in this browser only. Clearing site data removes them.</li>
-              <li>A shared guest room keeps the build and builder names on the server while the room is active, and deletes them about two hours after the last activity.</li>
-              <li>A class account stores a username, a roster name that only you and your teacher see, protected sign-in credentials, and the worlds you save. Students never need an email address.</li>
-              <li>Teacher sign-in uses your existing teacher account. Google sign-in confirms your existing teacher account.</li>
-              <li>Vercel hosts the app, Cloudflare runs shared rooms, and Supabase handles accounts. Fonts are loaded from Google Fonts.</li>
-              <li>Questions about a class account go to the teacher. Teachers reach the team that set up their account.</li>
-            </ul>
-          </section>
-        </div>
       </main>
 
       <footer className="landing-footer">
         <BrandLockup size={24} className="landing-brand landing-brand-footer" />
         <nav className="landing-footer-links" aria-label="Footer">
-          <a href="#privacy">Privacy</a>
-          <a href="#help">Help</a>
+          <a href={HELP_HREF}>Help</a>
+          <a href={`${HELP_HREF}#privacy`}>Privacy</a>
+          <a href={SIGNIN_HREF}>Student login</a>
+          <a href={TEACHER_HREF}>Teacher sign in</a>
         </nav>
         <p>
           A creative building playground for curious minds. {BRAND_NAME} is an independent

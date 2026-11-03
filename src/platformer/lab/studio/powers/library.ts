@@ -10,17 +10,33 @@ export const MAKER_NAME_KEY = 'code-lab.maker-name.v1'
 type Listener = () => void
 const listeners = new Set<Listener>()
 
+/**
+ * Kept powers this version will not snap on (a block it does not have, a damaged part). They are not listed, but they
+ * are written back with the rest, so keeping or forgetting another power never throws one away.
+ */
+let unlisted: unknown[] = []
+
 function read(storage: Storage | undefined = safeStorage()): PowerBrick[] {
+  unlisted = []
   try {
     const raw = storage?.getItem(MY_POWERS_KEY)
     if (!raw) return []
     const list = JSON.parse(raw)
     if (!Array.isArray(list)) return []
-    return list.map((p) => powerFromFile(JSON.stringify(p))).filter((p): p is PowerBrick => !!p)
+    const powers: PowerBrick[] = []
+    for (const item of list) {
+      const power = powerFromFile(JSON.stringify(item))
+      if (power) powers.push(power)
+      else unlisted.push(item)
+    }
+    return powers
   } catch {
     return []
   }
 }
+
+/** What My powers stores: the listed powers as files, then any it does not list, untouched. */
+const stored = (powers: PowerBrick[]) => JSON.stringify([...powers.map((p) => JSON.parse(powerToFile(p))), ...unlisted])
 
 let cache: PowerBrick[] | null = null
 
@@ -33,13 +49,13 @@ export function myPowers(): PowerBrick[] {
 export function keepPower(power: PowerBrick, storage: Storage | undefined = safeStorage()): void {
   const next = [...myPowers().filter((p) => p.id !== power.id), power]
   cache = next
-  try { storage?.setItem(MY_POWERS_KEY, JSON.stringify(next.map((p) => JSON.parse(powerToFile(p))))) } catch { /* storage full or blocked: kept for this visit */ }
+  try { storage?.setItem(MY_POWERS_KEY, stored(next)) } catch { /* storage full or blocked: kept for this visit */ }
   for (const l of [...listeners]) l()
 }
 
 export function forgetPower(id: string, storage: Storage | undefined = safeStorage()): void {
   cache = myPowers().filter((p) => p.id !== id)
-  try { storage?.setItem(MY_POWERS_KEY, JSON.stringify(cache)) } catch { /* see keepPower */ }
+  try { storage?.setItem(MY_POWERS_KEY, stored(cache)) } catch { /* see keepPower */ }
   for (const l of [...listeners]) l()
 }
 
@@ -72,6 +88,7 @@ export function downloadPower(power: PowerBrick): void {
 /** For tests: forget the in-memory copy so the next read comes from storage. */
 export function resetPowerCache(): void {
   cache = null
+  unlisted = []
 }
 
 function safeStorage(): Storage | undefined {

@@ -7,6 +7,8 @@
  * undo history. Nothing else about the store changes.
  */
 import type { BrickDef, CopyPlacement, LevelDesign } from '../../core/contracts'
+import { DESIGN_LIMITS } from '../../core/project'
+import { setStorageNotice } from '../persist/notice'
 import type { StudioStore } from '../store'
 import { moveCopyEdit, type History } from './history'
 
@@ -30,10 +32,19 @@ export function copyToMove(design: LevelDesign, brickId: string): CopyPlacement 
   return existing.length >= limit ? existing[existing.length - 1] : undefined
 }
 
+/** What the kid reads when the level already holds as many bricks as a level may keep (DESIGN_LIMITS.maxCopies). */
+export const LEVEL_FULL = `This level is full: it holds ${DESIGN_LIMITS.maxCopies.toLocaleString('en-US')} bricks. Erase some to make room for new ones.`
+
+/** True when the level holds as many placed bricks as it may save; one more would make every later save fail. */
+export function levelIsFull(design: LevelDesign): boolean {
+  return design.copies.length >= DESIGN_LIMITS.maxCopies
+}
+
 /**
- * A view of the store for the Stage whose `addCopy` obeys `limit`. When the level already holds the limit, it moves the
+ * A view of the store for the Stage whose `addCopy` obeys `limit` and the level's brick limit. When the level already holds the limit, it moves the
  * existing copy to the clicked spot, puts that move on the undo history, and returns '' (no new copy was made, so the
- * Stage records nothing more). Every other member is the real store's.
+ * Stage records nothing more). A level already holding DESIGN_LIMITS.maxCopies bricks takes no more (the save would be
+ * refused, and everything after it lost); the kid is told, and '' is returned. Every other member is the real store's.
  */
 export function limitedStore(store: StudioStore, history: History): StudioStore {
   const bound = new Map<PropertyKey, unknown>()
@@ -41,8 +52,15 @@ export function limitedStore(store: StudioStore, history: History): StudioStore 
     get(target, prop) {
       if (prop === 'addCopy') {
         return (brickId: string, x: number, y: number): string => {
-          const existing = copyToMove(target.getState().project.design, brickId)
-          if (!existing) return target.addCopy(brickId, x, y)
+          const design = target.getState().project.design
+          const existing = copyToMove(design, brickId)
+          if (!existing) {
+            if (levelIsFull(design)) {
+              setStorageNotice({ id: 'level-full', type: 'info', message: LEVEL_FULL })
+              return ''
+            }
+            return target.addCopy(brickId, x, y)
+          }
           if (existing.x !== x || existing.y !== y) {
             history.push(moveCopyEdit(history, existing.id, { x: existing.x, y: existing.y }, { x, y }))
             target.updateCopy(existing.id, { x, y })

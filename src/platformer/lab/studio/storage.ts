@@ -23,9 +23,12 @@ import {
   exportProjectJson,
   importProjectFile,
   importProjectJson,
+  projectStorageText,
   type ImportResult,
 } from './persist/projectIo'
+import { isQuotaError, writeHackableText } from './persist/hackableProjects'
 import { openableSaveText, parseSaveText } from './persist/repairSave'
+import { announceOpened } from './persist/openChecks'
 import { createStarterProject } from './starter'
 import type { StudioProject, StudioStore } from './store'
 
@@ -41,6 +44,7 @@ export {
   getStorageNotice,
   importProjectFile,
   importProjectJson,
+  isQuotaError,
   subscribeStorageNotice,
   useStorageNotice,
   type ImportResult,
@@ -84,25 +88,6 @@ export function getLocalStorage(): Storage | null {
   return null
 }
 
-export function isQuotaError(err: unknown): boolean {
-  if (!err) return false
-  if (err instanceof DOMException) {
-    return (
-      err.name === 'QuotaExceededError' ||
-      err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-      err.code === 22 ||
-      err.code === 1014
-    )
-  }
-  if (typeof err === 'object' && err !== null) {
-    const errorRecord = err as Record<string, unknown>
-    if (errorRecord.name === 'QuotaExceededError' || errorRecord.code === 22) {
-      return true
-    }
-  }
-  return false
-}
-
 /**
  * Loads the active project from storage, falling back cleanly to the starter project.
  * If the saved project is corrupted or uses an unsupported future schema, a safe copy
@@ -131,10 +116,12 @@ export function loadProject(storageOverride?: Storage, key = CODE_LAB_STORAGE_KE
   // A save holding a picture the game refuses (the old blank Stage backdrop) opens with that picture put right.
   const result = parseSaveText(raw)
   if (result.ok) {
-    return upgradeUntouchedHero({
+    const project = upgradeUntouchedHero({
       design: result.save.design,
       workspaces: result.save.workspaces ?? {},
     })
+    announceOpened(project, result.replaced)
+    return project
   }
 
   // Handle invalid/corrupt save or newer schema version
@@ -178,17 +165,27 @@ export function loadProject(storageOverride?: Storage, key = CODE_LAB_STORAGE_KE
   return createStarterProject()
 }
 
+/** What the kid reads when this computer has no more room for projects (never "the browser is broken"). */
+export const SPACE_FULL =
+  'There is no more room for projects on this computer, so this change is not saved. Press This project, then Save File, so you do not lose it. Then remove old projects in My projects to make room.'
+
 /**
  * Saves a StudioProject synchronously to storage.
  */
 export function saveProject(project: StudioProject, storageOverride?: Storage, key = CODE_LAB_STORAGE_KEY): boolean {
+  return saveProjectText(project, storageOverride, key) !== null
+}
+
+/** Saves the project and returns the text kept, or null when nothing was kept (the kid is told why). */
+function saveProjectText(project: StudioProject, storageOverride: Storage | undefined, key: string): string | null {
   const storage = storageOverride ?? getLocalStorage()
-  if (!storage) return false
+  if (!storage) return null
 
   try {
     // Never replace a good save with text we could not open again. A picture the game would refuse is put right
-    // first (persist/repairSave.ts), so one picture never stops every later change from saving.
-    const serialized = openableSaveText(exportProjectJson(project))
+    // first (persist/repairSave.ts), so one picture never stops every later change from saving. Kept compact: the
+    // same JSON as a file, about a third of the size (persist/projectIo.ts projectStorageText).
+    const serialized = openableSaveText(projectStorageText(project))
     if (serialized === null) {
       console.warn('Code Lab: refused to save a project that would not open again')
       setStorageNotice({
@@ -197,28 +194,35 @@ export function saveProject(project: StudioProject, storageOverride?: Storage, k
         message:
           'We could not save your last change because something in this world is not right. Your earlier save is safe. Try undoing your last change.',
       })
-      return false
+      return null
     }
-    storage.setItem(key, serialized)
+    // A full browser first makes older (indented) saves smaller, then tries again (persist/hackableProjects.ts).
+    writeHackableText(key, serialized, storage)
     const last = getStorageNotice()
-    if (last && (last.type === 'quota-error' || last.type === 'error') && last.id !== 'import-error') clearStorageNotice()
-    return true
+    if (last && (last.type === 'quota-error' || last.type === 'error') && last.id !== 'import-error' && !last.id.startsWith('account-')) clearStorageNotice()
+    return serialized
   } catch (err) {
     if (isQuotaError(err)) {
-      setStorageNotice({
-        id: 'quota-error',
-        type: 'quota-error',
-        message:
-          'This computer is full, so your world could not be saved. Press This project, then Save File, so you do not lose it.',
-      })
+      setStorageNotice({ id: 'quota-error', type: 'quota-error', message: SPACE_FULL })
     } else {
       setStorageNotice({
         id: 'save-error',
         type: 'error',
-        message: 'Your world could not be saved on this computer. Press This project, then Save File, so you do not lose it.',
+        message: 'Your project could not be saved on this computer. Press This project, then Save File, so you do not lose it.',
       })
     }
     console.warn('Code Lab: Save failed:', err)
+    return null
+  }
+}
+
+/** True when two save texts hold the same project (one may be indented and the other compact). */
+export function sameSaveText(a: string | null, b: string | null): boolean {
+  if (a === b) return true
+  if (a === null || b === null) return false
+  try {
+    return JSON.stringify(JSON.parse(a)) === JSON.stringify(JSON.parse(b))
+  } catch {
     return false
   }
 }
@@ -269,10 +273,24 @@ export interface WatchAndSaveOptions {
   key?: string
   /** After each save that worked: the Hackable list updates its name, date and picture. */
   afterSave?: (project: StudioProject) => void
+  /** A save that did not work (the browser is full or blocked, or the project would not open again): the notice says why. */
+  onSaveFailed?: () => void
+  /**
+   * Another tab (or My projects) saved this project since this tab last read or wrote it, and this tab has changes of
+   * its own: nothing more is written to `key` (that would throw the other work away). The caller keeps this tab's
+   * project some other way (as a copy). `theirs` is the save now kept, or null when the project was removed.
+   * Without it, saves are written as before, whatever is kept.
+   */
+  onConflict?: (project: StudioProject, theirs: string | null) => void
+  /** Another tab saved this project while this tab had no changes of its own (the next change here is a conflict). */
+  onChangedElsewhere?: (theirs: string | null) => void
 }
 
-/** Stops watching (saving anything pending first); `flush()` saves anything pending now and keeps watching. */
-export type SaveWatch = (() => void) & { flush: () => void }
+/**
+ * Stops watching (saving anything pending first); `flush()` saves anything pending now and keeps watching;
+ * `flush(true)` saves what is on screen even when nothing changed since the last save.
+ */
+export type SaveWatch = (() => void) & { flush: (force?: boolean) => void }
 
 /**
  * Subscribes to the store and saves on revision change (debounced).
@@ -285,22 +303,54 @@ export function watchAndSave(
 ): SaveWatch {
   const debounceMs = options?.debounceMs ?? DEFAULT_AUTOSAVE_DEBOUNCE_MS
   const storage = options?.storage
+  const key = options?.key ?? CODE_LAB_STORAGE_KEY
+  const guarded = !!options?.onConflict
+  const area = () => storage ?? getLocalStorage()
+  const read = (): string | null => {
+    try {
+      return area()?.getItem(key) ?? null
+    } catch {
+      return null
+    }
+  }
+  /** The save this tab last read or wrote: anything else kept under `key` was saved somewhere else. */
+  let known = guarded ? read() : null
+  /** Saving stopped here for good: another tab's work is kept under `key`, and this tab's went elsewhere. */
+  let conflicted = false
+
+  const conflict = (theirs: string | null) => {
+    conflicted = true
+    options?.onConflict?.(store.getState().project, theirs)
+  }
+
   const save = () => {
+    if (conflicted) return
     const project = store.getState().project
-    if (saveProject(project, storage, options?.key)) options?.afterSave?.(project)
+    if (guarded) {
+      const current = read()
+      if (!sameSaveText(current, known)) {
+        conflict(current)
+        return
+      }
+    }
+    const text = saveProjectText(project, storage, key)
+    if (text !== null) {
+      known = text
+      options?.afterSave?.(project)
+    } else options?.onSaveFailed?.()
   }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let lastSavedRevision = store.getState().revision
 
-  const flushSave = () => {
+  const flushSave = (force = false) => {
     if (timeoutId !== null) {
       clearTimeout(timeoutId)
       timeoutId = null
     }
     if (isSaveHeld()) return
     const currentRev = store.getState().revision
-    if (currentRev !== lastSavedRevision) {
+    if (force || currentRev !== lastSavedRevision) {
       save()
       lastSavedRevision = currentRev
     }
@@ -328,6 +378,22 @@ export function watchAndSave(
   const onVisibility = () => {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') flushSave()
   }
+  // Another tab saved (or removed) this project. With changes of our own waiting, that is a conflict now; otherwise
+  // the kid is told, and the next change here is one (save() compares with what is kept).
+  const onStorage = (e: StorageEvent) => {
+    if (!guarded || conflicted || e.key !== key) return
+    if (e.storageArea && e.storageArea !== area()) return
+    if (sameSaveText(e.newValue, known)) {
+      known = e.newValue
+      return
+    }
+    const unsaved = timeoutId !== null || store.getState().revision !== lastSavedRevision
+    if (unsaved) {
+      if (timeoutId !== null) clearTimeout(timeoutId)
+      timeoutId = null
+      conflict(e.newValue)
+    } else options?.onChangedElsewhere?.(e.newValue)
+  }
 
   // The kid chose: save what is on screen now (it was held back until then).
   const unsubscribeHold = onSaveHoldReleased(() => {
@@ -338,6 +404,7 @@ export function watchAndSave(
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('pagehide', onPageHide)
     window.addEventListener('beforeunload', onPageHide)
+    if (guarded) window.addEventListener('storage', onStorage)
   }
   if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('visibilitychange', onVisibility)
@@ -349,6 +416,7 @@ export function watchAndSave(
     if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('beforeunload', onPageHide)
+      window.removeEventListener('storage', onStorage)
     }
     if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
       document.removeEventListener('visibilitychange', onVisibility)

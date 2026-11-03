@@ -1,4 +1,5 @@
 import { browserClassroomClient } from '../../classroom/client'
+import { hackableHref } from '../../platformer/lab/studio/persist/hackableProjects'
 import type { ClassroomCheckpoint, ClassroomClass, ClassroomClientSurface, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
 
 /**
@@ -39,8 +40,12 @@ export function joinLink(code: string) {
 /** "Students go to brickgineers.com/join…" — the host comes from the browser, never from source. */
 export const joinHost = () => `${window.location.host}/join`
 
-/** Live room link for a classroom world, matching the editor's own join links. */
-export const worldRoomHref = (world: Pick<ClassroomWorld, 'id'>) => `/live/${world.id.replaceAll('-', '')}`
+/**
+ * Where "Open" goes for a classroom world, the same place `/projects` sends it (`liveHref` in worldsData): a 3D
+ * build's live room, a 2D level's room, or a Hackable Platformer's own page (it has no live room yet).
+ */
+export const worldRoomHref = (world: Pick<ClassroomWorld, 'id' | 'format'>) =>
+  world.format === 'hackable' ? hackableHref.world(world.id) : `${world.format === '2d' ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
 
 export const loadClasses = (client: ClassPageClient) =>
   client.request<{ classes: ClassPageClass[] }>('/classes').then(result => result.classes ?? [])

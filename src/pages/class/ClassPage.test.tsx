@@ -28,17 +28,18 @@ const WORLDS = [
 type Call = [string, string?, unknown?]
 
 /** A client with a recording `request`; `classes` decides first run vs. every day. */
-function testClient({ classes = [CLASS], role = 'teacher' as 'teacher' | 'student', hasSession = true, students = STUDENTS as typeof STUDENTS } = {}) {
+function testClient({ classes = [CLASS], role = 'teacher' as 'teacher' | 'student', hasSession = true, students = STUDENTS as typeof STUDENTS, worlds = WORLDS as Array<Record<string, unknown>> } = {}) {
   const calls: Call[] = []
   let current = classes
   const request = vi.fn(async (path: string, method = 'GET', body?: unknown) => {
     calls.push([path, method, body])
     if (path === '/classes' && method === 'GET') return { classes: current }
-    if (path === '/worlds' && method === 'GET') return { worlds: current.length ? WORLDS : [] }
+    if (path === '/worlds' && method === 'GET') return { worlds: current.length ? worlds : [] }
     if (path.endsWith('/students')) return { students: current.length ? [...students] : [] }
     if (path.endsWith('/members')) return { members: [] }
     if (path.endsWith('/checkpoints')) return { checkpoints: [{ id: 'cp1', revision: 11, createdAt: '2026-09-17T08:40:00.000Z', reason: 'save' }] }
     if (path === '/classes' && method === 'POST') { current = [{ ...CLASS, name: String((body as { name: string }).name) }]; return { class: current[0] } }
+    if (path === '/classes/class-1' && method === 'PATCH') { current = current.map(item => item.id === 'class-1' ? { ...item, ...(body as object) } : item); return { class: current[0] } }
     return {}
   })
   const snapshot = hasSession ? session(role) : null
@@ -80,8 +81,8 @@ it('walks a brand new teacher through naming a class and then shows the code to 
 it('opens on the everyday page with the class head, chips and the three tabs', async () => {
   render(<ClassPage client={testClient().client} navigate={vi.fn()} />)
   expect(await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })).toBeInTheDocument()
-  expect(screen.getByText('Enrollment open')).toBeInTheDocument()
-  expect(screen.getByText('Collaboration open')).toBeInTheDocument()
+  expect(screen.getByText('Joining open')).toBeInTheDocument()
+  expect(screen.getByText('Building together on')).toBeInTheDocument()
   expect(screen.getByText('4 building now')).toBeInTheDocument()
   for (const tab of ['Students', 'Worlds', 'Settings']) expect(screen.getByRole('radio', { name: tab })).toBeInTheDocument()
   expect(screen.getByRole('radio', { name: 'Students' })).toBeChecked()
@@ -163,7 +164,7 @@ it('shows the worlds the teacher started and starts another one', async () => {
   fireEvent.click(await screen.findByRole('radio', { name: 'Worlds' }))
   const list = await screen.findByRole('list', { name: 'Worlds you started for this class' })
   expect(within(list).getByText('Bridge Challenge')).toBeInTheDocument()
-  expect(within(list).getByRole('link', { name: 'Join' })).toHaveAttribute('href', '/live/w3')
+  expect(within(list).getByRole('link', { name: 'Open Bridge Challenge' })).toHaveAttribute('href', '/live/w3')
   expect(within(list).getByRole('button', { name: 'World controls for Bridge Challenge' })).toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Tower Day' } })
   fireEvent.click(screen.getByRole('button', { name: 'Start a shared world' }))
@@ -193,9 +194,10 @@ it('sends each settings switch as its own PATCH body and confirms the destructiv
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ showNamesOnJoin: false }))
 
   fireEvent.click(screen.getByRole('switch', { name: 'Building together' }))
-  expect(await screen.findByRole('dialog', { name: 'Close building together?' })).toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Close now' }))
+  expect(await screen.findByRole('dialog', { name: 'Pause building together?' })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Pause now' }))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ collaborationOpen: false }))
+  expect(await screen.findByText('Building together paused')).toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('button', { name: 'New class code' }))
   expect(await screen.findByRole('dialog', { name: 'Get a new class code?' })).toBeInTheDocument()
@@ -331,4 +333,64 @@ describe('the roster while students are joining', () => {
       vi.useRealTimers()
     }
   })
+})
+
+it('opens each kind of world where it lives: a 3D room, a 2D room, or a Hackable Platformer page', async () => {
+  const worlds = [
+    ...WORLDS,
+    { id: 'w-4', title: 'Lava Run', ownerId: 's1', classId: null, kind: 'personal' as const, format: 'hackable', revision: 2, updatedAt: '2026-09-18T10:00:00.000Z', ownerName: 'Aiden K.', visibility: 'class' as const, canEdit: false, sharedAt: '2026-09-18T10:01:00.000Z', hiddenByTeacher: false },
+    { id: 'w-5', title: 'Cave Level', ownerId: 's2', classId: null, kind: 'personal' as const, format: '2d', revision: 3, updatedAt: '2026-09-18T09:00:00.000Z', ownerName: 'Bella R.', visibility: 'class' as const, canEdit: true, sharedAt: '2026-09-18T09:01:00.000Z', hiddenByTeacher: false },
+    { id: 'w-6', title: 'Class Maze', ownerId: 'teacher-1', classId: 'class-1', kind: 'class' as const, format: '2d', revision: 1, updatedAt: '2026-09-18T08:00:00.000Z' },
+  ]
+  render(<ClassPage client={testClient({ worlds }).client} navigate={vi.fn()} />)
+  const shared = await screen.findByRole('list', { name: 'Worlds students shared with this class' })
+  expect(within(shared).getByRole('link', { name: 'Open Lava Run' })).toHaveAttribute('href', '/2d/hackable?world=w-4')
+  expect(within(shared).getByRole('link', { name: 'Open Cave Level' })).toHaveAttribute('href', '/2d/w/w5')
+  expect(within(shared).getByRole('link', { name: 'Open Rocket Base' })).toHaveAttribute('href', '/live/w1')
+  fireEvent.click(screen.getByRole('radio', { name: 'Worlds' }))
+  const started = await screen.findByRole('list', { name: 'Worlds you started for this class' })
+  expect(within(started).getByRole('link', { name: 'Open Class Maze' })).toHaveAttribute('href', '/2d/w/w6')
+})
+
+it('pauses building together from the class head after one confirm, and resumes it in one tap', async () => {
+  const { client, calls } = testClient()
+  render(<ClassPage client={client} navigate={vi.fn()} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Pause building' }))
+  expect(await screen.findByRole('dialog', { name: 'Pause building together?' })).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Keep building' }))
+  expect(calls.some(call => call[1] === 'PATCH')).toBe(false)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Pause building' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Pause now' }))
+  await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ collaborationOpen: false }))
+  expect(await screen.findByText('Building together paused')).toBeInTheDocument()
+  expect(screen.getByText('Building together is paused. Saved worlds are kept.')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Resume building' }))
+  await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ collaborationOpen: true }))
+  expect(await screen.findByText('Building together on')).toBeInTheDocument()
+})
+
+it('folds the class code to one line once the class has students, and opens it again on request', async () => {
+  render(<ClassPage client={testClient().client} navigate={vi.fn()} />)
+  expect(await screen.findByText('Aiden Kim')).toBeInTheDocument()
+  expect(screen.queryByAltText('Scan to join Room 12 Builders')).not.toBeInTheDocument()
+  expect(within(screen.getByRole('region', { name: 'Class code' })).getByText('BRICK7')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Show on projector' })).toHaveAttribute('href', '/class/projector')
+
+  fireEvent.click(screen.getByRole('button', { name: 'View class codes' }))
+  expect(await screen.findByAltText('Scan to join Room 12 Builders')).toBeInTheDocument()
+  expect(screen.getByRole('region', { name: 'Class code' })).toHaveFocus()
+  expect(screen.getByRole('radio', { name: 'Students' })).toBeChecked()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Fold away' }))
+  expect(screen.queryByAltText('Scan to join Room 12 Builders')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'QR and join link' }))
+  expect(await screen.findByAltText('Scan to join Room 12 Builders')).toBeInTheDocument()
+})
+
+it('keeps the full code card while nobody has joined yet', async () => {
+  render(<ClassPage client={testClient({ students: [] }).client} navigate={vi.fn()} />)
+  expect(await screen.findByAltText('Scan to join Room 12 Builders')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Fold away' })).not.toBeInTheDocument()
 })

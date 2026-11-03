@@ -130,7 +130,7 @@ export const ProcedureModal: React.FC<ProcedureModalProps> = ({
 
         {/* Live Block Preview */}
         <div className="code-procedure-preview-wrapper">
-          <span className="code-procedure-preview-tag">Block Preview:</span>
+          <span className="code-procedure-preview-tag">Your block:</span>
           <div className="code-procedure-block-preview">
             <span className="code-procedure-define-text">define</span>
             {parts.map((part) => {
@@ -163,7 +163,7 @@ export const ProcedureModal: React.FC<ProcedureModalProps> = ({
                   key={part.id}
                   className="code-preview-bool-part"
                   onClick={() => setPickerTarget({ partId: part.id, type: 'boolean' })}
-                  title="Boolean condition input"
+                  title="Yes or no input"
                 >
                   &lt;{part.value}&gt;
                 </span>
@@ -175,7 +175,7 @@ export const ProcedureModal: React.FC<ProcedureModalProps> = ({
 
         {/* Current Block Segments Builder */}
         <div className="code-modal-section">
-          <label className="code-modal-section-title">Block Parts</label>
+          <label className="code-modal-section-title">Parts</label>
           <div className="code-parts-list">
             {parts.map((part, index) => {
               const isTarget = pickerTarget?.partId === part.id
@@ -189,7 +189,7 @@ export const ProcedureModal: React.FC<ProcedureModalProps> = ({
                       ? 'Text'
                       : part.type === 'number_text'
                       ? 'Number / Text'
-                      : 'Boolean'}
+                      : 'Yes or no'}
                   </span>
                   <button
                     type="button"

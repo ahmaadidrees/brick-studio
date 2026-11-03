@@ -30,7 +30,16 @@ export interface EditorContext {
   getBackdrops?: () => string[]
   getKeys?: () => MenuOption[]
   isStage?: boolean
+  /**
+   * When set, every variable menu ends with "Rename variable" and "Delete the "x" variable" (as in Scratch); picking
+   * one calls this with the variable the menu showed, and the block keeps its variable.
+   */
+  onVariableMenu?: (action: 'rename' | 'delete', variableId: string) => void
 }
+
+/** The menu values of the variable menu's two actions. They are never a block's saved value. */
+export const VARIABLE_MENU_RENAME = '__rename_variable__'
+export const VARIABLE_MENU_DELETE = '__delete_variable__'
 
 export const DEFAULT_KEYS: readonly MenuOption[] = [
   ['space', 'space'],
@@ -150,10 +159,14 @@ export function getEditorContext(): EditorContext {
 
 // ---------------------------------------------------------------- Dynamic Option Resolvers
 
-export function getVariableOptions(ctx: EditorContext = activeContext): MenuOption[] {
+/** `currentId` is the variable the menu shows now: its name goes in the Delete entry. */
+export function getVariableOptions(ctx: EditorContext = activeContext, currentId?: string | null): MenuOption[] {
   const vars = ctx.getVariables?.() ?? []
   if (vars.length === 0) return [['my variable', 'var_default']]
-  return vars.map((v) => [v.name, v.id])
+  const options: MenuOption[] = vars.map((v) => [v.name, v.id])
+  if (!ctx.onVariableMenu) return options
+  const current = vars.find((v) => v.id === currentId) ?? vars[0]
+  return [...options, ['Rename variable', VARIABLE_MENU_RENAME], [`Delete the "${current.name}" variable`, VARIABLE_MENU_DELETE]]
 }
 
 export function getListOptions(ctx: EditorContext = activeContext): MenuOption[] {

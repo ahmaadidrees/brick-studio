@@ -43,6 +43,7 @@
 .cl-slot-inspector { top: var(--cl-gap); bottom: var(--cl-gap); right: var(--cl-gap); left: calc(100% - var(--cl-gap) - var(--cl-insp)); z-index: 2; }
 .cl-slot-inspector > * { flex: 0 1 auto; }
 .cl-slot-inspector[inert] { transform: translateX(28px); }
+.cl-slot-inspector.cl-settling { pointer-events: none; }
 
 /* Code */
 .cl-slot-code { top: var(--cl-gap); bottom: var(--cl-gap); left: var(--cl-gap); right: calc(var(--cl-right) + 2 * var(--cl-gap)); }
@@ -256,34 +257,70 @@
   .cl-slot-inspector[inert] { transform: translateY(40px); }
   .cl-slot-inspector > * { flex: 1 1 auto; }
   .cl-inspector { animation-name: cl-rise; }
-  .cl-fab { position: absolute; z-index: 13; left: 12px; bottom: 14px; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--cl-blue); color: #fff !important; font-weight: 800; font-size: 15px; box-shadow: 0 6px 18px rgba(62, 91, 217, .4); }
+  /* Build: Bricks, Erase and Undo get their own bar under the level, so they never sit on the Hero's start. */
+  .cl-phone[data-screen='build'] .cl-slot-stage { bottom: 64px; }
+  .cl-fabs { position: absolute; z-index: 13; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 8px; height: 64px; padding: 0 10px calc(env(safe-area-inset-bottom)); box-sizing: border-box; background: var(--cl-panel); border-top: 1px solid var(--cl-line); animation: cl-fade 200ms ease-out 1; }
+  .cl-fab { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--cl-blue); color: #fff !important; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(62, 91, 217, .35); cursor: pointer; }
+  .cl-fab-tool { min-height: 46px; padding: 0 12px; font-size: 14px; }
+  .cl-fab-tool:disabled { opacity: .45; cursor: default; }
   .cl-sheet-close { position: absolute; z-index: 21; top: calc(38% - 46px); right: 10px; box-shadow: 0 2px 8px rgba(31, 35, 64, .2); display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--cl-panel); }
-  .cl-strip { bottom: 76px; }
+
+  /* Code on a Duo-size screen (540 px and up): the small level and its bricks side by side on top, the palette and
+     scripts under them. Narrower phones have no Code. */
+  .cl-shell { --cl-code-top: clamp(170px, 30vh, 300px); }
+  [data-screen='code'] .cl-slot-stage { top: var(--cl-gap); left: var(--cl-gap); right: calc(42% + var(--cl-gap) / 2); bottom: calc(100% - var(--cl-gap) - var(--cl-code-top)); }
+  [data-screen='code'] .cl-stage-frame { border-width: 1px; border-radius: 16px; }
+  .cl-slot-level { top: var(--cl-gap); right: var(--cl-gap); left: calc(58% + var(--cl-gap) / 2); bottom: calc(100% - var(--cl-gap) - var(--cl-code-top)); }
+  .cl-slot-code { top: calc(var(--cl-code-top) + 2 * var(--cl-gap)); left: var(--cl-gap); right: var(--cl-gap); bottom: var(--cl-gap); }
+  .cl-level { padding: 8px; gap: 6px; }
+  .cl-level-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+  .cl-tile { min-height: 70px; }
+  .cl-stage-bar .cl-seg-sm button { padding: 0 7px; }
+  /* Painting a costume or picking sounds needs the room more than the small level does: Code's column takes the whole
+     height until the kid goes back to the Code tab. */
+  .cl-shell[data-screen='code']:has(.cl-slot-code :is(.costume-editor-layout, .sound-panel-container)) { --cl-code-top: calc(-1 * var(--cl-gap)); }
+  .cl-shell[data-screen='code']:has(.cl-slot-code :is(.costume-editor-layout, .sound-panel-container)) :is(.cl-slot-stage, .cl-slot-level) { display: none; }
+  /* Inside a brick's code (a section, a script, a My Block): the level shrinks to a strip across the top and its bricks
+     step aside, so the blocks get the height. Back at the top view, both return. */
+  .cl-shell[data-screen='code']:has(.code-editor-root[data-inside='yes']) { --cl-code-top: clamp(96px, 16vh, 140px); }
+  .cl-shell[data-screen='code']:has(.code-editor-root[data-inside='yes']) .cl-slot-level { display: none; }
+  .cl-shell[data-screen='code']:has(.code-editor-root[data-inside='yes']) .cl-slot-stage { right: var(--cl-gap); }
+  .cl-code:has(.code-editor-root[data-inside='yes']) .cl-code-head .cl-chip { display: none; }
 }
 
 /* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
 [data-screen='play'] .play-hint { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); animation: cl-rise-centered 240ms var(--cl-ease) 1; }
 [data-screen='play'] .stage-view-tools { animation: cl-fade 240ms ease-out 1; }
-/* Touch screens: the on-screen buttons say how to play, so the keyboard hint goes. */
-@media (pointer: coarse) { [data-screen='play'] .play-hint { display: none; } }
-/* A touch screen held upright: the buttons get their own strip under the level, like a handheld, so they never cover
-   the Hero (the level fills the rest; see followViewWidth). */
-@media (pointer: coarse) and (max-aspect-ratio: 4/5) {
-  [data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 212px); box-sizing: border-box; background: var(--cl-ink); }
+/* Touch screens (.cl-touch, StudioShell's useTouch): the on-screen buttons say how to play, so the keyboard hint goes. */
+.cl-touch[data-screen='play'] .play-hint { display: none; }
+/* The buttons get their own strip under the level, like a handheld, so they never cover the Hero or the ground it
+   stands on (the level fills the rest; see followViewWidth). Held sideways the pad and Jump fit in a shorter strip. */
+.cl-touch[data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 152px); box-sizing: border-box; background: var(--cl-ink); }
+/* A short screen held sideways has no height to spare: the pad and the buttons go either side of the level instead. */
+@media (max-height: 559px) and (min-aspect-ratio: 4/3) {
+  .cl-touch[data-screen='play'] .cl-slot-stage { padding: 0 calc(env(safe-area-inset-right) + 224px) 0 calc(env(safe-area-inset-left) + 224px); }
+  .cl-touch[data-screen='play'] .cl-power-keys { bottom: calc(env(safe-area-inset-bottom) + 136px); max-width: 200px; }
+}
+/* Held upright: a taller strip. */
+@media (max-aspect-ratio: 4/5) {
+  .cl-touch[data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 212px); }
 }
 /* Wide enough for Run beside Jump: a shorter strip. */
-@media (pointer: coarse) and (max-aspect-ratio: 4/5) and (min-width: 421px) {
-  [data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 160px); }
-  [data-screen='play'] .p2d-face { flex-direction: row; align-items: center; }
+@media (max-aspect-ratio: 4/5) and (min-width: 421px) {
+  .cl-touch[data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 160px); }
+  .cl-touch[data-screen='play'] .p2d-face { flex-direction: row; align-items: center; }
 }
-/* A phone in Play: one row of tools (no zoom; Fit and the camera choice are enough). */
-.cl-phone[data-screen='play'] .stage-view-group[aria-label='Zoom'] { display: none; }
+/* Play's camera always shows the Hero or the whole level (the camera buttons), so there is no zoom to change. */
+[data-screen='play'] .stage-view-group[aria-label='Zoom'] { display: none; }
+/* A phone in Play: one row of tools. */
 .cl-phone[data-screen='play'] .stage-view-tools { flex-wrap: nowrap; gap: 6px; padding: 6px; overflow-x: auto; scrollbar-width: none; }
 .cl-phone[data-screen='play'] .stage-view-btn { padding: 0 8px; font-size: 13px; white-space: nowrap; }
 /* ...and the coin count goes under that row instead of over Pause. */
 .cl-phone[data-screen='play'] .play-coins { top: 64px; }
 
 /* Powers row in Code (PowersBar.tsx) */
+/* Inside a brick's code, Powers step aside: they belong to the brick, not to the script on screen. */
+.cl-code:has(.code-editor-root[data-inside='yes']) .cl-powers { display: none; }
 .cl-powers { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--cl-line); background: var(--cl-softer); }
 .cl-powers-title { margin-right: 4px; color: var(--cl-muted); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .cl-power { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 4px 0 10px; border: 1.5px solid #d0bfff; border-radius: 999px; background: #fff; font-size: 13px; animation: cl-pop 180ms var(--cl-ease) 1; }
@@ -306,6 +343,8 @@
 .cl-power-switch.cl-power-yes { background: #fff; border-color: #f59f00; color: #7a4f00; }
 .cl-power-add { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 12px; font-size: 13px; }
 .cl-power-panel { position: absolute; z-index: 30; top: calc(100% + 6px); left: 12px; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); max-height: 460px; overflow-y: auto; padding: 14px; box-sizing: border-box; background: #fff; border: 1px solid var(--cl-line); border-radius: 14px; box-shadow: 0 14px 40px rgba(31, 35, 64, .22); transform-origin: top left; }
+/* The power panels open over the code editor, whose block categories (Blockly's toolbox) sit at z-index 70. */
+.cl-powers { z-index: 80; }
 .cl-power-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 15px; }
 .cl-power-group { margin-top: 4px; color: var(--cl-blue); font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .cl-power-group-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -327,3 +366,115 @@
 .cl-power-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 800; color: var(--cl-muted); }
 .cl-power-field input { min-height: 36px; padding: 0 10px; border: 1px solid var(--cl-line); border-radius: 9px; font: 700 14px Nunito, system-ui, sans-serif; color: var(--cl-ink); }
 .cl-power-error { background: #fff4d6; color: #7a4f00; }
+
+/* ---------------------------------------------------------------- a Duo (or any fold) opened flat
+   Two screens side by side with a hinge between them: nothing goes under the hinge. Build and Code put their panels on
+   the left screen and the level on the right one; Play's buttons, notes and cards sit on the right screen. */
+@media (horizontal-viewport-segments: 2) {
+  .cl-shell {
+    --cl-hinge-l: env(viewport-segment-right 0 0, 50vw);
+    --cl-hinge-r: env(viewport-segment-left 1 0, 50vw);
+    --cl-pane: calc(100vw - var(--cl-hinge-r));
+    --cl-right: calc(var(--cl-pane) - 2 * var(--cl-gap));
+  }
+  .cl-slot-drawer, .cl-slot-code, .cl-slot-inspector { left: var(--cl-gap); right: calc(100vw - var(--cl-hinge-l) + var(--cl-gap)); }
+  .cl-slot-inspector { z-index: 3; }
+  .cl-slot-inspector > * { flex: 1 1 auto; }
+  .cl-slot-stage, [data-inspecting='yes'] .cl-slot-stage { left: calc(var(--cl-hinge-r) + var(--cl-gap)); right: var(--cl-gap); }
+  [data-screen='play'] .cl-slot-stage { left: 0; right: 0; }
+  .cl-slot-stage .stage-view-tools { max-width: calc(var(--cl-pane) - 20px); }
+  .cl-toast { left: calc(var(--cl-hinge-r) + var(--cl-pane) / 2); max-width: calc(var(--cl-pane) - 32px); }
+  [data-screen='play'] :is(.play-hint, .play-hurt) { left: calc(var(--cl-hinge-r) + var(--cl-pane) / 2); max-width: calc(var(--cl-pane) - 32px); }
+  [data-screen='play'] .p2d-overlay { padding-left: calc(var(--cl-hinge-r) + 16px); }
+  [data-screen='play'] .p2d-card { width: min(460px, calc(var(--cl-pane) - 32px)); }
+}
+
+/* Tablets: the header is tight, so the chip says just "Saved" (its icon shows where: a computer or a cloud). */
+@media (min-width: 768px) and (max-width: 1180px) {
+  .cl-shell .builder-header .ui-save-status-where { display: none; }
+}
+/* Who gives way in a tight header: the save chip's words first (down to its icon; a tap still says where the project
+   lives), then the project's name, which always keeps a few letters (its full name is in the tooltip and My projects).
+   Under 1367 px My projects shows just its folder; up to 1024 px (and 1200-1260 px) Sign in and the chip show just their
+   icons. From
+   1200 px the mode switch sits in the middle, so the left side stops short of it. */
+.cl-shell .builder-header .app-header-save.ui-save-status-wrap { flex: 0 100 auto; min-width: 40px; }
+.cl-shell .builder-header .app-header-save :is(.ui-save-status-text, .ui-save-status-label) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 768px) and (max-width: 1366px) {
+  /* About six letters of the name, plus the rename pencil. */
+  .cl-shell .builder-header .app-header-world { min-width: 146px; }
+  .cl-shell .builder-header .app-header-projects .ui-button-label {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .cl-shell .builder-header .app-header-projects.ui-button { flex: none; }
+}
+@media (min-width: 768px) and (max-width: 800px) {
+  .cl-shell .builder-header .app-header-world { min-width: 116px; }
+}
+/* Also just past 1200 px, where the centred mode switch leaves the left side short. */
+@media (min-width: 768px) and (max-width: 1024px), (min-width: 1200px) and (max-width: 1260px) {
+  .cl-shell .builder-header .shell-account-signin .ui-button-label,
+  .cl-shell .builder-header .app-header-save .ui-save-status-auto:not(.ui-save-status-error):not(.ui-save-status-offline) .ui-save-status-text {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .cl-shell .builder-header .app-header-save .ui-save-status-auto:not(.ui-save-status-error):not(.ui-save-status-offline) { padding: 0; width: 40px; justify-content: center; }
+}
+@media (min-width: 1200px) {
+  .cl-shell .builder-header .app-header-start { max-width: calc(50vw - 168px); }
+}
+/* Its explanation opens over a save banner (z-index 60) too: the kid just asked for it. */
+.cl-shell .builder-header:has(.ui-save-status-pop) { z-index: 61; }
+/* The save chip (a button that says where the project lives) comes back as an icon on a Duo-size screen; a narrower
+   phone has no room for it next to Help, so Help's "Saving and sharing" says it there. */
+@media (min-width: 540px) and (max-width: 767px) {
+  .cl-shell .builder-header .app-header-save.ui-save-status-wrap { display: inline-flex; }
+}
+
+/* First-run tips (StudioHelp.tsx): over the level's top-left corner in Build, clear of the zoom buttons (top right),
+   the Hero's start and Play's buttons (bottom), and a Duo's hinge (it never grows past 340 px from the left). No
+   backdrop: the level works around it. */
+.cl-tips { position: absolute; z-index: 12; top: 12px; left: 12px; width: min(340px, calc(100% - 24px)); box-sizing: border-box; padding: 12px 14px 14px; border: 1px solid var(--cl-line); border-radius: 16px; background: var(--cl-panel); box-shadow: 0 8px 24px rgba(31, 35, 64, .18); }
+.cl-tips-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; font: 600 17px/1.2 var(--font-display, 'Fredoka'), system-ui, sans-serif; }
+.cl-tips-steps { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; font-size: 14px; font-weight: 600; line-height: 1.35; }
+.cl-tips-steps li { display: flex; align-items: flex-start; gap: 10px; }
+.cl-tips-steps b { font-weight: 800; }
+.cl-tips-icon { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-tips-ok { min-height: 40px; padding: 0 18px; }
+/* Phones and a Duo: the tips go under the zoom buttons and get the full width minus the gutters. */
+@media (max-width: 767px) { .cl-tips { top: 68px; left: 16px; width: min(340px, calc(100% - 32px)); } }
+
+/* Help (StudioHelp.tsx). */
+.cl-help-body { display: grid; gap: 16px; }
+.cl-help-body section { display: grid; gap: 6px; }
+.cl-help-body h3 { display: flex; align-items: center; gap: 8px; margin: 0; font: 600 18px/1.2 var(--font-display, 'Fredoka'), system-ui, sans-serif; }
+.cl-help-body h3 svg { color: var(--primary, #3e5bd9); }
+.cl-help-body p { margin: 0; font-size: 15px; line-height: 1.45; }
+.cl-help-foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; width: 100%; }
+/* A narrow phone: the header's buttons sit a little closer so the brand, My projects, Build · Code · Play, sign in,
+   Help and ⋯ all fit on one row. */
+@media (max-width: 539px) {
+  .cl-shell .builder-header .app-header-editor { column-gap: 4px; padding-inline: 6px; }
+  .cl-shell .builder-header .app-header-mode { padding-left: 0; border-left: 0; }
+  .cl-shell .builder-header .app-header-end { gap: 0; }
+  .cl-shell .builder-header .app-header-end .ui-button { min-width: 40px; width: 40px; padding: 0; }
+  .cl-shell .cl-mode { padding: 0 6px; }
+}
+
+/* + New brick in Build (NewBrickSheet.tsx): pictures, or drawing, then a name. The sheet sits on <body>, so the
+   studio's own colors are spelled out here. */
+.cl-newbrick-looks { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.cl-newbrick-look { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 104px; padding: 10px 6px; border: 2px solid transparent; border-radius: 14px; color: var(--text); background: var(--surface-2, #f3f5f9); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.cl-newbrick-look:hover { border-color: var(--primary, #3e5bd9); }
+.cl-newbrick-look:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.cl-newbrick-own { color: var(--primary, #3e5bd9); border-style: dashed; border-color: var(--border); background: var(--surface); }
+.cl-newbrick-canvas { flex: 1 1 auto; min-height: 360px; overflow: hidden; }
+/* Drawing needs the room: the sheet grows to nearly the whole screen and the editor fills its body. */
+.cl-newbrick-step-draw .ui-sheet { --sheet-width: 1040px; height: 100%; }
+.cl-newbrick-step-draw .ui-sheet-body { display: flex; flex-direction: column; padding: 0; }
+.cl-newbrick-foot { display: flex; justify-content: space-between; gap: 8px; width: 100%; }
+.cl-newbrick-name { display: grid; justify-items: start; gap: 12px; }
+.cl-newbrick-preview { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 16px; background: var(--surface-2, #f3f5f9); }
+.cl-newbrick-field { display: grid; gap: 6px; width: 100%; font-size: 14px; font-weight: 800; }
+.cl-newbrick-field input { box-sizing: border-box; width: 100%; min-height: 48px; padding: 0 14px; border: 2px solid var(--border); border-radius: 12px; color: var(--text); background: var(--surface); font: inherit; font-size: 18px; font-weight: 700; }
+.cl-newbrick-field input:focus { outline: none; border-color: var(--primary, #3e5bd9); }
+.cl-newbrick-hint { margin: 0; color: var(--text-muted); font-size: 14px; font-weight: 700; }

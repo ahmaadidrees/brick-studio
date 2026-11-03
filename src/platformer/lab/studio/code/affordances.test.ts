@@ -2,9 +2,10 @@ import * as Blockly from 'blockly'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { compileWorkspace } from '../../core/editor/compile'
 import { registerEditorBlocks } from '../../core/editor/definitions'
-import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
-import { createHeroWorkspace } from '../hero/heroBrick'
-import { drillInto, TOP_VIEW } from './layers'
+import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, SectionTracker, setLabel, setWorkspaceHandlers, takesLabel, READABLE_SCALE, READABLE_SCALE_NARROW } from './affordances'
+import { createHeroWorkspace, HERO_BRICK_ID } from '../hero/heroBrick'
+import { ALL_SCRIPTS, drillInto, openScript, openSection, TOP_VIEW } from './layers'
+import { sectionsForBrick } from './sections'
 
 const WORKSPACE = {
   blocks: {
@@ -121,12 +122,31 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     Blockly.serialization.workspaces.load(WORKSPACE, ws)
     const drilled: string[] = []
     const explained: string[] = []
-    setWorkspaceHandlers(ws, { drill: (c) => drilled.push(c), explain: (op) => explained.push(op) })
+    const words: string[] = []
+    setWorkspaceHandlers(ws, { drill: (c) => drilled.push(c), explain: (op, text) => { explained.push(op); words.push(text) } })
     ws.getBlockById('call')!.getField('MAGNIFIER')!.showEditor()
     ws.getBlockById('grav')!.getField('MAGNIFIER')!.showEditor()
     ws.getBlockById('bump')!.getField('MAGNIFIER')!.showEditor()
     expect(drilled).toEqual(['walk at %s'])
     expect(explained).toEqual(['platformer_setgravity', 'platformer_whenbump'])
+    // The card gets the block's own words, not the button's label.
+    for (const text of words) expect(text).not.toMatch(/How this block works|See inside/)
+  })
+
+  it('the ? also works in the palette (it asks the editor, not the palette), and the 🔍 stays out of it', () => {
+    ws = new Blockly.Workspace()
+    const palette = new Blockly.Workspace()
+    Object.defineProperty(palette, 'isFlyout', { value: true })
+    ;(palette as unknown as { targetWorkspace: Blockly.Workspace }).targetWorkspace = ws
+    Blockly.serialization.workspaces.load(WORKSPACE, palette)
+    const explained: string[] = []
+    setWorkspaceHandlers(ws, { drill: () => {}, explain: (op) => explained.push(op) })
+    const help = palette.getBlockById('grav')!.getField('MAGNIFIER')!
+    expect(help.isClickableInFlyout(true)).toBe(true)
+    help.showEditor()
+    expect(explained).toEqual(['platformer_setgravity'])
+    expect(palette.getBlockById('call')!.getField('MAGNIFIER')).toBeNull()
+    palette.dispose()
   })
 
   it('folds the Hero definitions on open without changing their compiled program', () => {
@@ -156,26 +176,80 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     expect(shown(drillInto(TOP_VIEW, 'missing'))).toEqual([])
   })
 
-  it('includes the label above the first hat when fitting and centering the visible code', () => {
+  it('opens at a readable size with the first hat\'s label at the top left (not shrunk to fit)', () => {
     ws = new Blockly.Workspace()
     Blockly.serialization.workspaces.load(WORKSPACE, ws)
     const flag = ws.getBlockById('flag')! as Blockly.BlockSvg
     const blockBounds = new Blockly.utils.Rect(20, 160, 20, 320)
     flag.getBoundingRectangle = () => blockBounds
     const scroll = vi.fn()
+    const setScale = vi.fn()
     const displayed = {
       getTopBlocks: () => [flag],
       getMetrics: () => ({ viewWidth: 700, viewHeight: 580 }),
-      setScale: vi.fn(),
-      scrollBoundsIntoView: scroll,
+      options: { zoomOptions: { minScale: 0.65, maxScale: 2 } },
+      setScale,
+      scroll,
     } as unknown as Blockly.WorkspaceSvg
     focusView(displayed, TOP_VIEW)
-    const labelledTop = (scroll.mock.calls[0][0] as Blockly.utils.Rect).top
-    expect(labelledTop).toBeLessThan(blockBounds.top - LABEL_BAND)
+    expect(setScale).toHaveBeenLastCalledWith(READABLE_SCALE)
+    // The label's top (block top minus its band) lands 24 px in: scrollY = 24 - top * scale.
+    const [, labelledY] = scroll.mock.calls[0] as [number, number]
+    expect(labelledY).toBeCloseTo(24 - (blockBounds.top - LABEL_BAND) * READABLE_SCALE)
     setLabel(flag, '')
     focusView(displayed, TOP_VIEW)
-    const plainTop = (scroll.mock.calls[1][0] as Blockly.utils.Rect).top
-    expect(plainTop - labelledTop).toBe(LABEL_BAND)
+    const [plainX, plainY] = scroll.mock.calls[1] as [number, number]
+    expect(labelledY - plainY).toBeCloseTo(LABEL_BAND * READABLE_SCALE)
+    expect(plainX).toBeCloseTo(24 - blockBounds.left * READABLE_SCALE)
+    // A narrow editor (a Duo) opens a little smaller.
+    ;(displayed as unknown as { getMetrics: () => object }).getMetrics = () => ({ viewWidth: 400, viewHeight: 580 })
+    focusView(displayed, TOP_VIEW)
+    expect(setScale).toHaveBeenLastCalledWith(READABLE_SCALE_NARROW)
     expect(blockBounds.top).toBe(20)
+  })
+
+  it('the Hero\'s top view shows its level-start script, its receivers and a kid\'s scripts; "How I move" shows the rest', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(createHeroWorkspace(), ws)
+    const kid = ws.newBlock('platformer_everytick', 'kid')
+    const tracker = new SectionTracker(sectionsForBrick({ id: HERO_BRICK_ID }))
+    const shown = (state: typeof TOP_VIEW) => ws.getTopBlocks(false).filter((b) => isShownIn(b, state, tracker.sectionOf))
+    const top = shown(TOP_VIEW)
+    expect(top.map((b) => b.type)).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived'), 'platformer_everytick'])
+    expect(top[top.length - 1]).toBe(kid)
+    // The section's list shows no blocks; "all of them" shows every movement script; one script shows just it.
+    expect(shown(openSection('how-i-move'))).toEqual([])
+    const section = shown(openScript('how-i-move', ALL_SCRIPTS))
+    expect(section.length).toBeGreaterThan(20)
+    expect(shown(openScript('how-i-move', section[3].id))).toEqual([section[3]])
+    expect(section.every((b) => b.type === 'platformer_everytick' || b.type === 'platformer_whenbump')).toBe(true)
+    expect(section).not.toContain(kid)
+    // Every script is in exactly one of the two; the definition only shows drilled in.
+    const scripts = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
+    expect(top.length + section.length).toBe(scripts.length)
+    expect(shown(drillInto(openSection('how-i-move'), 'move and collide')).map((b) => b.type)).toEqual(['procedures_definition'])
+  })
+
+  it('a script pinned to a section stays there for the visit; an inner block never counts as a script', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(createHeroWorkspace(), ws)
+    const kid = ws.newBlock('platformer_everytick', 'kid')
+    const tracker = new SectionTracker(sectionsForBrick({ id: HERO_BRICK_ID }))
+    expect(tracker.sectionOf(kid)).toBeNull()
+    tracker.pin('kid', 'how-i-move')
+    expect(tracker.sectionOf(kid)).toBe('how-i-move')
+    tracker.pin('kid', null)
+    expect(tracker.sectionOf(kid)).toBeNull()
+    const inner = ws.getTopBlocks(false).find((b) => b.type === 'platformer_everytick')!.getChildren(false)[0]
+    expect(tracker.sectionOf(inner)).toBeNull()
+  })
+
+  it('a brick without sections shows every script on top, as before', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(createHeroWorkspace(), ws)
+    const none = new SectionTracker(sectionsForBrick({ id: 'brick_walker' }))
+    const scripts = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
+    expect(scripts.every((b) => isShownIn(b, TOP_VIEW, none.sectionOf))).toBe(true)
+    expect(scripts.every((b) => isShownIn(b, TOP_VIEW))).toBe(true)
   })
 })

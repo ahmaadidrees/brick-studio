@@ -915,6 +915,31 @@
   font-weight: 700;
   color: #ffffff;
 }
+/* A brick's folded sections ("How I move · 23 scripts"): a chip on the top view that opens them like a My Block. */
+.layer-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+.layer-section {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 6px 0 16px;
+}
+.layer-section-name { font-weight: 800; }
+.layer-section-count { margin-left: 4px; font-weight: 600; color: #aab3c8; }
+.layer-section-open {
+  margin-left: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #3b5bdb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.layer-section:hover .layer-section-open { background: #4c6ef5; }
 
 .code-script-label {
   fill: #cfd6ea;
@@ -923,22 +948,16 @@
   pointer-events: none;
   user-select: none;
 }
-.code-magnifier {
-  cursor: pointer;
-}
-.blocklyEditableField.code-magnifier,
-.code-magnifier text {
-  cursor: pointer;
-}
 
 .plain-card-backdrop {
-  position: absolute;
+  /* Over the whole page (rendered into <body>), above the palette's categories and the studio header. */
+  position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-modal, 1100);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   background: rgba(10, 12, 18, 0.62);
 }
 .plain-card {
@@ -947,7 +966,9 @@
   gap: 10px;
   width: min(720px, 100%);
   max-height: 100%;
-  padding: 16px 18px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px 0;
   background: #1d2029;
   border: 1px solid #3a4258;
   border-radius: 14px;
@@ -988,8 +1009,9 @@
 }
 .plain-card-blocks {
   position: relative;
-  height: 340px;
-  min-height: 160px;
+  flex: none;
+  /* Tall enough to read on a Duo; the card scrolls if the explanation needs the room. */
+  height: clamp(220px, 52dvh, 380px);
   border: 1px solid #2c3246;
   border-radius: 10px;
   overflow: hidden;
@@ -1000,10 +1022,40 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
-  color: #8d96ad;
+  /* "Got it" stays reachable while the card scrolls. */
+  position: sticky;
+  bottom: 0;
+  margin: 0 -18px;
+  padding: 10px 18px 14px;
+  background: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #b7bfd3;
+}
+.plain-card-stage {
+  position: relative;
+  flex: none;
+}
+.plain-card-zoom {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  gap: 6px;
+}
+.plain-card-zoom button {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #3a4258;
+  background: #222736;
+  color: #eef0f5;
+  font: 700 22px/1 system-ui, sans-serif;
+  cursor: pointer;
 }
 .plain-card-done {
+  flex: none;
+  white-space: nowrap;
   min-height: 40px;
   padding: 0 18px;
   border-radius: 10px;
@@ -1099,13 +1151,113 @@
   cursor: pointer;
 }
 .code-view-options-panel button:hover { background: #34405a; }
+/* Inside: one clear trail across the top ("Hero's scripts › How I move › Walk"), big enough to read and tap. */
 .code-editor-root-docked .layer-crumbs {
   flex: none;
-  min-height: 36px;
-  padding: 3px 8px;
-  gap: 6px;
+  min-height: 48px;
+  padding: 4px 10px;
+  gap: 8px;
 }
 .code-editor-root-docked .layer-back,
-.code-editor-root-docked .layer-crumb { min-height: 28px; padding: 0 9px; font-size: 12px; }
-.code-editor-root-docked .layer-here { font-size: 12px; }
+.code-editor-root-docked .layer-crumb { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.code-editor-root-docked .layer-here { font-size: 15px; font-weight: 800; }
+.code-editor-root-docked .layer-trail li + li::before { margin: 0 4px; }
+.code-editor-root-docked .layer-shelf { flex: none; min-height: 52px; padding: 4px 8px; }
+/* A finger needs the full 44px for Back and the breadcrumb. */
+@media (pointer: coarse) {
+  .code-editor-root-docked .layer-back,
+  .code-editor-root-docked .layer-crumb { min-height: 44px; }
+}
 .code-editor-root-docked .code-diagnostics-drawer { left: 100px; right: 12px; }
+
+/* Variables: a typed name (Make a Variable, Rename), and the small ask/tell dialogs. */
+.code-modal-card-small { max-width: 420px; }
+.code-name-section { border-top: 0; }
+.code-name-input { box-sizing: border-box; width: 100%; height: 44px; margin-top: 6px; padding: 0 12px; border: 2px solid #363e52; border-radius: 10px; background: #12151d; color: #f1f5f9; font: inherit; font-size: 16px; font-weight: 700; }
+.code-name-input:focus { outline: none; border-color: #ff8c1a; }
+.code-name-input[aria-invalid='true'] { border-color: #f59e0b; }
+.code-name-problem { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #fff4d6; color: #7a4f00; font-size: 13px; font-weight: 700; line-height: 1.4; }
+.code-name-hint { margin: 10px 0 0; color: #94a3b8; font-size: 13px; font-weight: 700; }
+.code-notice-text { margin: 0; font-size: 15px; line-height: 1.5; }
+.code-btn-primary:disabled { opacity: .5; cursor: default; filter: none; }
+.code-btn-primary.code-btn-danger { background-color: #dc2626; }
+
+/* A section ("How I move") as a list of its scripts, over the code area until the kid picks one (ScriptList.tsx). */
+.script-list {
+  position: absolute;
+  inset: 0;
+  z-index: 75;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px 16px;
+  background: var(--cl-softer, #fbf9f4);
+  color: var(--cl-ink, #1f2340);
+}
+.script-list-intro { margin: 0; max-width: 62ch; font-size: 14px; line-height: 1.45; color: var(--cl-ink-2, #2e3350); }
+.script-list-rows { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.script-list-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--cl-line, #e4dfd3);
+  border-radius: 12px;
+  background: #fff;
+}
+.script-list-switch {
+  flex: none;
+  align-self: center;
+  width: 52px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f9e44;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.script-list-row.is-off .script-list-switch { background: #ced4da; color: #343a40; }
+.script-list-open {
+  position: relative;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name go' 'detail go' 'when go';
+  align-items: center;
+  column-gap: 8px;
+  min-height: 44px;
+  padding: 4px 6px 4px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.script-list-open:hover { background: var(--cl-soft, #f1ece1); }
+.script-list-open:focus-visible, .script-list-switch:focus-visible, .script-list-all:focus-visible { outline: 3px solid var(--cl-blue, #3e5bd9); outline-offset: 2px; }
+.script-list-name { grid-area: name; font-size: 15px; font-weight: 800; }
+.script-list-detail { grid-area: detail; font-size: 13px; line-height: 1.35; color: var(--cl-muted, #4a5068); }
+.script-list-when { grid-area: when; margin-top: 2px; font-size: 11.5px; font-weight: 700; color: #0b7a55; text-transform: uppercase; letter-spacing: .03em; }
+.script-list-go { grid-area: go; font-size: 24px; line-height: 1; color: var(--cl-muted, #4a5068); }
+.script-list-row.is-off .script-list-name, .script-list-row.is-off .script-list-detail { opacity: .6; }
+.script-list-all {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--cl-line, #e4dfd3);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cl-ink, #1f2340);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.script-list-all:hover { background: var(--cl-soft, #f1ece1); }

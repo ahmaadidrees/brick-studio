@@ -17,6 +17,8 @@ type Props = {
   onError: (message: string) => void
   /** Same as Settings: PATCH /classes/:id, then the page reloads the class it returns. */
   onPatch: (body: Record<string, unknown>, notice?: string) => void
+  /** The waiting count, for the Shelf tab's label: kept current while this tab is open. */
+  onWaitingChange?: (count: number) => void
 }
 
 /** What "Peek" shows: read from the power file, never run. */
@@ -48,7 +50,7 @@ const usedBy = (uses: number) => `Used by ${uses} ${uses === 1 ? 'classmate' : '
  * The class shelf: power bricks students shared, the ones waiting for the teacher first, and the two
  * rules that go with it. Makers show as first name and last initial (the Worker sends nothing else).
  */
-export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, onPatch }: Props) {
+export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, onPatch, onWaitingChange }: Props) {
   const shelf = useState(() => shelfClient(client))[0]
   const [items, setItems] = useState<ShelfItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -107,6 +109,7 @@ export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, o
   const raceHeroes = currentClass.raceHeroes ?? settings?.raceHeroes ?? 'shelf'
 
   const waiting = items.filter(item => item.status === 'pending')
+  useEffect(() => { if (!loading && !failed) onWaitingChange?.(waiting.length) }, [loading, failed, waiting.length, onWaitingChange])
   const onShelf = items.filter(item => item.status === 'approved')
   const hidden = items.filter(item => item.status === 'hidden')
 

@@ -175,7 +175,7 @@ export async function importProject(project: Project, opts: { signedIn: boolean;
     if (content.kind === 'hackable') {
       const id = newHackableId()
       const kept = saveHackableText(id, project.title, JSON.stringify(content.document.save), store)
-      if (!kept.ok) return { ok: false, reason: 'error', message: kept.reason === 'full' ? `This computer already keeps ${MAX_HACKABLE_PROJECTS} Hackable Platformers. Remove one, or sign in to keep more in your account.` : 'This browser would not save the project.' }
+      if (!kept.ok) return { ok: false, reason: 'error', message: kept.reason === 'full' ? `This computer already keeps ${MAX_HACKABLE_PROJECTS} Hackable Platformers. Remove one, or sign in to keep more in your account.` : kept.reason === 'space' ? 'There is no more room for projects on this computer. Remove projects you no longer need, or sign in to keep more in your account.' : 'This browser would not save the project.' }
       return { ok: true, href: hackableHref.local(id), where: 'local' }
     }
     const saved = saveDraft(null, { ...content.level, title: project.title })

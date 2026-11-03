@@ -459,15 +459,32 @@
   flex: 1;
   overflow: auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
   background: #121419;
   position: relative;
   padding: 24px;
+  /* One finger draws, two pinch-zoom and pan: the editor handles every touch itself. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Narrow screens (a Duo, a small tablet held upright): the costume list becomes a row above the editor, so the
+   picture keeps most of the height instead of sharing it with a 200px column. */
+@media (max-width: 767px) {
+  .costume-editor-layout { flex-direction: column; }
+  .costume-sidebar { width: auto; border-right: 0; border-bottom: 1px solid #282c37; flex-direction: row; align-items: center; }
+  .costume-sidebar-header { border-bottom: 0; padding: 6px 8px; gap: 8px; }
+  .costume-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 6px 8px; }
+  .costume-list > * { flex: 0 0 auto; }
+  .costume-toolbar { padding: 6px 8px; gap: 6px; }
+  .costume-viewport { padding: 8px; min-height: 200px; }
 }
 
 .pixel-canvas-wrapper {
   position: relative;
+  /* Centered while it fits; once zoomed bigger than the view every edge can still be scrolled to. */
+  margin: auto;
+  flex-shrink: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
   border: 1px solid #3d455a;
   background-image: linear-gradient(45deg, #1e222c 25%, transparent 25%),

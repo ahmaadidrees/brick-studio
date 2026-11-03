@@ -236,8 +236,8 @@ describe('Code Editor: Diagnostics in Kid Words', () => {
     }
 
     const { title, hint } = formatKidDiagnostic(diag)
-    expect(title).toBe("Block isn't connected")
-    expect(hint).toContain('Snap this block under a hat block')
+    expect(title).toBe('This block is not snapped on')
+    expect(hint).toContain("Snap it under a top block like 'when ⚑ clicked'")
   })
 
   it('translates unrecognized blocks into plain words', () => {
@@ -261,7 +261,7 @@ describe('Code Editor: Diagnostics in Kid Words', () => {
     }
 
     const { title, hint } = formatKidDiagnostic(diag)
-    expect(title).toBe('Could not load blocks')
+    expect(title).toBe('These blocks would not open')
   })
 })
 

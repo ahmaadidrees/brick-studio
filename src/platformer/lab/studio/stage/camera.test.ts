@@ -15,6 +15,10 @@ import {
   snapToGrid,
   worldToScreen,
   zoomCameraAt,
+  buildFitCamera,
+  BUILD_FIT_MIN_ZOOM,
+  pinchCamera,
+  pinchPoint,
   type Camera,
   type Viewport,
 } from './camera'
@@ -243,5 +247,54 @@ describe('following on a tall screen', () => {
     const cam = followCamera(bounds, { width: 466, height: 600 }, { x: 60, y: 24 }, followViewWidth(bounds, { width: 466, height: 600 }))
     expect(cam.y).toBeCloseTo(180)
     expect(followViewWidth(bounds, { width: 1200, height: 600 })).toBe(DEFAULT_VIEW_WIDTH)
+  })
+})
+
+describe('buildFitCamera: Fit stays readable on a narrow stage', () => {
+  const bounds = { left: 0, right: 960, bottom: 0, top: 360 }
+  it('a wide stage still fits the whole level', () => {
+    expect(buildFitCamera(bounds, { width: 1100, height: 600 })).toEqual(fitCamera(bounds, { width: 1100, height: 600 }))
+  })
+  it('a portrait stage (Duo, phone) shows the level at least 1 pixel per step, inside the level edges', () => {
+    const vp = { width: 540, height: 600 }
+    const cam = buildFitCamera(bounds, vp, 900)
+    expect(getCameraZoom(cam, vp)).toBeCloseTo(BUILD_FIT_MIN_ZOOM)
+    expect(cam.x + cam.viewWidth / 2).toBeLessThanOrEqual(960)
+    expect(cam.y).toBe(180)
+  })
+  it('never zooms in past the full level height', () => {
+    const vp = { width: 300, height: 200 }
+    expect(getCameraZoom(buildFitCamera(bounds, vp), vp)).toBeCloseTo(200 / 360)
+  })
+})
+
+describe('pinchCamera: two fingers zoom and pan 1:1', () => {
+  const vp = { width: 540, height: 600 }
+  const start = { x: 300, y: 180, viewWidth: 480 }
+  it('spreading the fingers zooms in around where they started', () => {
+    const from = pinchPoint([200, 300], [300, 300])
+    const to = pinchPoint([150, 300], [350, 300])
+    const cam = pinchCamera(start, vp, from, to)
+    expect(getCameraZoom(cam, vp)).toBeCloseTo(getCameraZoom(start, vp) * 2)
+    const before = screenToWorld(start, vp, 250, 300)
+    const after = screenToWorld(cam, vp, 250, 300)
+    expect(after[0]).toBeCloseTo(before[0])
+    expect(after[1]).toBeCloseTo(before[1])
+  })
+  it('moving both fingers together pans by exactly the finger distance', () => {
+    const from = pinchPoint([200, 300], [300, 300])
+    const to = pinchPoint([100, 340], [200, 340])
+    const cam = pinchCamera(start, vp, from, to)
+    const [sx, sy] = worldToScreen(cam, vp, ...screenToWorld(start, vp, 250, 300))
+    expect(sx).toBeCloseTo(150)
+    expect(sy).toBeCloseTo(340)
+  })
+})
+
+describe('buildFitCamera: a tablet that can show the whole level readably still does', () => {
+  it('fit 0.83 (1114 px window) is the whole level', () => {
+    const bounds = { left: 0, right: 960, bottom: 0, top: 360 }
+    const vp = { width: 800, height: 640 }
+    expect(buildFitCamera(bounds, vp)).toEqual(fitCamera(bounds, vp))
   })
 })

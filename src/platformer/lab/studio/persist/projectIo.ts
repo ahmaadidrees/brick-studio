@@ -11,6 +11,7 @@ import type { StudioProject } from '../store'
 import { HACKABLE_FILE_MAX_CHARS, HACKABLE_SAVE_MAX_CHARS, isHackableDocument } from './hackableProjects'
 import { parseSaveText } from './repairSave'
 import { kitNotReady } from '../../kits'
+import { openedNote } from './openChecks'
 
 export function createProjectEnvelope(project: StudioProject): SavedProjectEnvelope {
   return {
@@ -29,6 +30,14 @@ export function createProjectEnvelope(project: StudioProject): SavedProjectEnvel
 export function exportProjectJson(project: StudioProject): string {
   const envelope = createProjectEnvelope(project)
   return serialize(envelope)
+}
+
+/**
+ * The project as kept in this browser: the same JSON as exportProjectJson, written compactly. Indented, a starter
+ * project took about 596,000 characters; compact, about 166,000 (a browser keeps about 5 million for the whole site).
+ */
+export function projectStorageText(project: StudioProject): string {
+  return JSON.stringify(JSON.parse(exportProjectJson(project)))
 }
 
 /**
@@ -60,7 +69,8 @@ export function exportProjectFile(project: StudioProject, filename?: string): vo
 }
 
 export type ImportResult =
-  | { ok: true; project: StudioProject }
+  /** `notice`: what to tell the kid about things in the file the game could not use (persist/openChecks.ts). */
+  | { ok: true; project: StudioProject; notice?: string }
   | { ok: false; error: string; problems?: DesignProblem[] }
 
 /** What the kid reads when a file will not open. */
@@ -132,13 +142,9 @@ export function importProjectJson(text: string): ImportResult {
   const notReady = kitNotReady(result.save.design)
   if (notReady) return { ok: false, error: notReady }
 
-  return {
-    ok: true,
-    project: {
-      design: result.save.design,
-      workspaces: result.save.workspaces ?? {},
-    },
-  }
+  const project = { design: result.save.design, workspaces: result.save.workspaces ?? {} }
+  const notice = openedNote(project, result.replaced)
+  return { ok: true, project, ...(notice ? { notice } : {}) }
 }
 
 /**

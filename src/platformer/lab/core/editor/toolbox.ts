@@ -367,7 +367,7 @@ export function createContinuousToolbox(
       colour: CATEGORY_COLORS.platformer,
       cssConfig: { container: 'code-extension-category' },
       contents: [
-        { kind: 'label', text: 'Platformer extension' },
+        { kind: 'label', text: 'Platformer blocks' },
         { kind: 'block', type: 'platformer_everytick' },
         { kind: 'block', type: 'platformer_whenland' },
         { kind: 'block', type: 'platformer_whenleaveground' },

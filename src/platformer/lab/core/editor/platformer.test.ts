@@ -15,7 +15,7 @@ const PLATFORMER_TEXT: Record<string, string> = {
   platformer_speed: '%1 speed',
   platformer_onground: 'on ground?',
   platformer_whenbump: 'when I bump %1 of %2',
-  platformer_everytick: 'every tick',
+  platformer_everytick: 'over and over',
   platformer_whenland: 'when I land',
   platformer_whenleaveground: 'when I leave the ground',
   platformer_setmover: 'move me with %1',
@@ -201,7 +201,7 @@ describe('Platformer toolbox category', () => {
     const cat = t.contents.find((c) => c.name === 'Platformer')!
     expect(cat.colour).toBe(CATEGORY_COLORS.platformer)
     expect(cat.cssConfig?.container).toBe('code-extension-category')
-    expect(cat.contents![0]).toEqual({ kind: 'label', text: 'Platformer extension' })
+    expect(cat.contents![0]).toEqual({ kind: 'label', text: 'Platformer blocks' })
     const types = cat.contents!.flatMap((i) => (i.kind === 'block' ? [i.type] : []))
     expect(types.sort()).toEqual(Object.keys(PLATFORMER_TEXT).sort())
   })

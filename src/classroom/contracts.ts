@@ -77,7 +77,11 @@ export type ClassroomRegisterInput = { classCode: string; username: string; pass
 export type ClassroomClassPatch = { name?: string; enrollmentOpen?: boolean; collaborationOpen?: boolean; showNamesOnJoin?: boolean; studentsCanShare?: boolean; shelfNeedsReview?: boolean; raceHeroes?: ClassroomRaceHeroes; rotateCode?: boolean }
 export type ClassroomRaceHeroes = 'builtin' | 'shelf' | 'any'
 export type ClassroomStudentPatch = { username?: string; rosterName?: string; suspended?: boolean; temporaryPassword?: string }
-export type ClassroomWorldCreateInput = { title: string; document: BrickStudioDocument; kind?: ClassroomWorld['kind']; classId?: string }
+/**
+ * `id` (a UUID the app chose) makes creating idempotent: sent again after an answer was lost, the Worker returns the
+ * world it already made with that id instead of making a second one (older Workers ignore it).
+ */
+export type ClassroomWorldCreateInput = { title: string; document: BrickStudioDocument; kind?: ClassroomWorld['kind']; classId?: string; id?: string }
 export type ClassroomWorldSaveInput = { expectedRevision: number; document: BrickStudioDocument; title?: string }
 
 /**

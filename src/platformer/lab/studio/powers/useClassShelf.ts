@@ -3,7 +3,7 @@ import { useClassroomSession, type ClassroomSessionState } from '../../../../she
 import { readRememberedTeacherClass } from '../../../../shell/rememberedTeacherClass'
 import { browserClassroomClient } from '../../../../classroom/client'
 import { shelfClient, type ShelfClient, type ShelfList } from '../../../../classroom/shelfClient'
-import { powerFromFile, powerToFile, type PowerBrick } from './powers'
+import { powerToFile, readPowerPayload, type PowerBrick } from './powers'
 
 export type ClassShelfState =
   | { kind: 'signed-out' }
@@ -82,13 +82,18 @@ export function useClassShelf(active: boolean, api: ShelfClient = browserShelf, 
     return item.status === 'approved' ? 'shared' : 'waiting'
   }, [api, classId, reload])
 
-  /** A power from the shelf, ready to snap on (and counted as used). Null when its file is not a power after all. */
+  /**
+   * A power from the shelf, ready to snap on (and counted as used). It is checked in full again here, whatever the
+   * Worker checked: a power this version cannot snap on (a block it does not have, a damaged part) throws the kid's
+   * reason, and is not counted.
+   */
   const fetchPower = useCallback(async (itemId: string): Promise<PowerBrick | null> => {
     if (!classId) return null
     const item = await api.get(classId, itemId)
-    const power = powerFromFile(JSON.stringify(item.payload))
-    if (power) void api.used(classId, itemId).catch(() => undefined)
-    return power
+    const read = readPowerPayload(item.payload)
+    if (!read.ok) throw new Error(read.message)
+    void api.used(classId, itemId).catch(() => undefined)
+    return read.power
   }, [api, classId])
 
   return { state, share, fetchPower, reload, signedIn: !!classId, displayName: session.displayName }

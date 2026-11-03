@@ -41,6 +41,7 @@ import type {
 } from './contracts'
 import { seedState } from './rng'
 import { wrapDirection } from './motion'
+import { isCostumeSource, isSoundSource, MAX_ASSET_CHARS } from './contentRules'
 
 export const DESIGN_LIMITS = {
   maxBricks: 400,
@@ -56,7 +57,7 @@ export const DESIGN_LIMITS = {
   maxProccode: 200,
   maxId: 64,
   maxStringValue: 20_000,
-  maxAssetChars: 200_000,
+  maxAssetChars: MAX_ASSET_CHARS,
   maxCoord: 10_000_000,
   maxCostumeEdge: 4_096,
   maxMaskPixels: 1_000_000,
@@ -97,6 +98,7 @@ export type DesignProblemCode =
   | 'duplicate-id'
   | 'duplicate-name'
   | 'bad-costume'
+  | 'bad-sound'
   | 'unsafe-name'
   | 'unsafe-id'
   | 'bad-bounds'
@@ -361,8 +363,8 @@ function checkCostume(costume: Costume, path: string, names: Set<string>, push: 
   checkFinite(costume.rotationCenterY, `${path}.rotationCenterY`, 'Rotation center', push)
   if (costume.opaque !== undefined) checkOpaque(costume.opaque, `${path}.opaque`, push)
   if (costume.mask !== undefined) checkMask(costume, path, push)
-  if (costume.asset !== undefined && !isAsset(costume.asset)) {
-    push('bad-value', `${path}.asset`, 'Costume asset must be a short asset id or data URL.')
+  if (costume.asset !== undefined && !isCostumeSource(costume.asset)) {
+    push('bad-costume', `${path}.asset`, 'Costume picture must be a PNG, JPEG, WebP or GIF data URL of at most 200,000 characters.')
   }
 }
 
@@ -424,13 +426,9 @@ function checkSound(sound: Sound, path: string, names: Set<string>, push: Push) 
   if (typeof sound.durationMs !== 'number' || !Number.isFinite(sound.durationMs) || sound.durationMs < 0) {
     push('bad-value', `${path}.durationMs`, 'Sound duration must be a finite number of milliseconds, zero or more.')
   }
-  if (sound.asset !== undefined && !isAsset(sound.asset)) {
-    push('bad-value', `${path}.asset`, 'Sound asset must be a short asset id or data URL.')
+  if (sound.asset !== undefined && !isSoundSource(sound.asset)) {
+    push('bad-sound', `${path}.asset`, 'Sound must be an audio data URL of at most 200,000 characters.')
   }
-}
-
-function isAsset(asset: unknown): boolean {
-  return typeof asset === 'string' && asset.length > 0 && asset.length <= DESIGN_LIMITS.maxAssetChars && !hasControlChar(asset)
 }
 
 function checkProgram(program: BrickProgram, path: string, push: Push, isStage: boolean, dataIds: Set<string>) {

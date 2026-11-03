@@ -922,11 +922,27 @@ async function route(request: Request, service: ClassroomService, path: string[]
       const input = await body(request), kind = input.kind || 'personal';
       if (!['personal', 'class', 'group'].includes(kind)) fail(400, 'invalid_input', 'Unknown world kind.');
       if (kind !== 'personal') await service.classFor(caller, input.classId, true);
+      // An id the app chose makes creating idempotent: asked again (its answer was lost, or the kid left while it was
+      // on its way), the world already made with that id is returned instead of a second copy.
+      if (input.id !== undefined && (typeof input.id !== 'string' || !uuid(input.id))) fail(400, 'invalid_input', 'A new world id must be a UUID.');
+      const chosenId = input.id === undefined ? undefined : String(input.id).toLowerCase();
+      const alreadyMade = async () => {
+        const row = chosenId ? (await service.rows('worlds', `id=eq.${chosenId}&limit=1`))[0] : undefined;
+        if (row && (row.owner_id !== caller.id || row.deleted_at)) fail(409, 'world_exists', 'That project id is already used.');
+        return row;
+      };
+      const earlier = await alreadyMade();
+      if (earlier) return json({ world: worldView(earlier, ownView(caller)) });
       await service.rate(`create-world:${caller.id}`, 60, 3600);
       let created: Row;
       // The database enforces the per-account limit; say so in the words the apps already show ("account is full").
-      try { created = (await service.insert('worlds', { owner_id: caller.id, class_id: kind === 'personal' ? null : input.classId, kind, title: cleanText(input.title || 'My world', 'World title'), document: document(input.document) }))[0]; }
-      catch (error) { if (error instanceof ClassroomHttpError && error.code === 'quota_exceeded') fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.'); throw error; }
+      try { created = (await service.insert('worlds', { ...(chosenId ? { id: chosenId } : {}), owner_id: caller.id, class_id: kind === 'personal' ? null : input.classId, kind, title: cleanText(input.title || 'My world', 'World title'), document: document(input.document) }))[0]; }
+      catch (error) {
+        if (error instanceof ClassroomHttpError && error.code === 'quota_exceeded') fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
+        // The same id twice at once: the other request made it.
+        if (chosenId && error instanceof ClassroomHttpError && error.code === 'already_exists') { const made = await alreadyMade(); if (made) return json({ world: worldView(made, ownView(caller)) }); }
+        throw error;
+      }
       return json({ world: worldView(created, ownView(caller)) }, 201);
     }
     const access = await service.worldAccess(caller, path[1], false, path[2] === 'invites'), { world } = access;

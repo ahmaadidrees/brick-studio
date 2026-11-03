@@ -2,7 +2,7 @@ import { Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { designKit, type BrickDef, type KitId } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
-import { builtInPowers, forGame, makePower, powerChanged, powerFromFile, whyNot, type PowerBrick } from '../powers/powers'
+import { builtInPowers, forGame, makePower, powerChanged, powerProblem, readPowerFile, whyNot, type PowerBrick } from '../powers/powers'
 import { downloadPower, keepPower, makerName, myPowers, onPowersChange, rememberMakerName } from '../powers/library'
 import { getLabelText } from './labels'
 import { useClassShelf } from '../powers/useClassShelf'
@@ -79,15 +79,17 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
     try { await shelf.reload() } finally { setChecking(false) }
   }
   const snap = (p: PowerBrick) => {
+    const problem = powerProblem(p)
+    if (problem) return setNote(problem)
     if (store.snapPower(brick.id, p)) onClose()
   }
   const open = async (f: File | undefined) => {
     if (!f) return
-    const power = powerFromFile(await f.text())
-    if (!power) return setNote('That file isn’t a power. Power files end in .power.json.')
-    if (!forGame(power, kit)) return setNote(whyNot(power, brick, kit))
-    keepPower(power)
-    setNote(`${power.name} is in My powers.`)
+    const read = readPowerFile(await f.text())
+    if (!read.ok) return setNote(read.message)
+    if (!forGame(read.power, kit)) return setNote(whyNot(read.power, brick, kit))
+    keepPower(read.power)
+    setNote(`${read.power.name} is in My powers.`)
   }
   const row = (p: PowerBrick) => {
     const why = whyNot(p, brick, kit)

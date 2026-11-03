@@ -20,12 +20,12 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders Save File, Open File, and Reset buttons with accessible names', () => {
+  it('renders Save File, Open File, and Start over buttons with accessible names', () => {
     render(<ProjectMenu store={store} />)
 
     const saveBtn = screen.getByRole('button', { name: /save project to file/i })
     const openBtn = screen.getByRole('button', { name: /open project from file/i })
-    const resetBtn = screen.getByRole('button', { name: /reset project to starter/i })
+    const resetBtn = screen.getByRole('button', { name: /start over with the starter level/i })
 
     expect(saveBtn).toBeDefined()
     expect(openBtn).toBeDefined()
@@ -99,7 +99,7 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     const loadSpy = vi.spyOn(store, 'load')
     render(<ProjectMenu store={store} />)
 
-    const resetBtn = screen.getByRole('button', { name: /reset project to starter/i })
+    const resetBtn = screen.getByRole('button', { name: /start over with the starter level/i })
     fireEvent.click(resetBtn)
 
     // Confirm dialog is shown
@@ -107,20 +107,20 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     expect(loadSpy).not.toHaveBeenCalled()
 
     // Clicking confirm reset
-    const confirmResetBtn = screen.getByRole('button', { name: /^reset$/i })
+    const confirmResetBtn = screen.getByRole('button', { name: /^start over$/i })
     fireEvent.click(confirmResetBtn)
 
     expect(loadSpy).toHaveBeenCalled()
     expect(screen.queryByText(/Start over with the starter level/i)).toBeNull()
   })
 
-  it('Reset keeps the project’s name, and Undo puts the project back', () => {
+  it('Start over keeps the project’s name, and Undo puts the project back', () => {
     store.renameProject('Lava jump')
     store.addCopy('brick_coin', 640, 120)
     const before = store.getState().project
     render(<><StorageNoticeBar /><ProjectMenu store={store} /></>)
-    fireEvent.click(screen.getByRole('button', { name: /reset project to starter/i }))
-    fireEvent.click(screen.getByRole('button', { name: /^reset$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /start over with the starter level/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^start over$/i }))
     expect(store.getState().project.design.name).toBe('Lava jump')
     expect(store.getState().project.design.copies).toHaveLength(createStarterProject().design.copies.length)
 
