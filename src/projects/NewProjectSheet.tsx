@@ -16,6 +16,7 @@ export const NEW_PROJECT_HREF = {
   raceEmpty: '/2d/build?new=1&kit=race-empty',
   template: (id: string) => `/2d/build?new=1&template=${encodeURIComponent(id)}`,
   hackable: '/2d/hackable?new=1',
+  hackableRace: '/2d/hackable-race?new=1',
 }
 
 /**
@@ -79,6 +80,25 @@ export function NewProjectSheet({ open, onClose, onPick = (href) => window.locat
           <div className="projects-kind-actions">
             <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.hackable)}>
               Start a Hackable Platformer
+            </Button>
+          </div>
+        </article>
+        <article className="projects-kind projects-kind-hackable">
+          <div className="projects-kind-picture">
+            {pictures?.race && <img src={pictures.race} alt="" draggable={false} />}
+            {/* A taste of what is inside: two of the Car's own blocks over a track. */}
+            <span className="projects-hack-blocks" aria-hidden="true">
+              <span className="projects-hack-block projects-hack-hat">when I finish a lap</span>
+              <span className="projects-hack-block">change <b>top speed</b> by <i>1</i></span>
+            </span>
+          </div>
+          <h3>
+            <Code2 size={18} aria-hidden="true" /> Hackable Racing <span className="projects-new-tag">New</span>
+          </h3>
+          <p>A race track where you can change how everything drives, with blocks. Open any brick, even your Car.</p>
+          <div className="projects-kind-actions">
+            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.hackableRace)}>
+              Start Hackable Racing
             </Button>
           </div>
         </article>

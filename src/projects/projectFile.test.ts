@@ -3,7 +3,7 @@ import { createPlatformerDocument } from '@brick-studio/platformer-core/document
 import { createBlankLevel, createBlankRaceLevel } from '@brick-studio/platformer-core/engine/level'
 import { brickSpeedway } from '@brick-studio/platformer-core/levels/raceCourses'
 import { createBrickStudioDocument } from '../brick/brickDocument'
-import { projectFile, projectFileName, readProjectFile } from './projectFile'
+import { PROJECT_KIND_LABEL, hackableDocumentKit, kindOfContent, projectFile, projectFileName, readProjectFile } from './projectFile'
 
 const roundTrip = (text: string, name = '') => {
   const r = readProjectFile(text, name)
@@ -45,6 +45,21 @@ describe('one project file for every kind', () => {
     expect(readProjectFile(JSON.stringify(file))).toEqual({ ok: true, project: { title: 'Hacky', content: { kind: 'hackable', document } } })
     expect(readProjectFile(JSON.stringify(save), 'whatever.json')).toEqual({ ok: true, project: { title: 'Hacky', content: { kind: 'hackable', document } } })
     expect(readProjectFile(JSON.stringify({ ...file, document: { format: 'brickgineers-hackable', version: 1 } })).ok).toBe(false)
+  })
+
+  it('a Hackable Racing project travels as a Hackable file too, and My projects calls it Hackable Racing', () => {
+    const save = { schemaVersion: 1, design: { name: 'Ice ring', kit: 'race' }, workspaces: {} }
+    const document = { format: 'brickgineers-hackable' as const, version: 1 as const, save }
+    const file = projectFile({ title: 'Ice ring', content: { kind: 'hackable', document } })
+    // The file's own kind stays 'hackable', so every version that opens Hackable files opens it (and says what it is).
+    expect(file.kind).toBe('hackable')
+    const back = roundTrip(JSON.stringify(file))
+    expect(back).toEqual({ title: 'Ice ring', content: { kind: 'hackable', document } })
+    expect(kindOfContent(back.content)).toBe('hackable-race')
+    expect(PROJECT_KIND_LABEL[kindOfContent(back.content)]).toBe('Hackable Racing')
+    expect(kindOfContent({ kind: 'hackable', document: { ...document, save: { ...save, design: { name: 'Old' } } } })).toBe('hackable')
+    expect(hackableDocumentKit({ ...document, save: null })).toBe('platformer')
+    expect(readProjectFile(JSON.stringify({ ...file, document: { format: 'brickgineers-hackable', version: 1 } }))).toMatchObject({ ok: false, message: expect.stringMatching(/^That Hackable project could not be opened/) })
   })
 
   it('names files safely', () => {

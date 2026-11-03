@@ -7,13 +7,14 @@ import { StudioShell } from './screen/StudioShell'
 import { loadProject, watchAndSave } from './storage'
 import { clearStorageNotice, getStorageNotice, setStorageNotice, type StorageNotice } from './persist/notice'
 import { StudioStore, type StudioProject } from './store'
-import { createStarterProject } from './starter'
+import { KIT_SCREENS, type ScreensKit } from './kitScreens'
+import { designKit } from '../core/contracts'
 import { HackableCloudSaver, NotHackableError, RETRY_DELAYS_MS, createHackableWorld, loadHackableWorld, mayWorkLater, newWorldId } from './persist/hackableCloud'
 import {
   MAX_HACKABLE_PROJECTS,
-  NEW_PROJECT_NAME,
   compactHackableSaves,
   deleteHackableProject,
+  entryKit,
   hackableHref,
   listHackableProjects,
   loadHackableText,
@@ -34,7 +35,11 @@ export interface StudioRoute {
   world?: string
   draft?: string
   fresh: boolean
+  /** The address's game (/2d/hackable-race): what a new project is, and which newest one opens. Absent: the Platformer. */
+  kit?: 'race'
 }
+
+const routeKit = (route: Pick<StudioRoute, 'kit'>): ScreensKit => route.kit ?? 'platformer'
 
 /**
  * Where the open project lives: this browser, the account, someone else's (look only, nothing is saved), or a new one
@@ -68,15 +73,20 @@ const homeOf = (opened: Opened): Home =>
 
 type Opening = { kind: 'opening' } | { kind: 'problem'; title: string; body: string } | Opened
 
-const newProject = (): StudioProject => {
-  const project = createStarterProject()
-  return { ...project, design: { ...project.design, name: NEW_PROJECT_NAME } }
+/** A new project of the address's game: the Platformer's starter level, or Hackable Racing's beginner track. */
+const newProject = (kit: ScreensKit): StudioProject => {
+  const screens = KIT_SCREENS[kit]
+  const project = screens.starter()
+  return { ...project, design: { ...project.design, name: screens.copy.projectName } }
 }
+
+/** A project's own game, for its address. */
+const kitIn = (project: StudioProject) => designKit(project.design)
 
 /** Replace the address without a reload, so a refresh opens this same project. */
 const settle = (href: string) => window.history.replaceState(window.history.state, '', href)
 
-/** Exported for tests: what a /2d/hackable address opens. */
+/** Exported for tests: what a /2d/hackable (or /2d/hackable-race) address opens. */
 export async function openStudioRoute(route: StudioRoute): Promise<Opening> {
   return open(route)
 }
@@ -86,7 +96,21 @@ async function open(route: StudioRoute): Promise<Opening> {
   const opening = await openWhere(route)
   if (!('project' in opening)) return opening
   const notReady = kitNotReady(opening.project.design)
-  return notReady ? { kind: 'problem', title: `This is ${kitOf(opening.project.design).name}`, body: notReady } : opening
+  if (notReady) return { kind: 'problem', title: `This is ${kitOf(opening.project.design).name}`, body: notReady }
+  fixAddress(opening)
+  return opening
+}
+
+/**
+ * A project opened at another game's address (an older link, or an invite that does not say the game) opens as itself;
+ * the address is put right, so a refresh or a copied link names its game.
+ */
+function fixAddress(opened: Opened) {
+  if (opened.kind === 'new') return
+  const path = window.location.pathname.replace(/\/+$/, '')
+  if (path !== '/2d/hackable' && path !== '/2d/hackable-race') return
+  const href = opened.kind === 'local' ? hackableHref.local(opened.id, kitIn(opened.project)) : hackableHref.world(opened.world.id, kitIn(opened.project))
+  if (new URL(href, window.location.origin).pathname !== path) settle(href)
 }
 
 async function openWhere(route: StudioRoute): Promise<Opening> {
@@ -95,7 +119,7 @@ async function openWhere(route: StudioRoute): Promise<Opening> {
   if (route.world) {
     try {
       const { world, project } = await loadHackableWorld(route.world)
-      // Only the owner saves into it. There are no live rooms for Hackable Platformers, so a classmate (or a teacher)
+      // Only the owner saves into it. There are no live rooms for Hackable projects, so a classmate (or a teacher)
       // who may build in it would save over the owner's project; they look, and make their own copy to keep changes.
       const mine = world.canEdit && !!session && world.ownerId === session.user.id
       return mine ? { kind: 'account', world, project } : { kind: 'viewer', world, project }
@@ -117,15 +141,16 @@ async function openWhere(route: StudioRoute): Promise<Opening> {
       const problem = browserCannotKeep()
       if (problem) return problem
     }
-    return { kind: 'new', project: newProject() }
+    return { kind: 'new', project: newProject(routeKit(route)) }
   }
-  const id = route.draft ?? listHackableProjects()[0]?.id
-  if (!id) return openWhere({ fresh: true })
+  // The newest project of this address's game (an entry made before kits is a Platformer).
+  const id = route.draft ?? listHackableProjects().find((e) => entryKit(e) === routeKit(route))?.id
+  if (!id) return openWhere({ fresh: true, ...(route.kit ? { kit: route.kit } : {}) })
   // The save itself decides, not the list: a project whose list entry was lost still opens (and is listed again).
   if (route.draft && loadHackableText(id) === null) {
     return { kind: 'problem', title: 'That project isn’t on this computer', body: 'It may have been removed, or saved in a different browser. Your other projects are in My projects.' }
   }
-  if (!route.draft) settle(hackableHref.local(id))
+  if (!route.draft) settle(hackableHref.local(id, routeKit(route)))
   // Waiting to become an account world: moved there once its own account is signed in here (OpenProject).
   const pending = pendingWorldOf(id)
   const mine = pending && session?.user.id === pending.owner ? pending : undefined
@@ -152,7 +177,7 @@ function browserCannotKeep(): Extract<Opening, { kind: 'problem' }> | null {
   if (room === 'blocked') return { kind: 'problem', title: 'This browser won’t save projects', body: 'Saving is turned off in this browser. Sign in to keep projects in your account.' }
   if (room === 'full') return { kind: 'problem', title: 'There’s no more room for projects on this computer', body: 'Remove projects you no longer need in My projects (save them as files first if you want to keep them), or sign in to keep projects in your account.' }
   if (listHackableProjects().length >= MAX_HACKABLE_PROJECTS) {
-    return { kind: 'problem', title: 'This computer is full of projects', body: `This browser keeps ${MAX_HACKABLE_PROJECTS} Hackable Platformers. Remove one in My projects, or sign in to keep more in your account.` }
+    return { kind: 'problem', title: 'This computer is full of projects', body: `This browser keeps ${MAX_HACKABLE_PROJECTS} Hackable projects. Remove one in My projects, or sign in to keep more in your account.` }
   }
   return null
 }
@@ -160,7 +185,7 @@ function browserCannotKeep(): Extract<Opening, { kind: 'problem' }> | null {
 /** Why this computer did not keep a project, in the kid's words, with what to do so it is not lost. */
 export function notKeptMessage(reason: Exclude<HackableSaveResult, { ok: true }>['reason'], accountFull = false): string {
   const saveFile = 'Press This project, then Save File, so you do not lose it.'
-  if (reason === 'full') return `${accountFull ? 'Your account is full, and this' : 'This'} computer already keeps ${MAX_HACKABLE_PROJECTS} Hackable Platformers, so this project is not saved. ${saveFile}`
+  if (reason === 'full') return `${accountFull ? 'Your account is full, and this' : 'This'} computer already keeps ${MAX_HACKABLE_PROJECTS} Hackable projects, so this project is not saved. ${saveFile}`
   if (reason === 'space') return `${accountFull ? 'Your account is full, and there' : 'There'} is no more room for projects on this computer, so this project is not saved. ${saveFile} Then remove old projects in My projects to make room.`
   return `This browser won’t save projects, so this project is not saved. ${saveFile}`
 }
@@ -180,7 +205,7 @@ export async function keepNewProject(project: StudioProject, client: ClassroomCl
     const worldId = newWorldId()
     try {
       const world = await createHackableWorld(project, client, undefined, worldId)
-      return { home: { kind: 'account', world, saved: project }, href: hackableHref.world(world.id) }
+      return { home: { kind: 'account', world, saved: project }, href: hackableHref.world(world.id, kitIn(project)) }
     } catch (error) {
       accountFull = (error as { code?: string })?.code === 'world_limit'
       // Offline or out of reach: kept here, and moved to the account under the same id once it answers.
@@ -203,7 +228,7 @@ export async function keepNewProject(project: StudioProject, client: ClassroomCl
       : undefined
   return {
     home: { kind: 'local', id, saved: project, ...(pending ? { pending } : {}) },
-    href: hackableHref.local(id),
+    href: hackableHref.local(id, kitIn(project)),
     ...(notice ? { notice } : {}),
   }
 }
@@ -239,7 +264,8 @@ function stagePicture(): string | undefined {
 }
 
 /**
- * /2d/hackable: the Hackable Platformer (Code Lab on the new core). One shell with Build · Code · Play
+ * /2d/hackable and /2d/hackable-race: the Hackable Platformer (Code Lab on the new core) and Hackable Racing, one studio
+ * that reads the game from the project. One shell with Build · Code · Play
  * (docs/qa/code-lab-on-main/UX-AUDIT.md); Code is the only code editor. Each project lives in this browser or in the
  * account, like every other kind in My projects.
  */
@@ -337,7 +363,7 @@ function OpenProject({ opened }: { opened: Opened }) {
       const now = Date.now()
       const picture = now - pictured > 10_000 ? stagePicture() : undefined
       if (picture) pictured = now
-      touchHackableEntry(localId, project.design.name, undefined, picture)
+      touchHackableEntry(localId, project.design.name, undefined, picture, kitIn(project))
     }
     let shown = store.getState().project
     const unsubscribeChip = store.subscribe(() => {
@@ -354,7 +380,7 @@ function OpenProject({ opened }: { opened: Opened }) {
         return
       }
       store.renameProject(kept.copy.design.name)
-      settle(hackableHref.local(kept.id))
+      settle(hackableHref.local(kept.id, kitIn(kept.copy)))
       setHome({ kind: 'local', id: kept.id, saved: store.getState().project })
       setStorageNotice({
         id: 'tab-copy', type: 'info', sticky: true,
@@ -403,7 +429,7 @@ function OpenProject({ opened }: { opened: Opened }) {
         busy = false
         if (!live) return
         if (getStorageNotice()?.id === 'account-pending') clearStorageNotice()
-        settle(hackableHref.world(world.id))
+        settle(hackableHref.world(world.id, kitIn(store.getState().project)))
         // The account may hold the first version (made before its answer was lost): save what is on screen at once.
         setHome({ kind: 'account', world, saved: null, backup: localId })
       } catch (error) {
@@ -442,7 +468,7 @@ function OpenProject({ opened }: { opened: Opened }) {
     setCopyFailed(false)
     void createHackableWorld(copy, browserClassroomClient, title, newWorldId()).then((world) => {
       store.renameProject(title)
-      settle(hackableHref.world(world.id))
+      settle(hackableHref.world(world.id, kitIn(copy)))
       setHome({ kind: 'account', world, saved: store.getState().project })
       tell('')
     }, (error) => {
@@ -450,7 +476,7 @@ function OpenProject({ opened }: { opened: Opened }) {
         const kept = keepLocalCopy(project)
         if (!('reason' in kept)) {
           store.renameProject(kept.copy.design.name)
-          settle(hackableHref.local(kept.id))
+          settle(hackableHref.local(kept.id, kitIn(kept.copy)))
           setHome({ kind: 'local', id: kept.id, saved: store.getState().project })
           tell(' on this computer (your account is full)')
           return
@@ -588,12 +614,12 @@ export async function makeOwnCopy(world: Pick<ClassroomWorld, 'title'>, project:
   const copy: StudioProject = { ...project, design: { ...project.design, name: title } }
   try {
     const mine = await createHackableWorld(copy, client, title)
-    return hackableHref.world(mine.id)
+    return hackableHref.world(mine.id, kitIn(copy))
   } catch (error) {
     if ((error as { code?: string })?.code !== 'world_limit') throw error
     const id = newHackableId()
     if (!saveHackableProject(id, copy).ok) throw new Error('Your account is full, and this browser could not keep the copy either. Remove a project in My projects, then try again.')
-    return hackableHref.local(id)
+    return hackableHref.local(id, kitIn(copy))
   }
 }
 

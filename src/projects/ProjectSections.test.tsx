@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
 import { brickSpeedway } from '@brick-studio/platformer-core/levels/raceCourses'
 import { saveDraft, listDrafts } from '../platformer/ui/drafts'
+import { saveHackableText } from '../platformer/lab/studio/persist/hackableProjects'
 import { LocalProjectsSection, StartersSection } from './ProjectSections'
 
 const state = vi.hoisted(() => ({ create: vi.fn(), guest: vi.fn() }))
@@ -139,4 +140,16 @@ it('moving everything stops at the first failure and keeps the rest on this comp
   expect(state.create).toHaveBeenCalledOnce()
   expect(f.onError).toHaveBeenCalledWith('Your account is full. Remove a project you no longer need, then try again.')
   expect(listDrafts()).toHaveLength(2)
+})
+
+it('a Hackable Racing project on this computer says so and opens at the race address', () => {
+  saveHackableText('r1', 'Ice ring', JSON.stringify({ schemaVersion: 1, design: { name: 'Ice ring', kit: 'race' }, workspaces: {} }))
+  saveHackableText('p1', 'Castle', JSON.stringify({ schemaVersion: 1, design: { name: 'Castle' }, workspaces: {} }))
+  render(<LocalProjectsSection signedIn={false} version={0} onChanged={vi.fn()} {...feedback()} />)
+  const race = screen.getByRole('article', { name: 'Ice ring' })
+  expect(within(race).getByText('Hackable Racing')).toBeInTheDocument()
+  expect(within(race).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/2d/hackable-race?draft=r1')
+  const platformer = screen.getByRole('article', { name: 'Castle' })
+  expect(within(platformer).getByText('Hackable Platformer')).toBeInTheDocument()
+  expect(within(platformer).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/2d/hackable?draft=p1')
 })

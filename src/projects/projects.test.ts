@@ -126,6 +126,50 @@ describe('Hackable Platformers in My projects', () => {
   })
 })
 
+describe('Hackable Racing in My projects', () => {
+  const save = { schemaVersion: 1, design: { name: 'Ice ring', kit: 'race' }, workspaces: {} }
+  const document = { format: 'brickgineers-hackable' as const, version: 1 as const, save }
+  const raceClient = (kit?: 'race') => ({ createWorld: vi.fn(async ({ title }: { title: string }) => ({ id: 'wr', title, format: 'hackable', ...(kit ? { kit } : {}) }) as ClassroomWorld) }) as unknown as ClientWithCreate
+
+  it('lists one with its label and its own address, next to an old Platformer entry with no kit', () => {
+    saveHackableText('old', 'Hacky', JSON.stringify({ schemaVersion: 1, design: { name: 'Hacky' }, workspaces: {} }), undefined, undefined, undefined, 'platformer')
+    saveHackableText('r1', 'Ice ring', JSON.stringify(save))
+    const kinds = listLocalProjects().map((p) => [p.id, p.kind, p.href])
+    expect(kinds).toEqual(expect.arrayContaining([['old', 'hackable', '/2d/hackable?draft=old'], ['r1', 'hackable-race', '/2d/hackable-race?draft=r1']]))
+    const race = listLocalProjects().find((p) => p.id === 'r1')!
+    expect(localProject(race)).toEqual({ title: 'Ice ring', content: { kind: 'hackable', document } })
+    removeLocalProject(race)
+    expect(listHackableProjects().map((e) => e.id)).toEqual(['old'])
+  })
+
+  it('an account one is Hackable Racing and opens at the race address', () => {
+    expect(kindOfWorld({ format: 'hackable', kit: 'race' })).toBe('hackable-race')
+    expect(projectHref({ id: 'abc', format: 'hackable', kit: 'race' })).toBe('/2d/hackable-race?world=abc')
+  })
+
+  it('moves to the account and opens at the race address, even when the server does not say the game', async () => {
+    saveHackableText('r1', 'Ice ring', JSON.stringify(save))
+    const [race] = listLocalProjects()
+    const client = raceClient()
+    expect((await moveToAccount(race, client)).href).toBe('/2d/hackable-race?world=wr')
+    expect(client.createWorld).toHaveBeenCalledWith({ title: 'Ice ring', document })
+    expect(listHackableProjects()).toEqual([])
+    expect((await importProject({ title: '', content: { kind: 'hackable', document } }, { signedIn: true, client: raceClient('race') })).ok).toBe(true)
+  })
+
+  it('an untitled one is named like a new race track', async () => {
+    const client = raceClient('race')
+    await importProject({ title: '', content: { kind: 'hackable', document } }, { signedIn: true, client })
+    expect(client.createWorld).toHaveBeenCalledWith({ title: 'My race track', document })
+  })
+
+  it('imports one for a guest into this browser, as a race project', async () => {
+    const local = await importProject({ title: 'Ice ring', content: { kind: 'hackable', document } }, { signedIn: false })
+    expect(local).toMatchObject({ ok: true, where: 'local', href: expect.stringMatching(/^\/2d\/hackable-race\?draft=h/) })
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'Ice ring', kit: 'race' })
+  })
+})
+
 describe('how old a project on this computer is', () => {
   const now = new Date(2026, 9, 28, 15, 0).getTime()
   const at = (days: number, hour = 9) => new Date(2026, 9, 28 - days, hour, 0).getTime()

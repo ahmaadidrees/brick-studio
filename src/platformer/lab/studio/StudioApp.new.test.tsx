@@ -1,8 +1,14 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { listHackableProjects } from './persist/hackableProjects'
+import { browserClassroomClient, type ClassroomClientSurface } from '../../../classroom/client'
+import type { ClassroomWorld } from '../../../classroom/contracts'
+import { HACKABLE_INDEX_KEY, listHackableProjects, projectKey } from './persist/hackableProjects'
+import { saveHackableProject } from './persist/hackableSave'
+import { exportProjectJson } from './persist/projectIo'
+import { createRaceStarterProject } from './race/raceProject'
+import { createStarterProject } from './starter'
 import type { StudioStore } from './store'
-import StudioApp, { SAVE_WORDS } from './StudioApp'
+import StudioApp, { SAVE_WORDS, keepNewProject, makeOwnCopy, notKeptMessage, openStudioRoute } from './StudioApp'
 
 vi.mock('./gridBricks', async (orig) => ({ ...(await orig<typeof import('./gridBricks')>()), gridBrickTemplate: (await import('./builder/testGridBricks')).fakeGridTemplate }))
 vi.mock('./CodeEditor', () => ({ CodeEditor: () => <div aria-label="Docked code editor">Code editor</div> }))
@@ -63,5 +69,91 @@ describe('the save chip on this computer (a guest)', () => {
     await act(async () => { studio().addCopy('brick_coin', 420, 140) })
     await explains('Couldn’t save', SAVE_WORDS.localFailed)
     expect(screen.getByRole('alert').textContent).toContain('could not be saved on this computer')
+  })
+})
+
+describe('Hackable Racing: /2d/hackable-race', () => {
+  const race = (name = 'My race track') => { const p = createRaceStarterProject(); return { ...p, design: { ...p.design, name } } }
+  const platformer = (name: string) => { const p = createStarterProject(); return { ...p, design: { ...p.design, name } } }
+  const guest = { getSession: () => null } as unknown as ClassroomClientSurface
+
+  it('?new=1 opens "My race track" on the beginner track, kept with its game at the first change', async () => {
+    window.history.replaceState(null, '', '/2d/hackable-race?new=1')
+    render(<StudioApp route={{ fresh: true, kit: 'race' }} />)
+    await screen.findByRole('radio', { name: 'Build' })
+    const design = studio().getState().project.design
+    expect(design).toMatchObject({ kit: 'race', name: 'My race track' })
+    expect(design.copies).toHaveLength(createRaceStarterProject().design.copies.length)
+    expect(document.title).toBe('My race track · Hackable Racing · Brickgineers')
+    expect(listHackableProjects()).toEqual([])
+
+    await act(async () => { studio().renameProject('Ice ring') })
+    await waitFor(() => expect(listHackableProjects()[0]).toMatchObject({ title: 'Ice ring', kit: 'race' }))
+    const [entry] = listHackableProjects()
+    expect(window.location.pathname + window.location.search).toBe(`/2d/hackable-race?draft=${entry.id}`)
+    expect(JSON.parse(localStorage.getItem(`code-lab.project.v1:${entry.id}`)!).design.kit).toBe('race')
+  })
+
+  it('keeps a new race track in the account, or this browser, at the race address', async () => {
+    const local = await keepNewProject(race(), guest)
+    expect(local.href).toMatch(/^\/2d\/hackable-race\?draft=h/)
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'My race track', kit: 'race' })
+    const createWorld = vi.fn(async (input: { title: string }) => ({ id: 'w-race', title: input.title, revision: 1, format: 'hackable', kit: 'race', ownerId: 'me' }))
+    const account = await keepNewProject(race(), { getSession: () => ({ user: { id: 'me' } }), createWorld } as unknown as ClassroomClientSurface)
+    expect(account).toMatchObject({ home: { kind: 'account' }, href: '/2d/hackable-race?world=w-race' })
+    expect(createWorld.mock.calls[0][0].title).toBe('My race track')
+  })
+
+  it('with no project named, each address opens its own game’s newest project', async () => {
+    expect(await openStudioRoute({ fresh: false, kit: 'race' })).toMatchObject({ kind: 'new', project: { design: { kit: 'race', name: 'My race track' } } })
+    saveHackableProject('r1', race('Older track'))
+    saveHackableProject('r2', race('Newer track'))
+    saveHackableProject('p1', platformer('Newest platformer'))
+    window.history.replaceState(null, '', '/2d/hackable-race')
+    expect(await openStudioRoute({ fresh: false, kit: 'race' })).toMatchObject({ kind: 'local', id: 'r2', project: { design: { kit: 'race', name: 'Newer track' } } })
+    expect(window.location.search).toBe('?draft=r2')
+    window.history.replaceState(null, '', '/2d/hackable')
+    expect(await openStudioRoute({ fresh: false })).toMatchObject({ kind: 'local', id: 'p1' })
+    expect(window.location.search).toBe('?draft=p1')
+  })
+
+  it('an entry made before kits counts as a Platformer', async () => {
+    localStorage.setItem(projectKey('old'), exportProjectJson(platformer('Old one')))
+    localStorage.setItem(HACKABLE_INDEX_KEY, JSON.stringify([{ id: 'old', title: 'Old one', updated: Date.now() }]))
+    expect(await openStudioRoute({ fresh: false })).toMatchObject({ kind: 'local', id: 'old' })
+    expect(await openStudioRoute({ fresh: false, kit: 'race' })).toMatchObject({ kind: 'new' })
+  })
+
+  it('a race track opened at the Platformer’s address opens as itself, and the address is put right', async () => {
+    saveHackableProject('r1', race('Ice ring'))
+    window.history.replaceState(null, '', '/2d/hackable?draft=r1')
+    expect(await openStudioRoute({ draft: 'r1', fresh: false })).toMatchObject({ kind: 'local', project: { design: { kit: 'race' } } })
+    expect(window.location.pathname + window.location.search).toBe('/2d/hackable-race?draft=r1')
+  })
+
+  it('opens an account race track, and Make my own copy keeps it a race track', async () => {
+    const save = JSON.parse(exportProjectJson(race('Ava’s track')))
+    const world = { id: 'w9', title: 'Ava’s track', revision: 2, format: 'hackable', kit: 'race', ownerId: 'ava', ownerName: 'Ava B.', canEdit: true, document: { format: 'brickgineers-hackable', version: 1, save } } as unknown as ClassroomWorld
+    vi.spyOn(browserClassroomClient, 'getSession').mockReturnValue({ user: { id: 'ben' } } as never)
+    vi.spyOn(browserClassroomClient, 'getWorld').mockResolvedValue(world)
+    const opened = await openStudioRoute({ world: 'w9', fresh: false, kit: 'race' })
+    expect(opened).toMatchObject({ kind: 'viewer', project: { design: { kit: 'race' } } })
+
+    const createWorld = vi.fn(async (input: { title: string }) => ({ ...world, id: 'mine1', title: input.title, ownerId: 'ben' }))
+    const client = { getSession: () => ({ user: { id: 'ben' } }), createWorld } as unknown as ClassroomClientSurface
+    const project = opened.kind === 'viewer' ? opened.project : race()
+    expect(await makeOwnCopy(world, project, client)).toBe('/2d/hackable-race?world=mine1')
+    const sent = createWorld.mock.calls[0][0] as unknown as { document: { save: { design: { kit: string; name: string } } } }
+    expect(sent.document.save.design).toMatchObject({ kit: 'race', name: 'Ava’s track (copy)' })
+
+    const full = { getSession: () => ({ user: { id: 'ben' } }), createWorld: vi.fn(async () => { throw Object.assign(new Error('full'), { code: 'world_limit' }) }) } as unknown as ClassroomClientSurface
+    expect(await makeOwnCopy(world, project, full)).toMatch(/^\/2d\/hackable-race\?draft=h/)
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'Ava’s track (copy)', kit: 'race' })
+  })
+
+  it('the shared limit and its words name every game together', async () => {
+    for (let i = 0; i < 30; i++) localStorage.setItem(projectKey(`p${i}`), JSON.stringify({ design: { name: `P${i}`, ...(i % 2 ? { kit: 'race' } : {}) } }))
+    expect(await openStudioRoute({ fresh: true, kit: 'race' })).toMatchObject({ kind: 'problem', body: expect.stringContaining('keeps 30 Hackable projects') })
+    expect(notKeptMessage('full')).toContain('already keeps 30 Hackable projects')
   })
 })

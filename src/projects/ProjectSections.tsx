@@ -12,9 +12,9 @@ import { PROJECT_FILE_ACCEPT, PROJECT_KIND_LABEL, downloadProjectFile, readProje
 import { LOCAL_3D_ID, importProject, listLocalProjects, localProject, localProjectAge, moveToAccount, removeLocalProject, type LocalProject } from './projects'
 import './projects.css'
 
-const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag, hackable: Code2 }
+const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag, hackable: Code2, 'hackable-race': Code2 }
 
-/** "3D build", "Platformer", "Race track" or "Hackable Platformer", on every project card. */
+/** "3D build", "Platformer", "Race track", "Hackable Platformer" or "Hackable Racing", on every project card. */
 export function KindChip({ kind }: { kind: ProjectKind }) {
   const Icon = KIND_ICON[kind]
   return (
@@ -30,7 +30,7 @@ function localPicture(p: LocalProject): string {
   return p.kind === 'race' ? raceThumb(p.level, `local:${p.id}:${p.updated}`) : levelThumb(p.level, `local:${p.id}:${p.updated}`)
 }
 
-/** One key per local project: a 2D draft and a Hackable Platformer could in principle share an id. */
+/** One key per local project: a 2D draft and a Hackable project could in principle share an id. */
 const localKey = (p: LocalProject) => `${p.kind}:${p.id}`
 
 const moveError = (error: unknown) => {

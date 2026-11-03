@@ -1,6 +1,9 @@
+import { isKitId, type KitId } from '../../core/contracts'
+
 /*
- * Hackable Platformer projects (the kid-facing name for Code Lab): many per browser, and the same project as an
- * account world. In this browser an index lists them and each keeps its save under its own key. The first project is
+ * Hackable projects (Hackable Platformer, the kid-facing name for Code Lab, and Hackable Racing): many per browser,
+ * and the same project as an account world. Each entry remembers its kit, so My projects names the game and links to
+ * its address without opening the save; an entry with no kit is a Platformer (every entry made before kits). In this browser an index lists them and each keeps its save under its own key. The first project is
  * the one Code Lab always kept (CODE_LAB_STORAGE_KEY), so older saves become "project 1" without being moved. In an
  * account a project is a world whose document wraps the same save envelope ({ format: HACKABLE_FORMAT, save }).
  *
@@ -15,11 +18,13 @@ export const LEGACY_KEY = 'code-lab.project.v1'
 export const LEGACY_ID = 'main'
 export const MAX_HACKABLE_PROJECTS = 30
 export const NEW_PROJECT_NAME = 'My platformer'
+/** A new project's name in each kit (kitScreens `copy.projectName`; hackableProjects.test.ts checks they agree). */
+export const newProjectName = (kit: KitId = 'platformer'): string => (kit === 'race' ? 'My race track' : NEW_PROJECT_NAME)
 /** What an account world can hold (the worlds table's own limit). */
 export const ACCOUNT_DOCUMENT_MAX_BYTES = 2_000_000
 /** The biggest save text the game opens (core/save.ts MAX_SAVE_BYTES, counted in characters; projectIo.test.ts checks they agree). */
 export const HACKABLE_SAVE_MAX_CHARS = 5 * 1024 * 1024
-/** The biggest Hackable Platformer file read: its save plus a `.brickgineers` wrapper around it. */
+/** The biggest Hackable project file read: its save plus a `.brickgineers` wrapper around it. */
 export const HACKABLE_FILE_MAX_CHARS = HACKABLE_SAVE_MAX_CHARS + 64 * 1024
 
 export interface HackableEntry {
@@ -34,7 +39,12 @@ export interface HackableEntry {
    * this id (so trying again never makes a second copy), for the account that made it.
    */
   pendingWorld?: PendingWorld
+  /** Which Hackable game it is. Missing means the Platformer, so entries made before kits read unchanged. */
+  kit?: Exclude<KitId, 'platformer'>
 }
+
+/** An entry's kit: missing is the Platformer. */
+export const entryKit = (entry: Pick<HackableEntry, 'kit'>): KitId => entry.kit ?? 'platformer'
 
 export interface PendingWorld {
   /** The account world id chosen on this computer (a UUID). */
@@ -62,15 +72,25 @@ function storage(): HackableStorage | null {
   }
 }
 
-/** The project's name from its save text, without opening it. */
-function savedName(text: string): string {
+/** The project's name and kit from its save text, without opening it. */
+function savedFacts(text: string): { name: string; kit: KitId } {
   try {
-    const name = JSON.parse(text)?.design?.name
-    return typeof name === 'string' ? name.trim().slice(0, 80) : ''
+    const design = JSON.parse(text)?.design
+    const name = design?.name
+    return { name: typeof name === 'string' ? name.trim().slice(0, 80) : '', kit: saveKit(design) }
   } catch {
-    return ''
+    return { name: '', kit: 'platformer' }
   }
 }
+
+/** The kit a save's design names (anything this version does not know counts as the Platformer here; opening says more). */
+export function saveKit(design: unknown): KitId {
+  const kit = design && typeof design === 'object' ? (design as { kit?: unknown }).kit : undefined
+  return isKitId(kit) ? kit : 'platformer'
+}
+
+/** `kit` as an entry keeps it: nothing for the Platformer. */
+const kitField = (kit: KitId | undefined): Pick<HackableEntry, 'kit'> => (kit && kit !== 'platformer' ? { kit } : {})
 
 /** The list as kept; null when there is none, or it is damaged (it is then rebuilt from the saves themselves). */
 function readIndex(store: HackableStorage): HackableEntry[] | null {
@@ -82,6 +102,8 @@ function readIndex(store: HackableStorage): HackableEntry[] | null {
       ? list
         .filter((e) => e && typeof e.id === 'string' && typeof e.title === 'string')
         .map((e) => (typeof e.updated === 'number' ? e : { ...e, updated: 0 }))
+        // A kit this version does not know is dropped from the entry (the save itself still says it, and opening it explains).
+        .map((e) => (e.kit === undefined || (isKitId(e.kit) && e.kit !== 'platformer') ? e : (({ kit: _kit, ...rest }) => rest)(e)))
       : null
   } catch {
     return null
@@ -206,7 +228,8 @@ export function listHackableProjects(store = storage()): HackableEntry[] {
     if (!text) continue
     listed.add(id)
     // Found again just now; keep the order they are kept in.
-    list.push({ id, title: savedName(text) || NEW_PROJECT_NAME, updated: now - found++ })
+    const { name, kit } = savedFacts(text)
+    list.push({ id, title: name || newProjectName(kit), updated: now - found++, ...kitField(kit) })
   }
   if (kept === null || found > 0) writeIndex(store, list)
   return [...list].sort((a, b) => b.updated - a.updated)
@@ -239,8 +262,11 @@ export function writeHackableText(key: string, text: string, store: HackableStor
   }
 }
 
-/** Keep a project's save text and list it (a new id is refused, never squeezed in, once the browser keeps the most). */
-export function saveHackableText(id: string, title: string, text: string, store = storage(), picture?: string, pendingWorld?: PendingWorld): HackableSaveResult {
+/**
+ * Keep a project's save text and list it (a new id is refused, never squeezed in, once the browser keeps the most). The
+ * limit counts every kit together. `kit` is the project's (read from the save text when not given).
+ */
+export function saveHackableText(id: string, title: string, text: string, store = storage(), picture?: string, pendingWorld?: PendingWorld, kit?: KitId): HackableSaveResult {
   if (!store) return { ok: false, reason: 'storage' }
   const list = listHackableProjects(store)
   if (!list.some((e) => e.id === id) && list.length >= MAX_HACKABLE_PROJECTS) return { ok: false, reason: 'full' }
@@ -250,7 +276,7 @@ export function saveHackableText(id: string, title: string, text: string, store 
     return { ok: false, reason: isQuotaError(err) ? 'space' : 'storage' }
   }
   if (pendingWorld) setPendingWorld(id, pendingWorld, store)
-  return touchHackableEntry(id, title, store, picture) ? { ok: true } : { ok: false, reason: 'storage' }
+  return touchHackableEntry(id, title, store, picture, kit ?? savedFacts(text).kit) ? { ok: true } : { ok: false, reason: 'storage' }
 }
 
 /** Mark (or, with undefined, unmark) a project as waiting to become the account world `pending.id`. */
@@ -275,15 +301,19 @@ export function pendingWorldOf(id: string, store = storage()): PendingWorld | un
   return pending && typeof pending.id === 'string' && typeof pending.owner === 'string' ? pending : undefined
 }
 
-/** After the studio saved a project under projectKey(id): put it first in the list with its name and picture. */
-export function touchHackableEntry(id: string, title: string, store = storage(), picture?: string): boolean {
+/**
+ * After the studio saved a project under projectKey(id): put it first in the list with its name, picture and kit (the
+ * entry's own kit when `kit` is not given).
+ */
+export function touchHackableEntry(id: string, title: string, store = storage(), picture?: string, kit?: KitId): boolean {
   if (!store) return false
   const list = listHackableProjects(store)
   const at = list.findIndex((e) => e.id === id)
   const kept = at >= 0 ? list[at].picture : undefined
   const pending = at >= 0 ? list[at].pendingWorld : undefined
   const shown = picture ?? kept
-  const entry: HackableEntry = { id, title: title.trim().slice(0, 80) || NEW_PROJECT_NAME, updated: Date.now(), ...(shown ? { picture: shown } : {}), ...(pending ? { pendingWorld: pending } : {}) }
+  const which = kit ?? (at >= 0 ? entryKit(list[at]) : 'platformer')
+  const entry: HackableEntry = { id, title: title.trim().slice(0, 80) || newProjectName(which), updated: Date.now(), ...(shown ? { picture: shown } : {}), ...(pending ? { pendingWorld: pending } : {}), ...kitField(which) }
   if (at >= 0) list.splice(at, 1)
   return writeIndex(store, [entry, ...list])
 }
@@ -314,8 +344,15 @@ export function documentFromText(text: string): HackableDocument | null {
   }
 }
 
+/**
+ * Each kit's studio address (kits.ts `route`; hackableProjects.test.ts checks they agree). Hackable 3D has no address in
+ * the 2D studio yet, so its projects open at the Platformer's, which says what they are.
+ */
+export const hackableRoute = (kit: KitId | undefined = 'platformer'): string => (kit === 'race' ? '/2d/hackable-race' : '/2d/hackable')
+
+/** Where a Hackable project opens: at its own kit's address (the Platformer's when the kit is not known). */
 export const hackableHref = {
-  local: (id: string) => `/2d/hackable?draft=${encodeURIComponent(id)}`,
-  world: (id: string) => `/2d/hackable?world=${encodeURIComponent(id)}`,
-  fresh: '/2d/hackable?new=1',
+  local: (id: string, kit?: KitId) => `${hackableRoute(kit)}?draft=${encodeURIComponent(id)}`,
+  world: (id: string, kit?: KitId) => `${hackableRoute(kit)}?world=${encodeURIComponent(id)}`,
+  fresh: (kit?: KitId) => `${hackableRoute(kit)}?new=1`,
 }

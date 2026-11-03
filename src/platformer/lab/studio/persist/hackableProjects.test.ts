@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ClassroomClientSurface } from '../../../../classroom/client'
 import type { ClassroomWorld } from '../../../../classroom/contracts'
 import { createStarterProject } from '../starter'
+import { createRaceStarterProject } from '../race/raceProject'
+import { KIT_SCREENS } from '../kitScreens'
+import { KITS } from '../../kits'
 import { exportProjectJson } from './projectIo'
 import { HackableCloudSaver } from './hackableCloud'
 import {
   ACCOUNT_DOCUMENT_MAX_BYTES, HACKABLE_INDEX_KEY, LEGACY_ID, LEGACY_KEY, MAX_HACKABLE_PROJECTS, NEW_PROJECT_ROOM_CHARS, compactHackableSaves, deleteHackableProject,
-  listHackableProjects, loadHackableText, newHackableId, pendingWorldOf, projectKey, roomFor, saveHackableText, setPendingWorld, touchHackableEntry,
+  entryKit, hackableHref, hackableRoute, newProjectName, listHackableProjects, loadHackableText, newHackableId, pendingWorldOf, projectKey, roomFor, saveHackableText, setPendingWorld, touchHackableEntry,
 } from './hackableProjects'
 import { documentBytes, hackableDocument, projectFromDocument, projectFromText, saveHackableProject } from './hackableSave'
 
@@ -200,5 +203,72 @@ describe('room for projects in this browser', () => {
     setPendingWorld('p1', undefined)
     expect(pendingWorldOf('p1')).toBeUndefined()
     expect(listHackableProjects()[0].title).toBe('Waiting, renamed')
+  })
+})
+
+describe('each project remembers its game (Hackable Racing, R1)', () => {
+  const race = (name = 'My race track') => { const p = createRaceStarterProject(); return { ...p, design: { ...p.design, name } } }
+  const named = (name: string) => ({ ...createStarterProject(), design: { ...createStarterProject().design, name } })
+
+  it('an entry made before kits has no kit, and is a Platformer', () => {
+    localStorage.setItem(projectKey('old'), exportProjectJson(named('Old one')))
+    localStorage.setItem(HACKABLE_INDEX_KEY, JSON.stringify([{ id: 'old', title: 'Old one', updated: 5 }]))
+    const [entry] = listHackableProjects()
+    expect(entry).toEqual({ id: 'old', title: 'Old one', updated: 5 })
+    expect(entryKit(entry)).toBe('platformer')
+  })
+
+  it('a Platformer entry is written exactly as before: no kit', () => {
+    saveHackableProject('p', named('Castle'))
+    touchHackableEntry('p', 'Castle', undefined, undefined, 'platformer')
+    expect(JSON.parse(localStorage.getItem(HACKABLE_INDEX_KEY)!)[0]).not.toHaveProperty('kit')
+  })
+
+  it('a race project is listed as one, and keeps its kit through later saves, renames and a pending account world', () => {
+    saveHackableProject('r', race(), undefined, undefined, { id: 'w-uuid', owner: 'me' })
+    expect(listHackableProjects()[0]).toMatchObject({ id: 'r', title: 'My race track', kit: 'race', pendingWorld: { id: 'w-uuid', owner: 'me' } })
+    touchHackableEntry('r', 'Ice ring', undefined, 'data:image/jpeg;base64,AAA')
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'Ice ring', kit: 'race', picture: 'data:image/jpeg;base64,AAA' })
+    touchHackableEntry('r', 'Ice ring', undefined, undefined, 'race')
+    expect(entryKit(listHackableProjects()[0])).toBe('race')
+  })
+
+  it('reads the kit from the save itself when the list is rebuilt, or when the caller does not say', () => {
+    localStorage.setItem(projectKey('r'), exportProjectJson(race('')))
+    localStorage.setItem(projectKey('p'), exportProjectJson(named('Castle')))
+    const found = Object.fromEntries(listHackableProjects().map((e) => [e.id, e]))
+    expect(found.r).toMatchObject({ title: 'My race track', kit: 'race' })
+    expect(found.p).not.toHaveProperty('kit')
+    localStorage.clear()
+    expect(saveHackableText('t', 'Typed', exportProjectJson(race()))).toEqual({ ok: true })
+    expect(listHackableProjects()[0].kit).toBe('race')
+  })
+
+  it('an entry naming a kit this version does not know drops it (the save still says it; opening explains)', () => {
+    localStorage.setItem(HACKABLE_INDEX_KEY, JSON.stringify([{ id: 'k', title: 'Kart', updated: 1, kit: 'kart' }, { id: 'p', title: 'P', updated: 0, kit: 'platformer' }]))
+    expect(listHackableProjects()).toEqual([{ id: 'k', title: 'Kart', updated: 1 }, { id: 'p', title: 'P', updated: 0 }])
+  })
+
+  it('the 30-project limit counts every game together', () => {
+    for (let i = 0; i < MAX_HACKABLE_PROJECTS; i++) expect(saveHackableText(`p${i}`, `P${i}`, '{}', undefined, undefined, undefined, i % 2 ? 'race' : 'platformer').ok).toBe(true)
+    expect(saveHackableText('one-more', 'Nope', '{}', undefined, undefined, undefined, 'race')).toEqual({ ok: false, reason: 'full' })
+  })
+
+  it('each opens at its own game’s address, which is the one kits.ts names', () => {
+    expect(hackableHref.local('h1')).toBe('/2d/hackable?draft=h1')
+    expect(hackableHref.world('w1')).toBe('/2d/hackable?world=w1')
+    expect(hackableHref.fresh()).toBe('/2d/hackable?new=1')
+    expect(hackableHref.local('h1', 'race')).toBe('/2d/hackable-race?draft=h1')
+    expect(hackableHref.world('w1', 'race')).toBe('/2d/hackable-race?world=w1')
+    expect(hackableHref.fresh('race')).toBe('/2d/hackable-race?new=1')
+    expect(hackableRoute('platformer')).toBe(KITS.platformer.route)
+    expect(hackableRoute('race')).toBe(KITS.race.route)
+    // Hackable 3D has no studio address yet: the Platformer's says what it is.
+    expect(hackableRoute('3d')).toBe('/2d/hackable')
+  })
+
+  it('a new project’s name is the one the studio gives it', () => {
+    expect(newProjectName()).toBe(KIT_SCREENS.platformer.copy.projectName)
+    expect(newProjectName('race')).toBe(KIT_SCREENS.race.copy.projectName)
   })
 })
