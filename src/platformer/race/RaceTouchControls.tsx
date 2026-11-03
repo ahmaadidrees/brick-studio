@@ -3,7 +3,8 @@ import { useRef } from 'react'
 import type { Action, Input } from '../input/input'
 
 interface Props {
-  input: Input
+  /** Anything that takes button presses: the race kit's Input, or Hackable Racing's keys adapter (lab RaceTouch). */
+  input: Pick<Input, 'setTouch'>
   /** Show the item button (the track has items on). */
   items: boolean
   /** The item you hold, for the button's label. */

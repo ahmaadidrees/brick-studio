@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CopyPlacement, Target } from '../core/contracts'
+import type { CopyPlacement, LevelDesign, Target } from '../core/contracts'
 import { TILE_SIZE } from '../core/contracts'
 import { activeQuestion, type AskPrompt } from '../core/sensing'
 import { StudioStore, useStudio } from './store'
@@ -41,13 +41,39 @@ import {
   type TargetPose,
 } from './stage/renderer'
 import { StageControls } from './stage/StageControls'
-import { playerBrickOf, screensFor } from './kitScreens'
+import { isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
 import './stage/stage.css'
 
 /** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
 export interface BuildTools {
   history: History
   erasing: boolean
+}
+
+/**
+ * The player Play's follow camera looks at: the first placed copy (not a clone) of any brick that is the kit's player,
+ * so the Hero, the Car and a remixed "My Car" all count, even when another player brick sits unplaced in the drawer.
+ */
+export function followTargetOf(design: LevelDesign, targets: readonly Target[]): Target | undefined {
+  const players = new Set(design.bricks.filter((b) => isPlayerBrick(design, b.id)).map((b) => b.id))
+  return targets.find((t) => !t.isStage && !t.isClone && players.has(t.brickId))
+}
+
+/** Seen from above (Racing), the screen's shorter side shows this many steps (22 bricks), whichever way it is held. */
+export const TOP_DOWN_SHORT_SIDE = 360
+
+/**
+ * The follow camera's width in steps for a kit. The descriptor's own number wins; a race is seen from above, so it
+ * shows about the same patch of track on any screen (the 11-step Car is 11 to 30 pixels long, with road ahead to see); the
+ * Platformer keeps its side view (followViewWidth).
+ */
+export function playFollowWidth(screens: Pick<KitScreens, 'kit' | 'followViewWidth'>, bounds: LevelDesign['bounds'], viewport: Viewport): number {
+  if (screens.followViewWidth) return screens.followViewWidth
+  if (screens.kit === 'race') {
+    const short = Math.min(viewport.width, viewport.height)
+    if (short > 0) return (TOP_DOWN_SHORT_SIDE * viewport.width) / short
+  }
+  return followViewWidth(bounds, viewport)
 }
 
 /** Bricks snap to an 8-step grid, like the old stage's default. */
@@ -211,15 +237,14 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
       if (playFree) return camera
       if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
-      const playerId = playerBrickOf({ kit: design.kit, bricks: design.bricks })?.id
-      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === playerId)
+      const first = followTargetOf(design, world.targets)
       const point = first ?? {
         x: (world.bounds.left + world.bounds.right) / 2,
         y: (world.bounds.bottom + world.bounds.top) / 2,
       }
-      return followCamera(world.bounds, viewport, point, screens.followViewWidth ?? followViewWidth(world.bounds, viewport))
+      return followCamera(world.bounds, viewport, point, playFollowWidth(screens, world.bounds, viewport))
     },
-    [playFree, camera, playCameraMode, viewport, design.bricks, design.kit, screens],
+    [playFree, camera, playCameraMode, viewport, design, screens],
   )
 
   /** Camera used for pointer maths. */
@@ -958,6 +983,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
         playCamera={playFree ? null : playCameraMode}
         onPlayCameraChoice={handlePlayCameraChoice}
         followLabel={screens.copy.followLabel}
+        wholeLabel={screens.kit === 'race' ? 'Whole track' : undefined}
       />}
 
       <div className="stage-canvas-wrap">

@@ -226,6 +226,14 @@ function placeOf(world: World, me: Target): number {
   return place
 }
 
+/**
+ * A racer's place, the number its `my place` block reports (1 for the racer furthest round; 0 when laps can't count or
+ * it isn't a racer). For screens that show the place without running a block (the Play HUD).
+ */
+export function racePlace(world: World, racer: Target): number {
+  return placeOf(world, racer)
+}
+
 // ------------------------------------------------------------------------------------------------ direction along the track
 
 /** "direction along the track" aims at the road 4 to 8 cells further round, within 7 cells: the race kit's autopilot. */

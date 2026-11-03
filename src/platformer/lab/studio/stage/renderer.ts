@@ -12,13 +12,11 @@ import { boundsFor, opaqueRect, transformOf } from '../../core/geometry'
 import { getCameraZoom, snapToGrid, worldToScreen, type Camera, type Viewport } from './camera'
 import { parseGridCopyId, TILE_SIZE } from '../../core/contracts'
 import { SELECTED_OUTLINE, cellCostumeIndex, drawCellOutline, gridBrickIndex, visibleCells } from './gridCells'
-import { drawSky } from './sky'
+import { drawGrass, drawSky } from './sky'
 
 /** The Brickgineers look: cream outside the level, a sky-blue level. */
 const OUTSIDE = '#efe9da'
 const SKY = '#cfe8f7'
-/** Hackable Racing's background: flat grass (lane 4 gives it texture). */
-const GRASS = '#4d9a3a'
 
 export class ImageCache {
   private cache = new Map<string, HTMLImageElement>()
@@ -78,8 +76,7 @@ export interface RenderOptions {
 /** The level's background, under the Stage backdrop. */
 function drawBackground(ctx: CanvasRenderingContext2D, opts: RenderOptions, bounds: StageBounds, rect: { x: number; y: number; w: number; h: number }): void {
   if (opts.background === 'grass') {
-    ctx.fillStyle = GRASS
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+    drawGrass(ctx, bounds, opts.camera, opts.viewport)
     return
   }
   ctx.fillStyle = SKY
@@ -197,6 +194,23 @@ export function renderBuildMode(
 }
 
 /**
+ * A direction part way (`alpha`, 0 to 1) from one tick's direction to the next, turning the short way round: 179 to
+ * -179 is a 2 degree turn through 180, not a 358 degree spin. Turns of 180 degrees or less blend exactly as a straight
+ * line between the two numbers (a Hero flipping from 90 to -90 is unchanged), and the answer stays in Scratch's range
+ * (-180, 180], so a left-right flip still reads the sign right.
+ */
+export function blendDirection(from: number, to: number, alpha: number): number {
+  let delta = to - from
+  if (delta > 180) delta -= 360
+  else if (delta < -180) delta += 360
+  else return from + delta * alpha
+  let dir = from + delta * alpha
+  if (dir > 180) dir -= 360
+  else if (dir <= -180) dir += 360
+  return dir
+}
+
+/**
  * Render the live world in Play mode from World.
  */
 export function renderPlayMode(
@@ -247,7 +261,7 @@ export function renderPlayMode(
     if (prev) {
       renderX = prev.x + (target.x - prev.x) * interpAlpha
       renderY = prev.y + (target.y - prev.y) * interpAlpha
-      renderDir = prev.direction + (target.direction - prev.direction) * interpAlpha
+      renderDir = blendDirection(prev.direction, target.direction, interpAlpha)
       renderSize = prev.size + (target.size - prev.size) * interpAlpha
     }
 
