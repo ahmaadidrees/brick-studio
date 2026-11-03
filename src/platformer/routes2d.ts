@@ -10,6 +10,8 @@
  *   /2d/hackable           the Hackable Platformer (Code Lab, src/platformer/lab/studio): your newest one in this browser
  *   /2d/hackable?new=1     a new one (in the account when signed in)   ?world=<id> an account one   ?draft=<id> one in this browser
  *   /2d/hackable-race      Hackable Racing, the same studio and the same ?new=1, ?world=, ?draft= (your newest race track)
+ *   /2d/hackable/r/<room>  a Hackable guest room (32 hex digits), joined by link (docs/qa/hackable-rooms)
+ *   /2d/hackable/w/<world> an account Hackable project's room, for classmates it is shared with
  *   /2d/lab/next           the Hackable Platformer's old address: goes to /2d/hackable
  *   /2d/lab                the code lab: every brick (and you) is a block program (single player, this browser only)
  */
@@ -28,6 +30,8 @@ export type Route2D =
   /** `kit` 'race' at /2d/hackable-race (a new project's game, and which newest one opens); absent is the Platformer. */
   | { kind: 'studio'; world?: string; draft?: string; fresh: boolean; kit?: 'race' }
   | { kind: 'studio-moved' }
+  | { kind: 'hackable-room'; roomId: string }
+  | { kind: 'hackable-class'; worldId: string }
   | { kind: 'not-found' }
 
 /** A world id with dashes, from either spelling; null for anything else. */
@@ -54,6 +58,10 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
       ...(path === '/2d/hackable-race' ? { kit: 'race' as const } : {}),
     }
   }
+  const hackableRoom = /^\/2d\/hackable\/r\/([a-f0-9]{32})$/.exec(path)
+  if (hackableRoom) return { kind: 'hackable-room', roomId: hackableRoom[1] }
+  const hackableClass = /^\/2d\/hackable\/w\/([a-fA-F0-9-]{32,36})$/.exec(path)
+  if (hackableClass && canonicalWorldId(hackableClass[1])) return { kind: 'hackable-class', worldId: canonicalWorldId(hackableClass[1])! }
   if (path === '/2d/build') {
     const world = query.get('world')?.trim() || undefined
     const draft = query.get('draft')?.trim() || undefined

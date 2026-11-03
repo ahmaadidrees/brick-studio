@@ -21,7 +21,7 @@
           "engine": "Node v22.23.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.131,
+          "stepMsPerTick": 0.129,
           "final": {
             "coins": 15,
             "players": [
@@ -38,7 +38,7 @@
           "engine": "Node v22.23.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.103,
+          "stepMsPerTick": 0.104,
           "final": {
             "coins": 15,
             "players": [
@@ -55,7 +55,7 @@
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.102,
+          "stepMsPerTick": 0.104,
           "final": {
             "coins": 15,
             "players": [
@@ -72,7 +72,7 @@
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.099,
+          "stepMsPerTick": 0.094,
           "final": {
             "coins": 15,
             "players": [
@@ -117,7 +117,7 @@
           "engine": "Node v22.23.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.156,
+          "stepMsPerTick": 0.157,
           "final": {
             "coins": 10,
             "players": [
@@ -134,7 +134,7 @@
           "engine": "Node v22.23.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.151,
+          "stepMsPerTick": 0.153,
           "final": {
             "coins": 10,
             "players": [
@@ -151,7 +151,7 @@
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.145,
+          "stepMsPerTick": 0.149,
           "final": {
             "coins": 10,
             "players": [
@@ -168,7 +168,7 @@
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.127,
+          "stepMsPerTick": 0.168,
           "final": {
             "coins": 10,
             "players": [
@@ -208,7 +208,7 @@
           "engine": "Node v22.23.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.261,
+          "stepMsPerTick": 0.27,
           "final": {
             "players": [
               {
@@ -234,7 +234,7 @@
           "engine": "Node v22.23.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.259,
+          "stepMsPerTick": 0.264,
           "final": {
             "players": [
               {
@@ -286,7 +286,7 @@
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.257,
+          "stepMsPerTick": 0.25,
           "final": {
             "players": [
               {
@@ -341,7 +341,7 @@
           "engine": "Node v22.23.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.316,
+          "stepMsPerTick": 0.326,
           "final": {
             "players": [
               {
@@ -367,7 +367,7 @@
           "engine": "Node v22.23.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.339,
+          "stepMsPerTick": 0.956,
           "final": {
             "players": [
               {
@@ -393,7 +393,7 @@
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.229,
+          "stepMsPerTick": 0.235,
           "final": {
             "players": [
               {
@@ -419,7 +419,7 @@
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.398,
+          "stepMsPerTick": 0.351,
           "final": {
             "players": [
               {

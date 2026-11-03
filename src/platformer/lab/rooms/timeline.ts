@@ -225,6 +225,17 @@ export class HackableTimeline<E> {
     for (const t of [...this.applied.keys()]) if (t < cutoff) this.applied.delete(t)
   }
 
+  /** The game as tick `t` was about to run, before its events, when a copy of it is kept (every `snapshotEvery`). */
+  snapshotAt(t: number): World | undefined {
+    return this.snaps.get(t)
+  }
+
+  /** Whether one of our own events before tick `t` still waits for the room (a copy from then may still change). */
+  pendingBefore(t: number): boolean {
+    for (const rec of this.pending.values()) if (rec.tick < t) return true
+    return false
+  }
+
   /** The game's fingerprint now (the room compares them every so often; see core/snapshot.ts). */
   fingerprint(): number {
     return worldFingerprint(this.runtime.world)

@@ -249,6 +249,20 @@ function prepareSerializableDesign(design: LevelDesign): unknown {
 }
 
 /**
+ * Just the design, as a compact save file (no workspaces): what a Hackable room passes around (rooms/protocol.ts).
+ * `parse` reads it back and checks it like any other save.
+ */
+export function designText(design: LevelDesign): string {
+  return JSON.stringify({
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    engineSemanticsVersion: CURRENT_ENGINE_SEMANTICS_VERSION,
+    editorVersion: CURRENT_EDITOR_VERSION,
+    pluginVersions: { ...DEFAULT_PLUGIN_VERSIONS },
+    design: prepareSerializableDesign(design),
+  })
+}
+
+/**
  * Deterministically serializes a project save file to JSON.
  * Sorts object keys alphabetically at every level and encodes masks as base64.
  */

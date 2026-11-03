@@ -29,11 +29,12 @@ function copyThread(t: SerializedThread): SerializedThread {
  * after `step()` (the world's `threads` are only written then).
  */
 export function copyWorld(world: World): World {
-  const { bricks, targets, stage, threads, keysDown, tiles, ...rest } = world
+  const { bricks, targets, stage, threads, keysDown, tiles, design, ...rest } = world
   return {
     ...structuredClone(rest),
     bricks,
     tiles,
+    ...(design ? { design } : {}),
     keysDown: new Set(keysDown),
     stage: structuredClone(stage),
     targets: structuredClone(targets),
@@ -60,16 +61,19 @@ function reviver(_key: string, value: unknown): unknown {
   return value
 }
 
-/** The game as JSON text, without its bricks: what a room sends someone joining late. */
+/** The game as JSON text, without its bricks or project: what a room sends someone joining late. */
 export function worldToJson(world: World): string {
-  const { bricks: _bricks, keysDown, ...rest } = world
+  const { bricks: _bricks, design: _design, keysDown, ...rest } = world
   return JSON.stringify({ ...rest, keysDown: [...keysDown] }, replacer)
 }
 
-/** The game back from worldToJson, with the project's bricks (the project as edited up to that tick). */
-export function worldFromJson(text: string, bricks: World['bricks']): World {
-  const parsed = JSON.parse(text, reviver) as Omit<World, 'bricks' | 'keysDown'> & { keysDown: string[] }
-  return { ...parsed, bricks, keysDown: new Set(parsed.keysDown) }
+/**
+ * The game back from worldToJson, with the project's bricks (the project as edited up to that tick) and, in a room,
+ * the project itself.
+ */
+export function worldFromJson(text: string, bricks: World['bricks'], design?: World['design']): World {
+  const parsed = JSON.parse(text, reviver) as Omit<World, 'bricks' | 'keysDown' | 'design'> & { keysDown: string[] }
+  return { ...parsed, bricks, keysDown: new Set(parsed.keysDown), ...(design ? { design } : {}) }
 }
 
 // ------------------------------------------------------------------------------------------------ fingerprint
@@ -82,11 +86,11 @@ export function worldFromJson(text: string, bricks: World['bricks']): World {
 export function worldFingerprint(world: World): number {
   const h = new Hasher()
   const w = world as unknown as Record<string, unknown>
-  // Every field of the world, so state added later is covered too. Bricks and the grid are the project (every player
-  // has it); scripts are hashed by where they are in their blocks.
+  // Every field of the world, so state added later is covered too. Bricks, the grid and the design are the project
+  // (every player has it); scripts are hashed by where they are in their blocks.
   for (const key of Object.keys(w).sort()) {
     const value = w[key]
-    if (value === undefined || key === 'bricks' || key === 'tiles') continue
+    if (value === undefined || key === 'bricks' || key === 'tiles' || key === 'design') continue
     h.str(key)
     if (key === 'keysDown') h.value([...world.keysDown].sort())
     else if (key === 'threads') hashThreads(h, world.threads ?? [])

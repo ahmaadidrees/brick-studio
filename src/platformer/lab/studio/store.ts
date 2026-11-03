@@ -31,6 +31,28 @@ export type EditorTab = 'code' | 'costumes' | 'sounds'
 export type FinishDirection = 0 | 90 | 180 | -90
 const FINISH_DIRECTIONS: readonly number[] = [0, 90, 180, -90]
 
+/**
+ * A Hackable room the studio plays in (docs/qa/hackable-rooms M1, rooms/studioRoom.ts). While one is open, Play and the
+ * Code preview show the room's game instead of a game of their own.
+ */
+export interface StudioRoom {
+  /** The room's game as screens see it: our keys go to the room; nothing else on this screen changes it. */
+  readonly runtime: Runtime
+  /**
+   * Play: the host starts everyone again from `design` (with `always`, even when it has not changed since); anyone
+   * else just carries on in the room's game.
+   */
+  playAgain(design: LevelDesign, always: boolean): void
+  /** We host the room: our Play and Restart start everyone again. */
+  readonly host: boolean
+  /** Our player number in the room (0 until it has said welcome): the camera follows our Hero. */
+  readonly me: number
+  /** The room's game itself, for drawing (null until the room has said welcome). */
+  readonly game: Runtime | null
+  /** Play up to the room's clock now: how many ticks ran, and how far into the next one we are (0 to 1). */
+  frame(now: number): { ticks: number; fraction: number }
+}
+
 export interface StudioState {
   project: StudioProject
   /** Brick whose code/costumes/sounds are open on the left. STAGE_ID for the stage. */
@@ -59,6 +81,8 @@ export interface StudioState {
   codeSolo: boolean
   /** A brick just made with + New brick: its name field opens selected so typing replaces it. Cleared once used. */
   namingBrickId: string | null
+  /** The room this studio plays in, or null for a game of its own. */
+  room: StudioRoom | null
 }
 
 export function screenOf(s: Pick<StudioState, 'mode' | 'cardTab'>): StudioScreen {
@@ -84,7 +108,12 @@ export class StudioStore {
 
   private makeRuntime(): Runtime {
     this.runningCode = codeFingerprint(this.state.project)
-    return play(this.state.project.design)
+    return this.state.room?.runtime ?? play(this.state.project.design)
+  }
+
+  /** The game, when it is this studio's own (a room's game only changes through the room). */
+  private ownRuntime(): Runtime | null {
+    return this.state.room ? null : this.state.runtime
   }
 
   constructor(project: StudioProject) {
@@ -108,6 +137,7 @@ export class StudioStore {
       revision: 0,
       codeSolo: false,
       namingBrickId: null,
+      room: null,
     }
   }
 
@@ -163,7 +193,34 @@ export class StudioStore {
   play() {
     for (const listener of [...this.beforeRunListeners]) listener()
     this.state.runtime?.stopAll()
+    this.state.room?.playAgain(this.state.project.design, false)
     this.set({ mode: 'play', runtime: this.makeRuntime(), previewPaused: false, pendingCodeChanges: false })
+  }
+
+  /** Play in a room: Play and the Code preview show its game from now on. */
+  enterRoom(room: StudioRoom) {
+    this.state.runtime?.stopAll()
+    this.set({ room, runtime: this.state.runtime ? room.runtime : null, previewPaused: false, pendingCodeChanges: false })
+  }
+
+  /**
+   * A player who is not the host follows the room's project (the host edited it): the screens draw its background
+   * and bounds. Nothing else changes, and there is nothing of theirs to save.
+   */
+  followRoomDesign(design: LevelDesign) {
+    if (!this.state.room || design === this.state.project.design) return
+    this.set({ project: { design, workspaces: this.state.project.workspaces } })
+  }
+
+  /** Back to a game of our own (the next Play starts one). */
+  leaveRoom() {
+    if (!this.state.room) return
+    this.set({ room: null, runtime: this.state.runtime ? this.makeRuntimeWithout() : null, previewPaused: false, pendingCodeChanges: false })
+  }
+
+  private makeRuntimeWithout(): Runtime {
+    this.runningCode = codeFingerprint(this.state.project)
+    return play(this.state.project.design)
   }
 
   /** Back to Build. Nothing from the run is kept. */
@@ -228,6 +285,8 @@ export class StudioStore {
   }
 
   pausePreview() {
+    // A room's game goes on for everyone; it can't be paused on one screen.
+    if (this.state.room) return
     const runtime = this.state.runtime
     if (runtime) {
       for (const key of [...runtime.world.keysDown]) runtime.releaseKey(key)
@@ -239,6 +298,7 @@ export class StudioStore {
   restartPreview() {
     for (const listener of [...this.beforeRunListeners]) listener()
     this.state.runtime?.stopAll()
+    this.state.room?.playAgain(this.state.project.design, true)
     this.set({ runtime: this.makeRuntime(), previewPaused: false, pendingCodeChanges: false })
   }
 
@@ -254,7 +314,7 @@ export class StudioStore {
 
   resetBrickOriginal(brickId: string) {
     const project = restoreBrickOriginal(this.state.project, brickId)
-    this.set({ project, pendingCodeChanges: !!this.state.runtime && codeFingerprint(project) !== this.runningCode, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1 })
+    this.set({ project, pendingCodeChanges: !!this.ownRuntime() && codeFingerprint(project) !== this.runningCode, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
   /** A brick default changes every copy without its own starting value; the live preview follows immediately. */
@@ -263,7 +323,7 @@ export class StudioStore {
     this.updateBrick(brickId, (b) => ({ ...b, program: { ...b.program,
       variables: b.program.variables.map((v) => v.id === variableId ? { ...v, value } : v) } }))
     const design = this.state.project.design
-    for (const target of this.state.runtime?.world.targets ?? []) {
+    for (const target of this.ownRuntime()?.world.targets ?? []) {
       if (target.brickId !== brickId) continue
       const own = design.copies.find((c) => c.id === target.copyId)?.knobs
       if (!own || !Object.hasOwn(own, variableId)) target.variables[variableId] = value
@@ -424,7 +484,7 @@ export class StudioStore {
     const brick = this.brick(brickId)
     if (!brick) return
     const result = compileBrickEdit(this.state.project, brickId, workspace)
-    this.set({ project: result.project, pendingCodeChanges: !!this.state.runtime && codeFingerprint(result.project) !== this.runningCode,
+    this.set({ project: result.project, pendingCodeChanges: !!this.ownRuntime() && codeFingerprint(result.project) !== this.runningCode,
       diagnostics: { ...this.state.diagnostics, [brickId]: result.diagnostics },
       ...(result.remixed ? { remixNotice: `You changed a block, so this is now ${result.remixed}. The original ${brick.name} is untouched.` } : {}) })
   }
@@ -484,7 +544,7 @@ export class StudioStore {
       }),
     })
     const effective = value ?? this.brick(copy.brickId)?.program.variables.find((v) => v.id === variableId)?.value
-    if (effective !== undefined) for (const target of this.state.runtime?.world.targets ?? []) {
+    if (effective !== undefined) for (const target of this.ownRuntime()?.world.targets ?? []) {
       if (target.copyId === copyId) target.variables[variableId] = effective
     }
   }

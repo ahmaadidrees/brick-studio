@@ -514,6 +514,11 @@ export interface World {
   players?: PlayerSlot[]
   /** Self-move: bumps told this tick with "tell what I hit", started by the next physics step. Mover id first. */
   toldBumps?: { moverId: string; bump: SavedBump }[]
+  /**
+   * Rooms: the project this game runs, as edited up to now (where a joining Hero starts, what Play again builds).
+   * Like `bricks` it is shared between copies and never changed in place; an edit replaces it.
+   */
+  design?: LevelDesign
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives

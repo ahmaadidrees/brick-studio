@@ -4,7 +4,7 @@ The owner asked how to make Hackable games truly multiplayer: hacking the game s
 playing; programming skill should unlock new powers; and kids should want to build and share mods. They said "Yes,
 start both", meaning this doc and the lockstep sync test (`LOCKSTEP-SPIKE.md`).
 
-**This is a proposal. Nothing is built yet.** The owner's decisions are listed at the end.
+**This started as a proposal; M0 and M1 are now built (see Status).** The owner's decisions are listed at the end.
 
 ## In one paragraph
 
@@ -211,7 +211,9 @@ and I see "used in 12 rooms".
 ## Status
 
 - **M0 done 2026-11-03:** see `M0.md`.
-- **Next:** M1.
+- **M1 done 2026-11-03** (local, not deployed): see `M1.md`. Play together from the studio, link and class rooms, every
+  player's Hero, the host's live edits and Restart.
+- **Next:** M2, which needs owner decisions 1 and 3.
 
 ## Next step (as first written)
 

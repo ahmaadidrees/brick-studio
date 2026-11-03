@@ -771,6 +771,20 @@ function hasControlChar(text: string): boolean {
   return false
 }
 
+/** A running game's bricks from a design (copies, so the game never shares objects with the editor), by id. */
+export function bricksOf(design: LevelDesign): Record<string, BrickDef> {
+  const stageBrick: BrickDef = structuredClone(design.stage)
+  stageBrick.isStage = true
+  const bricks: Record<string, BrickDef> = Object.create(null)
+  bricks[stageBrick.id] = stageBrick
+  for (const brick of design.bricks) {
+    const cloned = structuredClone(brick)
+    cloned.isStage = false
+    bricks[cloned.id] = cloned
+  }
+  return bricks
+}
+
 /**
  * Build a fresh world from the saved design. Does not mutate `design`.
  * Assumes `validateDesign(design)` returned `[]` (or that `save.parse` already ran it).
@@ -781,16 +795,8 @@ export function instantiate(design: LevelDesign): World {
     throw new Error('instantiate: design is missing stage, bounds, bricks, or copies')
   }
 
-  const stageBrick: BrickDef = structuredClone(design.stage)
-  stageBrick.isStage = true
-
-  const bricks: Record<string, BrickDef> = Object.create(null)
-  bricks[stageBrick.id] = stageBrick
-  for (const brick of design.bricks) {
-    const cloned = structuredClone(brick)
-    cloned.isStage = false
-    bricks[cloned.id] = cloned
-  }
+  const bricks = bricksOf(design)
+  const stageBrick = bricks[design.stage.id]
 
   const stageLocals = localsFrom(stageBrick.program, undefined)
   const stage = newTarget({

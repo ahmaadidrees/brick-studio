@@ -50,7 +50,7 @@ const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode;
  *   Code:  palette and scripts · the level at the top right with "In this level" below it.
  *   Play:  the level fills the screen.
  */
-export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner, onLeave, navigate = assignLocation, firstRunTips = false }: {
+export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner, menuExtra, onLeave, navigate = assignLocation, firstRunTips = false }: {
   store: StudioStore
   templates?: readonly BrickTemplate[]
   /** Where the project saves to (this browser unless the page says otherwise). */
@@ -58,6 +58,8 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   onRenameProject?: (title: string) => Promise<void>
   /** A line under the header, e.g. "this is someone else's project". */
   banner?: ReactNode
+  /** More in the This project menu (Play together). */
+  menuExtra?: ReactNode
   /** Save everything now: the logo and My projects wait for it before leaving. */
   onLeave?: () => Promise<unknown> | void
   /** Leaves the page (tests pass a stand-in). */
@@ -214,6 +216,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
                 </Button>
               )}
             >
+              {menuExtra}
               <ProjectMenu store={store} className="builder-project" />
             </Menu>
           </>}

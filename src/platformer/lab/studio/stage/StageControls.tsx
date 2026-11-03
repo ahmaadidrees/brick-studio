@@ -18,18 +18,23 @@ export interface StageControlsProps {
   followLabel?: string
   /** The whole-level camera button: "Whole level", or "Whole track" in a race. */
   wholeLabel?: string
+  /**
+   * Playback buttons: Pause and Restart; in a room, the host's Restart alone (it starts everyone again) and nothing
+   * for everyone else, since a room's game can't be paused or restarted on one screen.
+   */
+  playback?: 'full' | 'restart' | 'none'
 }
 
 /**
  * The stage's small floating view tools: playback, zoom, fit and camera choice. Build or Play, and everything about placing, lives in the builder's own chrome, not here.
  */
-export function StageControls({ mode, codeView = false, pendingCodeChanges = false, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice, followLabel = 'Follow the Hero', wholeLabel = 'Whole level' }: StageControlsProps) {
+export function StageControls({ mode, codeView = false, pendingCodeChanges = false, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice, followLabel = 'Follow the Hero', wholeLabel = 'Whole level', playback = 'full' }: StageControlsProps) {
   const isPlay = mode === 'play'
   return (
     <div className={`stage-view-tools${codeView ? ' stage-view-tools-code' : ''}`} role="toolbar" aria-label="Stage view">
-      {isPlay && <div className="stage-view-group" role="group" aria-label="Level playback">
-        <button type="button" className="stage-view-btn" onClick={onTogglePlay} aria-label={paused ? 'Play level' : 'Pause level'}>{paused ? '▶ Play' : 'Ⅱ Pause'}</button>
-        <button type="button" className="stage-view-btn" onClick={onRestart} aria-label="Restart level">↻ Restart</button>
+      {isPlay && playback !== 'none' && <div className="stage-view-group" role="group" aria-label="Level playback">
+        {playback === 'full' && <button type="button" className="stage-view-btn" onClick={onTogglePlay} aria-label={paused ? 'Play level' : 'Pause level'}>{paused ? '▶ Play' : 'Ⅱ Pause'}</button>}
+        <button type="button" className="stage-view-btn" onClick={onRestart} aria-label={playback === 'restart' ? 'Restart the level for everyone' : 'Restart level'}>↻ Restart</button>
       </div>}
       {codeView && pendingCodeChanges && <span className="stage-restart-note" role="status">Changes apply on Restart</span>}
       {isPlay && !codeView && onPlayCameraChoice && (

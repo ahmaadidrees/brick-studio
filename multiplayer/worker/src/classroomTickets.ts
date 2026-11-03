@@ -1,6 +1,6 @@
 import { ClassroomHttpError } from "./classroom";
 /** Which kind of live room a ticket opens: 3D worlds, or 2D levels. A ticket never opens the other kind. */
-export type LiveTicketAudience = "brick-live-v1" | "brick-2d-v1";
+export type LiveTicketAudience = "brick-live-v1" | "brick-2d-v1" | "brick-hackable-v1";
 export interface LiveTicketIdentity {
   userId: string;
   sessionId: string;

@@ -23,6 +23,8 @@ import './ui/platformer.css'
 /** The code lab (/2d/lab) is its own chunk: Blockly loads only there. */
 const LabApp = lazy(() => import('./lab/LabApp'))
 const StudioApp = lazy(() => import('./lab/studio/StudioApp'))
+/** Playing a Hackable project together (docs/qa/hackable-rooms M1). */
+const HackableRoomPage = lazy(() => import('./lab/rooms/RoomPage'))
 
 /** The /2d chunk: one page per load, like the rest of the app (every navigation is a full page load). */
 export default function PlatformerApp() {
@@ -51,6 +53,13 @@ export default function PlatformerApp() {
     case 'studio-moved':
       window.location.replace(`/2d/hackable${window.location.search}`)
       return <Notice title="Opening the Hackable Platformer…" busy />
+    case 'hackable-room':
+    case 'hackable-class':
+      return (
+        <Suspense fallback={<Notice title="Opening the room…" busy />}>
+          <HackableRoomPage route={route.kind === 'hackable-room' ? { kind: 'guest', roomId: route.roomId } : { kind: 'classroom', worldId: route.worldId }} />
+        </Suspense>
+      )
     case 'studio':
       return (
         <Suspense fallback={<Notice title={route.kit === 'race' ? 'Opening Hackable Racing…' : 'Opening the Hackable Platformer…'} busy />}>

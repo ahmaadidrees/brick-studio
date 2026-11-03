@@ -102,6 +102,9 @@ function coveredFromTop(canvasRect: DOMRect): number | null {
 export function Stage({ store, tools, codeView = false, onOpenCode }: { store: StudioStore; tools?: BuildTools; codeView?: boolean; /** Build: double-clicking a brick opens its code. */ onOpenCode?: () => void }) {
   const mode = useStudio(store, (s) => s.mode)
   const runtime = useStudio(store, (s) => s.runtime)
+  // A room (docs/qa/hackable-rooms M1): `runtime` is then the room's game as screens see it, and the loop plays to
+  // the room's clock instead of stepping a game of its own.
+  const room = useStudio(store, (s) => s.room)
   const previewPaused = useStudio(store, (s) => s.previewPaused)
   const pendingCodeChanges = useStudio(store, (s) => s.pendingCodeChanges)
   const sceneActive = !!runtime
@@ -240,14 +243,16 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
       if (playFree) return camera
       if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
-      const first = followTargetOf(design, world.targets)
+      // In a room, our own Hero (everyone else's is someone else's to follow).
+      const mine = room && room.me ? world.targets.find((t) => t.player === room.me && !t.isClone) : undefined
+      const first = mine ?? followTargetOf(design, world.targets)
       const point = first ?? {
         x: (world.bounds.left + world.bounds.right) / 2,
         y: (world.bounds.bottom + world.bounds.top) / 2,
       }
       return followCamera(world.bounds, viewport, point, playFollowWidth(screens, world.bounds, viewport))
     },
-    [playFree, camera, playCameraMode, viewport, design, screens],
+    [playFree, camera, playCameraMode, viewport, design, screens, room],
   )
 
   /** Camera used for pointer maths. */
@@ -352,6 +357,35 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     let animId: number
     accumulator.reset()
 
+    if (room) {
+      const roomLoop = (now: number) => {
+        const before = room.game
+        const poses = new Map<string, TargetPose>()
+        for (const target of before?.world.targets ?? []) poses.set(target.id, { x: target.x, y: target.y, direction: target.direction, size: target.size })
+        const { ticks, fraction } = room.frame(now)
+        const game = room.game
+        // One tick ran: blend from where things were a tick ago. More (catching up) or a new game: no blend.
+        if (ticks === 1 && game === before) prevPosesRef.current = poses
+        else if (ticks > 1 || game !== before) prevPosesRef.current = new Map()
+        if (game) {
+          while (game.notes.length > 0) {
+            const note = game.notes.shift()
+            if (note) audioManager.handleNote(note, game.world)
+          }
+          const canvas = canvasRef.current
+          const ctx = canvas?.getContext('2d')
+          if (ctx) {
+            const playCamera = computePlayCamera(game.world)
+            playCamRef.current = playCamera
+            renderPlayMode(ctx, game.world, { camera: playCamera, viewport, background, prevPoses: prevPosesRef.current, interpAlpha: prevPosesRef.current.size ? fraction : 1 })
+          }
+        }
+        animId = requestAnimationFrame(roomLoop)
+      }
+      animId = requestAnimationFrame(roomLoop)
+      return () => cancelAnimationFrame(animId)
+    }
+
     const loop = (now: number) => {
       const { ticks, alpha } = previewPaused ? { ticks: 0, alpha: 1 } : accumulator.advance(now)
 
@@ -406,7 +440,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
 
     animId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animId)
-  }, [sceneActive, previewPaused, runtime, computePlayCamera, viewport, accumulator, audioManager, background])
+  }, [sceneActive, previewPaused, runtime, room, computePlayCamera, viewport, accumulator, audioManager, background])
 
   // The brush preview is the armed brick (not while a grid brick or the eraser is armed: those preview on the cell).
   const previewBrickId = brushTile || erasing ? null : brushBrickId
@@ -992,6 +1026,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
         onPlayCameraChoice={handlePlayCameraChoice}
         followLabel={screens.copy.followLabel}
         wholeLabel={screens.kit === 'race' ? 'Whole track' : undefined}
+        playback={room ? (room.host ? 'restart' : 'none') : 'full'}
       />}
 
       <div className="stage-canvas-wrap">
@@ -1014,7 +1049,8 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
           onContextMenu={(e) => e.preventDefault()}
         />
 
-        {sceneActive && runtime && activeAskPrompt && (
+        {/* Rooms have no shared answers yet (each player's own ask is M2), so a question is not asked in one. */}
+        {sceneActive && runtime && activeAskPrompt && !room && (
           <AskDialog runtime={runtime} prompt={activeAskPrompt} />
         )}
       </div>
