@@ -2,6 +2,7 @@ import * as Blockly from 'blockly/core'
 import { RecyclableBlockFlyoutInflater, registerContinuousToolbox } from '@blockly/continuous-toolbox'
 import * as ShareableProcedures from '@blockly/block-shareable-procedures'
 import type { EditorContext } from './context'
+import type { KitId } from '../contracts'
 import { CATEGORY_COLORS, parseProccode } from './definitions'
 
 export interface ToolboxShadow {
@@ -59,11 +60,12 @@ function textShadow(value: string): { shadow: ToolboxShadow } {
 
 /**
  * Creates the complete continuous-category toolbox specification for Scratch 3 opcodes.
- * If isStage is true, the Motion category is omitted.
+ * If isStage is true, the Motion category is omitted. `kit` is the project's Hackable kit (missing means the
+ * Platformer); the palette does not use it yet (docs/qa/hackable-modes/R1-SCREENS.md: lane 3 adds Racing).
  */
 export function createContinuousToolbox(
   context?: EditorContext,
-  options?: { isStage?: boolean },
+  options?: { isStage?: boolean; kit?: KitId },
 ): ContinuousToolboxDefinition {
   const isStage = options?.isStage ?? context?.isStage ?? false
 

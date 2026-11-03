@@ -48,7 +48,9 @@ function trackCostume(spec: TrackSpec): Costume {
   return costumeFromImage(spec.name, imageFromRows(rows, spec.palette), { x: 8, y: 8 })
 }
 
-function trackWorkspace(spec: TrackSpec): WorkspaceJson {
+/** A track brick's blocks: only the Barrier has any (`solid [on]`). */
+export function trackWorkspace(key: TrackBrickKey): WorkspaceJson {
+  const spec = TRACK_SPECS.find((s) => s.key === key)!
   const b = new Blocks(`track_${spec.key}`)
   if (spec.solid) b.flag('When the race starts: cars can\'t drive through me', [b.setSolid('on')])
   return b.workspace()
@@ -61,7 +63,7 @@ export function createTrackBrick(key: TrackBrickKey): BrickDef {
     name: spec.name,
     costumes: [trackCostume(spec)],
     sounds: [],
-    program: compileWorkspace(trackWorkspace(spec)).program,
+    program: compileWorkspace(trackWorkspace(key)).program,
     grid: { char: spec.char, ...(spec.finish !== undefined ? { finish: spec.finish } : {}) },
   }
 }
@@ -76,7 +78,8 @@ export const STARTER_BRICK_ID = 'brick_starter'
 /** Seconds between "3", "2", "1" and "Go!". */
 export const COUNTDOWN_STEP = 1
 
-function createStarterBrick(): BrickDef {
+/** The Starter's blocks: the countdown, then the results when someone finishes. */
+export function createStarterWorkspace(): WorkspaceJson {
   const b = new Blocks('starter')
   const sayFor = (text: string) => [b.say(text), b.wait(COUNTDOWN_STEP)]
   b.flag('When the race starts: count down, then everyone can go', [
@@ -95,6 +98,10 @@ function createStarterBrick(): BrickDef {
       },
     }),
   ])
+  return b.workspace()
+}
+
+function createStarterBrick(): BrickDef {
   const rows = Array.from({ length: 16 }, (_, y) =>
     Array.from({ length: 16 }, (_, x) => (x === 2 ? 'P' : x > 2 && x < 14 && y < 9 ? ((Math.floor((x - 3) / 3) + Math.floor(y / 3)) % 2 ? 'W' : 'K') : '.')).join(''),
   )
@@ -103,9 +110,14 @@ function createStarterBrick(): BrickDef {
     name: 'Starter',
     costumes: [costumeFromImage('Flag', imageFromRows(rows, { '.': '', P: '#78350f', W: '#f8fafc', K: '#0f172a' }), { x: 8, y: 8 })],
     sounds: [],
-    program: compileWorkspace(b.workspace()).program,
+    program: compileWorkspace(createStarterWorkspace()).program,
     limit: 1,
   }
+}
+
+/** The race Stage's blocks: none, only its two globals (laps to win, and the results list). */
+export function createRaceStageWorkspace(): WorkspaceJson {
+  return { variables: [{ id: RACE_GLOBALS.lapsToWin, name: 'laps to win' }, { id: RACE_GLOBALS.results, name: 'results', type: 'list' }], blocks: { blocks: [] } }
 }
 
 function raceStage(): BrickDef {

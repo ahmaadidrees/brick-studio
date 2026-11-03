@@ -17,6 +17,8 @@ import { drawSky } from './sky'
 /** The Brickgineers look: cream outside the level, a sky-blue level. */
 const OUTSIDE = '#efe9da'
 const SKY = '#cfe8f7'
+/** Hackable Racing's background: flat grass (lane 4 gives it texture). */
+const GRASS = '#4d9a3a'
 
 export class ImageCache {
   private cache = new Map<string, HTMLImageElement>()
@@ -69,6 +71,20 @@ export interface RenderOptions {
   prevPoses?: Map<string, TargetPose>
   /** Interpolation weight in [0, 1). */
   interpAlpha?: number
+  /** Behind the level, under any Stage backdrop: the day sky and hills (the default), or Racing's grass (kitScreens). */
+  background?: 'sky' | 'grass'
+}
+
+/** The level's background, under the Stage backdrop. */
+function drawBackground(ctx: CanvasRenderingContext2D, opts: RenderOptions, bounds: StageBounds, rect: { x: number; y: number; w: number; h: number }): void {
+  if (opts.background === 'grass') {
+    ctx.fillStyle = GRASS
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+    return
+  }
+  ctx.fillStyle = SKY
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+  drawSky(ctx, bounds, opts.camera, opts.viewport)
 }
 
 /**
@@ -94,13 +110,9 @@ export function renderBuildMode(
   const lvlW = rX - lX
   const lvlH = bY - tY
 
-  // Level area
-  ctx.fillStyle = SKY
-  ctx.fillRect(lX, tY, lvlW, lvlH)
-
-  // The Brickgineers day sky and hills, then the Stage backdrop over them: its clear parts show the scenery, and a fully
-  // painted backdrop covers it.
-  drawSky(ctx, bounds, camera, viewport)
+  // Level area: the Brickgineers day sky and hills (or the kit's background), then the Stage backdrop over them: its
+  // clear parts show the scenery, and a fully painted backdrop covers it.
+  drawBackground(ctx, opts, bounds, { x: lX, y: tY, w: lvlW, h: lvlH })
   const backdrop = design.stage.costumes[0]
   if (backdrop?.asset) {
     const img = imageCache.getImage(backdrop.asset)
@@ -206,11 +218,8 @@ export function renderPlayMode(
   const lvlW = rX - lX
   const lvlH = bY - tY
 
-  ctx.fillStyle = SKY
-  ctx.fillRect(lX, tY, lvlW, lvlH)
-
-  // Day sky and hills first; the Stage's costume goes over them (clear parts show the scenery).
-  drawSky(ctx, bounds, camera, viewport)
+  // Day sky and hills (or the kit's background) first; the Stage's costume goes over them (clear parts show the scenery).
+  drawBackground(ctx, opts, bounds, { x: lX, y: tY, w: lvlW, h: lvlH })
   const stageBrick = world.bricks[world.stage.brickId]
   const stageCostume = stageBrick?.costumes[world.stage.costumeIndex]
   if (stageCostume?.asset) {

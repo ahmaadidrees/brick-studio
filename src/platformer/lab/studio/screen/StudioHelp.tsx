@@ -1,11 +1,12 @@
 import { Code2, ExternalLink, Hammer, Lightbulb, Play, X } from 'lucide-react'
 import { Button, Sheet } from '../../../../ui'
+import { KIT_SCREENS, type KitCopy } from '../kitScreens'
 
 /**
  * Three steps, over the top-left corner of the level the first time a kid opens the Hackable Platformer. It never
  * blocks the level (no backdrop), sits away from Play's buttons and the Duo's hinge, and Help opens it again.
  */
-export function FirstRunTips({ phone, noCode, onClose }: { phone: boolean; noCode: boolean; onClose: () => void }) {
+export function FirstRunTips({ phone, noCode, copy = KIT_SCREENS.platformer.copy, onClose }: { phone: boolean; noCode: boolean; copy?: KitCopy; onClose: () => void }) {
   return (
     <section className="cl-tips cl-rise" aria-label="Three steps to start">
       <div className="cl-tips-head">
@@ -13,9 +14,9 @@ export function FirstRunTips({ phone, noCode, onClose }: { phone: boolean; noCod
         <button type="button" className="cl-icon-btn" aria-label="Close the tips" onClick={onClose}><X size={16} /></button>
       </div>
       <ol className="cl-tips-steps">
-        <li><span className="cl-tips-icon" aria-hidden="true"><Hammer size={16} /></span><span><b>Build.</b> {phone ? 'Press Bricks, pick one, then tap the level to place it.' : 'Pick a brick, then tap or click the level to place it.'}</span></li>
-        <li><span className="cl-tips-icon" aria-hidden="true"><Code2 size={16} /></span><span><b>Code.</b> {noCode ? 'On a bigger screen, open a brick’s code. Switch a script off to see what it does.' : 'Open a brick’s code. Switch a script off to see what it does.'}</span></li>
-        <li><span className="cl-tips-icon" aria-hidden="true"><Play size={16} /></span><span><b>Play.</b> Press Play to try your level.</span></li>
+        <li><span className="cl-tips-icon" aria-hidden="true"><Hammer size={16} /></span><span><b>Build.</b> {phone ? copy.tips.buildPhone : copy.tips.build}</span></li>
+        <li><span className="cl-tips-icon" aria-hidden="true"><Code2 size={16} /></span><span><b>Code.</b> {noCode ? copy.tips.codeSmall : copy.tips.code}</span></li>
+        <li><span className="cl-tips-icon" aria-hidden="true"><Play size={16} /></span><span><b>Play.</b> {copy.tips.play}</span></li>
       </ol>
       <button type="button" className="cl-btn cl-btn-primary cl-btn-sm cl-tips-ok" onClick={onClose}>Got it</button>
     </section>
@@ -23,7 +24,7 @@ export function FirstRunTips({ phone, noCode, onClose }: { phone: boolean; noCod
 }
 
 /** Help in the studio header: short how-tos in plain words, the tips again, and the site's own help page. */
-export function HelpSheet({ open, onClose, onShowTips }: { open: boolean; onClose: () => void; onShowTips: () => void }) {
+export function HelpSheet({ open, copy = KIT_SCREENS.platformer.copy, onClose, onShowTips }: { open: boolean; copy?: KitCopy; onClose: () => void; onShowTips: () => void }) {
   return (
     <Sheet
       open={open}
@@ -54,7 +55,7 @@ export function HelpSheet({ open, onClose, onShowTips }: { open: boolean; onClos
         </section>
         <section>
           <h3><Play size={18} aria-hidden="true" /> Play</h3>
-          <p>Press Play to try your level. Arrow keys move and Space jumps. On a touch screen, use the buttons on the screen. Press Build to go back.</p>
+          <p>{copy.helpPlay}</p>
         </section>
         <section>
           <h3>Saving and sharing</h3>

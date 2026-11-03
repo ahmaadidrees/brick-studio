@@ -8,6 +8,7 @@ import { isFreshBrick, startBrickFromTemplate } from '../builder/newBrick'
 import { BRICK_TEMPLATES, type BrickTemplate } from '../templates'
 import { BrickName } from './BrickName'
 import { PowersBar } from './PowersBar'
+import { screensFor, type KitScreens } from '../kitScreens'
 import '../assets/light.css'
 
 const TABS: ReadonlyArray<{ id: EditorTab; label: string }> = [
@@ -16,14 +17,24 @@ const TABS: ReadonlyArray<{ id: EditorTab; label: string }> = [
   { id: 'sounds', label: 'Sounds' },
 ]
 
-/** "Start from…" in a fresh brick's empty script area. Solid bricks paint on the grid, so they are not offered here. */
-const START_FROM = BRICK_TEMPLATES.filter((t) => ['walker', 'coin', 'spring', 'goal'].includes(t.id))
+/**
+ * "Start from…" in a fresh brick's empty script area: the kit's `codeStarts` (the Platformer: Walker, Coin, Spring and
+ * Goal). Solid bricks paint on the grid, so they are not offered here.
+ */
+const startFrom = new WeakMap<KitScreens, readonly BrickTemplate[]>()
+function startsFor(screens: KitScreens): readonly BrickTemplate[] {
+  let found = startFrom.get(screens)
+  if (!found) startFrom.set(screens, found = BRICK_TEMPLATES.filter((t) => screens.codeStarts.includes(t.id)))
+  return found
+}
 
 /**
  * Code's left column, Scratch's arrangement: the brick's name with a quiet remix chip, Code · Costumes · Sounds, then
  * the palette and scripts. This is the only code editor.
  */
-export function CodeColumn({ store, templates = START_FROM }: { store: StudioStore; templates?: readonly BrickTemplate[] }) {
+export function CodeColumn({ store, templates: given }: { store: StudioStore; templates?: readonly BrickTemplate[] }) {
+  const screens = useStudio(store, (s) => screensFor(s.project.design))
+  const templates = given ?? startsFor(screens)
   const brickId = useStudio(store, (s) => s.selectedBrickId)
   const tab = useStudio(store, (s) => s.editorTab)
   const brick = useStudio(store, (s) => (brickId === STAGE_ID ? s.project.design.stage : s.project.design.bricks.find((b) => b.id === brickId)))
@@ -45,12 +56,12 @@ export function CodeColumn({ store, templates = START_FROM }: { store: StudioSto
           <span className="cl-tabs-ind" aria-hidden="true" data-at={TABS.findIndex((t) => t.id === tab)} data-of={3} />
         </div>
       </header>
-      {!brick.grid && <PowersBar store={store} brick={brick} />}
+      {!brick.grid && screens.powers && <PowersBar store={store} brick={brick} />}
       <div className="cl-code-body">
         {tab === 'code' && <CodeEditor store={store} docked />}
         {tab === 'costumes' && <CostumeEditor store={store} />}
         {tab === 'sounds' && <SoundPanel store={store} />}
-        {tab === 'code' && fresh && <div className="cl-start cl-fade" role="group" aria-label="Start from a brick that works">
+        {tab === 'code' && fresh && templates.length > 0 && <div className="cl-start cl-fade" role="group" aria-label="Start from a brick that works">
           <span>Drag blocks under the hat, or start from a brick that works:</span>
           <div className="cl-row">
             {templates.map((t) => <button key={t.id} type="button" className="cl-chip-btn" title={t.blurb} onClick={() => startBrickFromTemplate(store, brick.id, t)}>{t.label}</button>)}

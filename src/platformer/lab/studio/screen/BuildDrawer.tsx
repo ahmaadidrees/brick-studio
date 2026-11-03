@@ -3,24 +3,29 @@ import { useCallback, useMemo, useState } from 'react'
 import { ALL_CATEGORY, BRICK_DRAWER_LABELS, PartPicker, type DrawerItem } from '../../../../shell'
 import { useStudio, type StudioStore } from '../store'
 import {
-  CATALOG_CATEGORIES,
   NEW_BRICK_ID,
-  activeEntryId,
   brickIdOf,
-  drawerEntries,
   gridKeyOf,
   isBrickEntry,
   isGridEntry,
-  standardKeyOf,
   standardTemplate,
 } from '../builder/catalog'
+import { screensFor } from '../kitScreens'
 import type { History } from '../builder/history'
 import { copyToMove, limitOf } from '../builder/limits'
 import { CostumeThumb } from '../builder/tileArt'
 import { NewBrickSheet } from './NewBrickSheet'
 
-const DRAWER_CATEGORIES = [{ id: ALL_CATEGORY, label: 'All' }, ...CATALOG_CATEGORIES]
-const CATEGORY_LABEL = new Map(CATALOG_CATEGORIES.map((c) => [c.id as string, c.label]))
+/** The drawer's tabs for a kit: All, then the kit's own categories (kitScreens drawer.categories). */
+const drawerCategories = new WeakMap<object, { tabs: Array<{ id: string; label: string }>; labels: Map<string, string> }>()
+function categoriesOf(drawer: { categories: ReadonlyArray<{ id: string; label: string }> }) {
+  let found = drawerCategories.get(drawer)
+  if (!found) {
+    found = { tabs: [{ id: ALL_CATEGORY, label: 'All' }, ...drawer.categories], labels: new Map(drawer.categories.map((c) => [c.id, c.label])) }
+    drawerCategories.set(drawer, found)
+  }
+  return found
+}
 
 interface Props {
   store: StudioStore
@@ -38,14 +43,16 @@ interface Props {
 export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Props) {
   const bricks = useStudio(store, (s) => s.project.design.bricks)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
-  const entries = useMemo(() => drawerEntries(bricks), [bricks])
+  const drawer = useStudio(store, (s) => screensFor(s.project.design).drawer)
+  const { tabs, labels } = categoriesOf(drawer)
+  const entries = useMemo(() => drawer.entries(bricks), [drawer, bricks])
   const items = useMemo<DrawerItem[]>(() => {
     const list = entries.map<DrawerItem>((e) => ({ id: e.id, name: e.name, category: e.category, thumbnail: <CostumeThumb asset={e.asset} box={44} /> }))
     const fresh: DrawerItem = { id: NEW_BRICK_ID, name: 'New brick', category: 'mine', thumbnail: <Plus size={28} aria-hidden="true" className="cl-new-icon" /> }
     return [...list, fresh]
   }, [entries])
-  const searchText = useCallback((item: DrawerItem) => `${item.id} ${item.name} ${CATEGORY_LABEL.get(item.category) ?? ''}`, [])
-  const active = erasing ? null : activeEntryId(brushBrickId, bricks)
+  const searchText = useCallback((item: DrawerItem) => `${item.id} ${item.name} ${labels.get(item.category) ?? ''}`, [labels])
+  const active = erasing ? null : drawer.active(brushBrickId, bricks)
   const selecting = !erasing && !brushBrickId
   const [making, setMaking] = useState(false)
 
@@ -86,7 +93,7 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
         <button type="button" className="cl-icon-btn" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled={!history.canRedo} onClick={() => history.redo()}><Redo2 size={18} /></button>
       </div>
       <div className="cl-drawer-picker">
-        <PartPicker items={items} categories={DRAWER_CATEGORIES} activeId={active} onChoose={choose} labels={BRICK_DRAWER_LABELS} denseCatalog searchText={searchText} />
+        <PartPicker items={items} categories={tabs} activeId={active} onChoose={choose} labels={BRICK_DRAWER_LABELS} denseCatalog searchText={searchText} />
       </div>
       <NewBrickSheet store={store} open={making} onClose={() => setMaking(false)} onMade={() => { onErasing(false); onPicked?.() }} />
     </section>
@@ -101,8 +108,7 @@ export function PaintStrip({ store, erasing, onErasing }: { store: StudioStore; 
   if (!erasing && !brick) return null
   const grid = !!brick?.grid
   const moves = brick && !grid && copyToMove(design, brick.id)
-  const stdKey = brick?.grid ? standardKeyOf(brick) : undefined
-  const gridHint = stdKey ? standardTemplate(stdKey)?.hint : undefined
+  const gridHint = brick?.grid ? screensFor(design).drawer.hint(brick) : undefined
   const hint = erasing
     ? 'Click or drag over things to remove them'
     : grid

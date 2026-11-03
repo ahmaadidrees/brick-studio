@@ -41,6 +41,7 @@ import {
   type TargetPose,
 } from './stage/renderer'
 import { StageControls } from './stage/StageControls'
+import { playerBrickOf, screensFor } from './kitScreens'
 import './stage/stage.css'
 
 /** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
@@ -79,6 +80,9 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   const pendingCodeChanges = useStudio(store, (s) => s.pendingCodeChanges)
   const sceneActive = !!runtime
   const design = useStudio(store, (s) => s.project.design)
+  // The kit's screens: whom Play's camera follows, how wide, and what the level's background is.
+  const screens = screensFor(design)
+  const background = screens.background
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const erasing = tools?.erasing ?? false
@@ -207,15 +211,15 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
       if (playFree) return camera
       if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
-      const heroId = design.bricks.find((brick) => brick.name === 'Hero' || brick.id === 'brick_hero' || brick.remixOf === 'brick_hero')?.id
-      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === heroId)
+      const playerId = playerBrickOf({ kit: design.kit, bricks: design.bricks })?.id
+      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === playerId)
       const point = first ?? {
         x: (world.bounds.left + world.bounds.right) / 2,
         y: (world.bounds.bottom + world.bounds.top) / 2,
       }
-      return followCamera(world.bounds, viewport, point, followViewWidth(world.bounds, viewport))
+      return followCamera(world.bounds, viewport, point, screens.followViewWidth ?? followViewWidth(world.bounds, viewport))
     },
-    [playFree, camera, playCameraMode, viewport, design.bricks],
+    [playFree, camera, playCameraMode, viewport, design.bricks, design.kit, screens],
   )
 
   /** Camera used for pointer maths. */
@@ -362,6 +366,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
           renderPlayMode(ctx, runtime.world, {
             camera: playCamera,
             viewport,
+            background,
             prevPoses: prevPosesRef.current,
             interpAlpha: alpha,
           })
@@ -373,7 +378,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
 
     animId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animId)
-  }, [sceneActive, previewPaused, runtime, computePlayCamera, viewport, accumulator, audioManager])
+  }, [sceneActive, previewPaused, runtime, computePlayCamera, viewport, accumulator, audioManager, background])
 
   // The brush preview is the armed brick (not while a grid brick or the eraser is armed: those preview on the cell).
   const previewBrickId = brushTile || erasing ? null : brushBrickId
@@ -392,6 +397,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       renderBuildMode(ctx, design, {
         camera,
         viewport,
+        background,
         gridSnap: true,
         selectedCopyId,
         selectPulse,
@@ -405,7 +411,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     draw()
     return globalImageCache.onImageLoaded(draw)
     // hoverInfo is derived from tileHover, the brush brick and erasing; revision covers design changes.
-  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, selectPulse, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
+  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, selectPulse, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision, background])
 
   // Helper to get canvas-relative coordinates
   const getCanvasCoords = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
@@ -951,6 +957,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
         onResetView={handleResetView}
         playCamera={playFree ? null : playCameraMode}
         onPlayCameraChoice={handlePlayCameraChoice}
+        followLabel={screens.copy.followLabel}
       />}
 
       <div className="stage-canvas-wrap">

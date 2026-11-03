@@ -2,23 +2,36 @@
 import type { BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
+import { createRaceStarterProject } from './race/raceProject'
 import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
 
 type Original = { brick: BrickDef; workspace: unknown }
-let originals: Map<string, Original> | undefined
 
-function catalog(): Map<string, Original> {
-  if (!originals) {
-    const starter = createStarterProject()
-    originals = new Map(starter.design.bricks.map((brick) => [brick.id, { brick, workspace: starter.workspaces[brick.id] }]))
+/**
+ * The built-in bricks of every kit's starter (docs/qa/hackable-modes/R1-SCREENS.md): the Platformer's and Hackable
+ * Racing's. Their ids never collide, so one catalog serves both. Each starter is built the first time it is needed.
+ */
+const STARTERS: ReadonlyArray<() => StudioProject> = [createStarterProject, createRaceStarterProject]
+const originals: Array<Map<string, Original> | undefined> = []
+
+function catalogOf(index: number): Map<string, Original> {
+  let map = originals[index]
+  if (!map) {
+    const starter = STARTERS[index]()
+    map = originals[index] = new Map(starter.design.bricks.map((brick) => [brick.id, { brick, workspace: starter.workspaces[brick.id] }]))
   }
-  return originals
+  return map
 }
 
 /** Only catalog ids establish provenance; a custom brick with a similar name or grid character stays custom. */
 export function catalogOriginal(brick: BrickDef): Original | undefined {
-  return catalog().get(brick.remixOf ?? brick.id)
+  const id = brick.remixOf ?? brick.id
+  for (let i = 0; i < STARTERS.length; i++) {
+    const found = catalogOf(i).get(id)
+    if (found) return found
+  }
+  return undefined
 }
 
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)

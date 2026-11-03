@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { VariableDecl } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
-import { formatKnob, knobList, knobWords, sliderRange } from './knobs'
+import { formatKnob, knobList, knobSpecFor, knobWords, sliderRange } from './knobs'
 import './workshop.css'
 
 /**
@@ -12,12 +12,13 @@ import './workshop.css'
 export function KnobsCard({ store, brickId, compact = false }: { store: StudioStore; brickId: string; compact?: boolean }) {
   const brick = useStudio(store, (s) => (brickId === s.project.design.stage.id ? s.project.design.stage : s.project.design.bricks.find((b) => b.id === brickId)))
   const [moreOpen, setMoreOpen] = useState(false)
-  const { main, groups, moreCount } = knobList(brick?.program.variables ?? [])
+  const spec = knobSpecFor(brick)
+  const { main, groups, moreCount } = knobList(brick?.program.variables ?? [], spec)
   // Tuning numbers that are not Build knobs keep showInBuild off when they move.
   const slider = (v: VariableDecl) => {
     const value = v.value as number
-    const r = sliderRange(v)
-    const { label, hint } = knobWords(v)
+    const r = sliderRange(v, spec)
+    const { label, hint } = knobWords(v, spec)
     return (
       <li key={v.id} className="ws-knob">
         <label htmlFor={`knob-${v.id}`}>{label}</label>

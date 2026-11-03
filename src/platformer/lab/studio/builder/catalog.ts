@@ -78,7 +78,8 @@ export function standardKeyOf(brick: Pick<BrickDef, 'grid'>): GridBrickKey | und
 export interface DrawerEntry {
   id: string
   name: string
-  category: CatalogCategory
+  /** A CatalogCategory for the Platformer; each kit names its own (kitScreens drawer.categories). */
+  category: string
   /** The level's brick this entry arms, or undefined for a standard grid brick the level does not have yet. */
   brick?: BrickDef
   /** First costume of the brick (or of the template), for the thumbnail. */
