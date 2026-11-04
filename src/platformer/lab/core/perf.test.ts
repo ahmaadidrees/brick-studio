@@ -129,7 +129,10 @@ describe('4,000 grid cells (step 7 performance)', () => {
     for (const m of rt.world.targets.slice(CELLS)) expect(m.y).toBeGreaterThanOrEqual(ROWS * 16 + 6)
   }, 30_000)
 
-  it('the same level replays identically over 300 ticks', () => {
+  // Two runtimes play the 4,000-cell level 300 ticks each: the same work as the timing tests above (about 1.4 s on a
+  // quiet machine, 3-4x that in the full parallel suite), so it gets their budget too. It was the one heavy test here
+  // left on vitest's 5 s default, and timed out under load.
+  it('the same level replays identically over 300 ticks', { timeout: 30_000 }, () => {
     const a = play(bigLevel())
     const b = play(bigLevel())
     for (let i = 0; i < 300; i++) {
