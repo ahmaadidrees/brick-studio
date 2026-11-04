@@ -9,9 +9,11 @@
  *
  * Copies are kept every `snapshotEvery` ticks (a Racing world takes about 3 ms to copy, so not every tick), and only
  * for `history` ticks; an event older than that can't be placed, and the caller asks the room for a fresh keyframe.
- * Sounds and other notes from ticks played again are dropped: they were heard the first time. So are broadcasts: the
- * screens that listen (onBroadcast) hear each one once, from whichever game is running, even when a Play again builds a
- * new one.
+ * Sounds and other notes from ticks played again are dropped: they were heard the first time. So are broadcasts the
+ * tick made the first time: the screens that listen (onBroadcast) hear each one once, from whichever game is running,
+ * even when a Play again builds a new one. A broadcast a tick makes only when it is played again (someone else's late
+ * key or edit changed what happened: a Spike moved onto my Hero) is new, so the screens hear it then (wave 2: without
+ * this, a player hurt by someone else's edit never saw "Ouch" once the room had any lag).
  */
 import type { World } from '../core/contracts'
 import type { BroadcastListener, Runtime } from '../core/runtime'
@@ -64,8 +66,14 @@ export class HackableTimeline<E> {
   private rebuilds: number[] = []
   private readonly heard = new Set<BroadcastListener>()
   private unwatch: () => void = () => {}
-  /** Playing a tick again: its broadcasts were heard the first time. */
+  /** Playing a tick again: the broadcasts it made the first time were heard then. */
   private replaying = false
+  /** The tick being played, while it is. */
+  private playing: number | null = null
+  /** What each played tick broadcast (message, sender, players), so a replay tells only what is new. */
+  private said = new Map<number, string[]>()
+  /** While a tick is played again: what it said before and has not said again yet. */
+  private unsaid: string[] = []
 
   constructor(runtime: Runtime, private readonly apply: ApplyEvent<E>, opts: TimelineOptions = {}) {
     this.runtime = runtime
@@ -90,7 +98,19 @@ export class HackableTimeline<E> {
   private watch(runtime: Runtime): void {
     this.unwatch()
     this.unwatch = runtime.onBroadcast((message, from, about) => {
-      if (this.replaying) return
+      const key = `${message}\u0000${from?.id ?? ''}\u0000${about?.join(',') ?? ''}`
+      if (this.replaying) {
+        const i = this.unsaid.indexOf(key)
+        if (i >= 0) {
+          this.unsaid.splice(i, 1)
+          return
+        }
+      }
+      if (this.playing !== null) {
+        const list = this.said.get(this.playing) ?? []
+        list.push(key)
+        this.said.set(this.playing, list)
+      }
       for (const l of [...this.heard]) l(message, from, about)
     })
   }
@@ -113,6 +133,7 @@ export class HackableTimeline<E> {
     this.byTick.clear()
     this.applied.clear()
     this.pending.clear()
+    this.said.clear()
     this.dirtyFrom = Infinity
     this.frontier = runtime.world.tick
     this.snaps.set(runtime.world.tick, startCopy(runtime))
@@ -235,6 +256,9 @@ export class HackableTimeline<E> {
     const replay = t < this.frontier
     const notesBefore = this.runtime.notes.length
     this.replaying = replay
+    this.playing = t
+    if (replay) this.unsaid = [...(this.said.get(t) ?? [])]
+    else this.said.delete(t)
     try {
       for (const e of events) {
         const next = this.apply(this.runtime, e.ev, e.by)
@@ -248,6 +272,8 @@ export class HackableTimeline<E> {
       this.runtime.step()
     } finally {
       this.replaying = false
+      this.playing = null
+      this.unsaid = []
     }
     // A tick played again already made its sounds the first time.
     if (replay) this.runtime.notes.length = Math.min(this.runtime.notes.length, notesBefore)
@@ -263,6 +289,7 @@ export class HackableTimeline<E> {
     for (const t of this.snaps.keys()) if (t <= cutoff && t > keep) keep = t
     for (const t of [...this.snaps.keys()]) if (t < cutoff && t !== keep) this.snaps.delete(t)
     for (const t of [...this.byTick.keys()]) if (t < cutoff) this.byTick.delete(t)
+    for (const t of [...this.said.keys()]) if (t < cutoff) this.said.delete(t)
     for (const t of [...this.applied.keys()]) if (t < cutoff) this.applied.delete(t)
     // Rebuilds too old to play again: only the newest one still says when the play on screen started.
     while (this.rebuilds.length > 1 && this.rebuilds[1]! <= cutoff) this.rebuilds.shift()
