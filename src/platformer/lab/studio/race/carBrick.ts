@@ -91,13 +91,16 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
 /** Stage (global) variables the race uses: the Car and racers read them, the Stage sets them. */
 export const RACE_GLOBALS = { lapsToWin: 'laps_to_win', results: 'results' } as const
 
-const LOCAL_KEYS = new Set([...CAR_KNOBS.map((k) => k.id), ...STATE_VARIABLES.map((v) => v.id)])
+/** A Computer racer's own working memory: how far it has to turn to follow the track (parity bucket A). */
+const RACER_STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [{ id: 'aim', name: 'turn to follow the track' }]
+
+const LOCAL_KEYS = new Set([...CAR_KNOBS.map((k) => k.id), ...STATE_VARIABLES.map((v) => v.id), ...RACER_STATE_VARIABLES.map((v) => v.id)])
 
 /** A driver's own variables: every knob (the four Build sliders shown in Build), then its working memory. */
 function carVariables(prefix: string, knobs: readonly CarKnob[]): VariableDecl[] {
   return [
     ...knobs.map((k): VariableDecl => ({ id: `${prefix}_${k.id}`, name: k.name, value: k.value, ...(CAR_BUILD_KNOB_IDS.includes(k.id) ? { showInBuild: true } : {}) })),
-    ...STATE_VARIABLES.map((v): VariableDecl => ({ id: `${prefix}_${v.id}`, name: v.name, value: 0 })),
+    ...[...STATE_VARIABLES, ...(prefix === 'racer' ? RACER_STATE_VARIABLES : [])].map((v): VariableDecl => ({ id: `${prefix}_${v.id}`, name: v.name, value: 0 })),
   ]
 }
 
@@ -266,8 +269,14 @@ function driverWorkspace(prefix: string, controls: (b: CarBlocks) => void): Work
     b.set('side', b.sub(b.mul(b.xSpeed(), b.cosDir()), b.mul(b.ySpeed(), b.sinDir()))),
   ])
 
+  // Parity bucket A (2026-11-03): like the classic pad, it boosts only a car going the way its arrow points (the pad
+  // faces its way: within about 70 degrees of it, as classic's 0.3).
+  const onPad = b.groundIs('Boost pad')
+  const goingItsWay = b.later(() =>
+    b.and(onPad, b.gt(b.mathop('cos', b.sub(b.direction(), { block: b.blk('sensing_of', { fields: { PROPERTY: 'direction', OBJECT: 'Boost pad' } }) })), 0.3)),
+  )
   b.every('Boost pads: a boost pad shoots me forward, then the extra speed fades', [
-    b.when(b.groundIs('Boost pad'), [
+    b.when(goingItsWay, [
       b.set('boost_left', v('boost_ticks')),
       b.when(b.lt(v('fwd'), b.mul(top(), v('boost'))), [b.set('fwd', b.mul(top(), v('boost')))]),
     ]),
@@ -346,10 +355,23 @@ export function createCarWorkspace(): WorkspaceJson {
   })
 }
 
-/** A Computer racer: three blocks drive it, pointing along the track with the gas on. */
+/**
+ * A Computer racer: it steers toward the way the track goes and brakes for sharp turns, like the classic computer
+ * driver (raceAutopilot.ts: steer by the angle x 3, at most full lock; off the gas and on the brakes when the turn is
+ * sharper than 0.9 radians, about 52 degrees, at more than 1.5 px/frame). Before parity bucket A it turned instantly.
+ */
 export function createRacerWorkspace(): WorkspaceJson {
   return driverWorkspace('racer', (b) => {
-    b.every('Drive along the track', [b.pointInDirection({ block: b.blk('race_trackdirection') }), b.set('gas', b.v('go'))])
+    b.every('Drive along the track', b.later(() => [
+      // How far to turn, -180 to 180 (right is +).
+      b.set('aim', b.sub(b.mod(b.add(b.sub({ block: b.blk('race_trackdirection') }, b.direction()), 540), 360), 180)),
+      b.set('steer_in', b.div(b.v('aim'), 19)),
+      b.when(b.gt(b.v('steer_in'), 1), [b.set('steer_in', 1)]),
+      b.when(b.lt(b.v('steer_in'), -1), [b.set('steer_in', -1)]),
+      b.set('gas', b.v('go')),
+      b.set('brake_in', 0),
+      b.when(b.and(b.gt(b.mathop('abs', b.v('aim')), 52), b.gt(b.v('fwd'), 3)), [b.set('gas', 0), b.set('brake_in', b.v('go'))]),
+    ]))
   })
 }
 

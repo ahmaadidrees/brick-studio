@@ -3,6 +3,7 @@ import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject, WALKER_SPEED, WALKER_SPEED_BEFORE } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
+import { boostCostume, boostCostumeR1 } from './race/raceTrack'
 import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
 
@@ -245,8 +246,10 @@ let currentHeroFingerprint: string | undefined
  * parity bucket A (2026-11-03).
  */
 export const EARLIER_BUILT_IN_FINGERPRINTS: Readonly<Record<string, readonly string[]>> = {
-  // Before W A S D.
+  // R1 as shipped: before W A S D and boost pads that point a way.
   brick_car: ['f3157bf8'],
+  // R1 as shipped: before steering and braking like the classic computer driver.
+  brick_racer: ['3f8004eb'],
 }
 
 /**
@@ -256,7 +259,24 @@ export const EARLIER_BUILT_IN_FINGERPRINTS: Readonly<Record<string, readonly str
  * stay. A brick with any other blocks, a renamed variable, or a remix is the kid's and is left as it is.
  */
 export function upgradeUntouchedBricks(project: StudioProject): StudioProject {
-  return upgradeUntouchedHero(upgradeBuiltIns(project))
+  return upgradeUntouchedHero(withBoostWays(upgradeBuiltIns(project)))
+}
+
+/**
+ * Boost pads point a way since parity bucket A (`grid.way`). A race track saved before has a pad that points nowhere:
+ * it points the way its finish line does (the R1 beginner track's pad sits just after the line), or right. Its R1
+ * picture, if nobody repainted it, becomes today's (R1's chevrons pointed left).
+ */
+function withBoostWays(project: StudioProject): StudioProject {
+  const design = project.design
+  if (designKit(design) !== 'race') return project
+  const pad = design.bricks.find((b) => (b.remixOf ?? b.id) === 'brick_boost' && b.grid && b.grid.way === undefined)
+  if (!pad) return project
+  const way = design.bricks.find((b) => b.grid?.finish !== undefined)?.grid?.finish ?? 90
+  const old = boostCostumeR1()
+  const costumes = pad.costumes.map((c) => (c.asset === old.asset ? { ...boostCostume(), name: c.name } : c))
+  const updated: BrickDef = { ...pad, costumes, grid: { ...pad.grid!, way } }
+  return { ...project, design: { ...design, bricks: design.bricks.map((b) => (b.id === pad.id ? updated : b)) } }
 }
 
 /**

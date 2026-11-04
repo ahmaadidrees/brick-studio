@@ -257,6 +257,12 @@ export interface GridSpec {
    * right, 0 up, 180 down, -90 left). Laps count from it (core/race.ts). Missing means an ordinary brick.
    */
   finish?: number
+  /**
+   * Hackable Racing (parity bucket A, 2026-11-03): this grid brick points a way, like a boost pad: its cells face this
+   * Scratch direction (so its art turns, and `direction of` the brick says it), and the Car's own blocks boost only when
+   * they drive that way. Missing means its cells face right (90), as every cell did before.
+   */
+  way?: number
 }
 
 export const gridCopyId = (col: number, row: number): string => `cell:${col}:${row}`

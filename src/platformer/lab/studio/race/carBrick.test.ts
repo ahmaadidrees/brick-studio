@@ -106,12 +106,14 @@ describe('each feel script switches off, and the car still drives', () => {
 describe('the Car as saved (pinned for later upgrades)', () => {
   const labelsOf = (ws: WorkspaceJson) => tops(ws).map((b) => `${b.type} | ${label(b)}`)
 
-  it('has the blocks fingerprint of the classic keys, and R1\'s upgrades', () => {
-    // f3157bf8 from a202bb8 (R1, as shipped) until W A S D (parity bucket A); an untouched R1 Car upgrades from it.
+  it('has the blocks fingerprint of parity bucket A, and R1\'s upgrades', () => {
+    // f3157bf8 from a202bb8 (R1, as shipped) until W A S D and directional boost pads (parity bucket A); an untouched R1
+    // Car upgrades from it. The racer's 3f8004eb likewise, until it steered and braked.
     expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).toContain('f3157bf8')
     expect(workspaceFingerprint(createCarWorkspace())).toBe(CAR_FINGERPRINT)
     expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).not.toContain(CAR_FINGERPRINT)
-    expect(workspaceFingerprint(createRacerWorkspace())).toBe('3f8004eb')
+    expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_racer).toContain('3f8004eb')
+    expect(workspaceFingerprint(createRacerWorkspace())).toBe(RACER_FINGERPRINT)
   })
 
   it('has the labels of R1, in order', () => {
@@ -121,7 +123,8 @@ describe('the Car as saved (pinned for later upgrades)', () => {
   })
 })
 
-const CAR_FINGERPRINT = '875530e7'
+const CAR_FINGERPRINT = 'cd3793ca'
+const RACER_FINGERPRINT = '68d4e698'
 
 const CAR_LABELS_R1: readonly string[] = [
   'event_whenflagclicked | When the race starts: no gravity, I move myself',
