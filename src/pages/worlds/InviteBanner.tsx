@@ -28,15 +28,15 @@ export function InviteBanner({ invites, busy, onDismiss, onJoin }: Props) {
       return <article key={world.id} className="worlds-invite" aria-label={`Invite to ${world.title}`}>
         <span className="worlds-invite-disc" aria-hidden="true">{initialsOf(world.ownerName)}</span>
         <div className="worlds-invite-text">
-          <strong>{world.ownerName} invited you to {world.canEdit ? 'build' : 'look at'} {world.title}</strong>
+          <strong>{world.ownerName} invited you to {world.format === 'hackable' ? 'play' : world.canEdit ? 'build' : 'look at'} {world.title}</strong>
           {here.length > 0 && <small className="worlds-invite-live">
-            <span className="worlds-live-dot" aria-hidden="true" /> {nameList(here)} building right now
+            <span className="worlds-live-dot" aria-hidden="true" /> {nameList(here)} {world.format === 'hackable' ? 'playing' : 'building'} right now
           </small>}
         </div>
         <div className="worlds-invite-actions">
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => onDismiss(world)}>Not now</Button>
           <Button href={liveHref(world)} variant="primary" size="sm" icon={<Play size={16} />} onClick={() => onJoin(world)}>
-            {world.canEdit ? 'Join and build' : 'Visit'}
+            {world.format === 'hackable' ? 'Play together' : world.canEdit ? 'Join and build' : 'Visit'}
           </Button>
         </div>
       </article>

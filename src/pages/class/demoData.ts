@@ -80,7 +80,15 @@ function withDemoShelf(mock: ClassPageClient): ClassPageClient {
         return { ...result, class: withSettings(result.class as ClassroomClass) }
       }
       if (path === '/classes' && method === 'GET') return { ...result, classes: (result.classes as ClassroomClass[]).map(withSettings) }
+      if (path === '/worlds' && method === 'GET') return { ...result, worlds: [DEMO_HACKABLE, ...(result.worlds as ClassroomWorld[])] }
       return result
     }) as ClassPageClient['request'],
   }
+}
+
+/** A Hackable Racing project a student shared with the class (the mock has only 3D builds and 2D levels). */
+const DEMO_HACKABLE: ClassroomWorld = {
+  id: 'world-ben-hackable-race', title: 'Ice Loop Grand Prix', ownerId: MOCK_IDS.ben, ownerName: 'Ben K.', ownerClassId: MOCK_IDS.classId,
+  classId: null, kind: 'personal', format: 'hackable', kit: 'race', revision: 4, updatedAt: new Date().toISOString(),
+  visibility: 'class', canEdit: false, classCanEdit: false, sharedAt: new Date().toISOString(), hiddenByTeacher: false,
 }

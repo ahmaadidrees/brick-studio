@@ -4,6 +4,7 @@ import type { LevelDesign } from '../../../core/contracts'
 import { raceLapState, racePlace } from '../../../core/race'
 import { CAR_BRICK_ID, createRacerBrick } from '../carBrick'
 import { COUNTDOWN_STEP, createBeginnerRace, raceDesign, TrackPainter, trackChar } from '../raceTrack'
+import { roomGame } from '../../testRoom'
 import { ordinal, raceCarOf, readRaceHud, type RaceHudState } from './raceHudState'
 
 /** The beginner race with a Car that drives itself (the Computer racers' blocks), so it finishes with nobody pressing keys. */
@@ -97,5 +98,107 @@ describe('the race HUD, read from the beginner race', () => {
 
   it('writes places the way kids say them', () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal)).toEqual(['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd'])
+  })
+})
+
+describe('race times (parity bucket A, 2026-11-03)', () => {
+  /** Run a race to the end, hearing "go" the way RaceHud does, and read the HUD every tick. */
+  function timedRace(design: LevelDesign, maxTicks = 4000) {
+    const runtime = play(design)
+    let start: number | null = null
+    runtime.onBroadcast((m) => { if (start === null && m === 'go') start = runtime.world.tick })
+    const huds: RaceHudState[] = []
+    for (let tick = 1; tick <= maxTicks; tick++) {
+      runtime.step()
+      const hud = readRaceHud(runtime.world, design, start)
+      huds.push(hud)
+      if (hud.finished) break
+    }
+    return { runtime, huds, start: start as number | null }
+  }
+
+  it('has no clock before "go", then counts the game\'s own ticks; it stops when the Car finishes', { timeout: 30_000 }, () => {
+    const { runtime, huds, start } = timedRace(selfDrivingRace())
+    expect(start).not.toBeNull()
+    expect(huds[0]!.time).toBeNull()
+    const last = huds.at(-1)!
+    const car = raceCarOf(runtime.world, selfDrivingRace())!
+    const ticks = raceLapState(car)!.lapTicks
+    expect(last.time).toBe(ticks[2]! - start!)
+    // Best lap: the shortest of the three, the first counted from "go".
+    const laps = [ticks[0]! - start!, ticks[1]! - ticks[0]!, ticks[2]! - ticks[1]!]
+    expect(last.bestLap).toBe(Math.min(...laps))
+    // The results show the Car's time.
+    expect(last.standings.find((s) => s.you)!.time).toBe(last.time)
+  })
+
+  it('shows live standings for every racer while the race is on, the Car marked, in place order', () => {
+    const design = createBeginnerRace()
+    const runtime = play(design)
+    let start: number | null = null
+    runtime.onBroadcast((m) => { if (start === null && m === 'go') start = runtime.world.tick })
+    for (let i = 0; i < 6 * 30; i++) runtime.step()
+    const hud = readRaceHud(runtime.world, design, start)
+    expect(hud.live.map((s) => s.place)).toEqual([1, 2, 3])
+    expect(hud.live.filter((s) => s.you)).toHaveLength(1)
+    expect(hud.live.find((s) => s.you)!.place).toBe(hud.place)
+    expect(hud.live.every((s) => s.lap === 1)).toBe(true)
+    expect(readRaceHud(runtime.world, design, null).live).toEqual([])
+  })
+
+  it('formats times like the classic HUD', async () => {
+    const { formatRaceTime } = await import('./raceHudState')
+    expect(formatRaceTime(30 * 41.3)).toBe('41.3s')
+    expect(formatRaceTime(0)).toBe('0.0s')
+  })
+})
+
+describe('the race HUD in a room (each screen its own Car)', () => {
+  const lapsDone = (lapTicks: number[]) => ({ lap: lapTicks.length, gates: 0, d: 0, onFinish: false, lapTicks })
+
+  it('follows our own Car, calls only it "You", and names the other players\' Cars by their room names', () => {
+    const design = createBeginnerRace()
+    const runtime = roomGame(design, ['Maya', 'Sam'])
+    for (let i = 0; i < 5; i++) runtime.step()
+    const maya = runtime.world.targets.find((t) => t.player === 1)!
+    const sam = runtime.world.targets.find((t) => t.player === 2)!
+    expect(raceCarOf(runtime.world, design, 1)).toBe(maya)
+    expect(raceCarOf(runtime.world, design, 2)).toBe(sam)
+    // Outside a room (or before the room said who we are): the painted Car, as before.
+    expect(raceCarOf(runtime.world, design)).toBe(maya)
+
+    for (const [me, other] of [[1, 'Sam'], [2, 'Maya']] as const) {
+      const hud = readRaceHud(runtime.world, design, 0, me)
+      const you = hud.live.filter((s) => s.you)
+      expect(you).toHaveLength(1)
+      expect(you[0]!.name).toBe('You')
+      expect(hud.live.filter((s) => s.name === 'You')).toHaveLength(1)
+      expect(hud.live.map((s) => s.name)).toContain(other)
+      expect(hud.place).toBe(racePlace(runtime.world, me === 1 ? maya : sam))
+    }
+  })
+
+  it('puts the finishers in the order they crossed the line, our Car marked, by name', () => {
+    const design = createBeginnerRace()
+    const runtime = roomGame(design, ['Maya', 'Sam'])
+    for (let i = 0; i < 5; i++) runtime.step()
+    const laps = readRaceHud(runtime.world, design, 0, 1).laps
+    const line = (end: number) => Array.from({ length: laps }, (_, i) => end - (laps - 1 - i) * 100)
+    // Sam crossed first, then Maya; the Computer racers are still going.
+    runtime.world.targets.find((t) => t.player === 1)!.lap = lapsDone(line(900))
+    runtime.world.targets.find((t) => t.player === 2)!.lap = lapsDone(line(880))
+
+    const maya = readRaceHud(runtime.world, design, 0, 1)
+    expect(maya.finished).toBe(true)
+    expect(maya.place).toBe(2)
+    expect(maya.standings.slice(0, 2)).toEqual([
+      { place: 1, name: 'Sam', done: true, you: false, time: 880 },
+      { place: 2, name: 'You', done: true, you: true, time: 900 },
+    ])
+    expect(maya.standings.slice(2).every((s) => !s.done && !s.you && s.name !== 'You')).toBe(true)
+
+    const sam = readRaceHud(runtime.world, design, 0, 2)
+    expect(sam.place).toBe(1)
+    expect(sam.standings.slice(0, 2).map((s) => [s.name, s.you])).toEqual([['You', true], ['Maya', false]])
   })
 })

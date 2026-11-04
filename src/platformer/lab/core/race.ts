@@ -22,8 +22,10 @@
  *
  * No trigonometry except detmath's, no clock, no randomness: a replay lands on the same laps.
  */
-import { TILE_SIZE, parseGridCopyId, type BrickDef, type PrimitiveCtx, type PrimitiveTable, type RuntimeApi, type Stmt, type Target, type TileLayer, type World } from './contracts'
+import { TILE_SIZE, parseGridCopyId, type BrickDef, type LapState, type PrimitiveCtx, type PrimitiveTable, type RuntimeApi, type Stmt, type Target, type TileLayer, type World } from './contracts'
 import { atan2Deg } from './detmath'
+import { costumeOf, opaqueRect } from './geometry'
+import { nudgeTarget } from './platformer'
 
 // ------------------------------------------------------------------------------------------------ the loop
 
@@ -125,14 +127,16 @@ export function computeRaceLoop(tiles: TileLayer | undefined, bricks: Iterable<B
 const gateOf = (length: number, d: number): number => Math.min(3, Math.floor((d * 4) / length))
 const ALL_GATES = 0b1110
 
-/** One loop per running world: the grid never changes during a Play. */
-const loops = new WeakMap<World, RaceLoop>()
+/**
+ * One loop per set of bricks and grid. Copies of a world (a rewind, a keyframe) share both, so they share the loop; an
+ * edit replaces `world.bricks` or `world.tiles` with new objects, so the loop is worked out again.
+ */
+const loops = new WeakMap<World['bricks'], { tiles: World['tiles']; loop: RaceLoop }>()
 export function raceLoopOf(world: World): RaceLoop {
-  let loop = loops.get(world)
-  if (!loop) {
-    loop = computeRaceLoop(world.tiles, Object.values(world.bricks))
-    loops.set(world, loop)
-  }
+  const known = loops.get(world.bricks)
+  if (known && known.tiles === world.tiles) return known.loop
+  const loop = computeRaceLoop(world.tiles, Object.values(world.bricks))
+  loops.set(world.bricks, { tiles: world.tiles, loop })
   return loop
 }
 
@@ -146,30 +150,12 @@ function cellAt(world: World, x: number, y: number): [number, number] | null {
 
 // ------------------------------------------------------------------------------------------------ laps and places
 
-export interface LapState {
-  /** Laps finished. */
-  lap: number
-  /** Bit per hidden gate passed this lap. */
-  gates: number
-  /** Last known distance round the loop (kept while off the road). */
-  d: number
-  onFinish: boolean
-  /** Tick each lap finished on. */
-  lapTicks: number[]
-}
+export type { LapState }
 
-const laps = new WeakMap<Target, LapState>()
-const lapsOf = (t: Target): LapState => {
-  let s = laps.get(t)
-  if (!s) {
-    s = { lap: 0, gates: 0, d: 0, onFinish: false, lapTicks: [] }
-    laps.set(t, s)
-  }
-  return s
-}
+const lapsOf = (t: Target): LapState => (t.lap ??= { lap: 0, gates: 0, d: 0, onFinish: false, lapTicks: [] })
 
 /** A racer's laps so far (for tests and the Stage's lap counter). */
-export const raceLapState = (t: Target): LapState | undefined => laps.get(t)
+export const raceLapState = (t: Target): LapState | undefined => t.lap
 
 /** Bricks that move themselves are racers; painted grid cells never are. */
 export const isRacer = (t: Target): boolean => !t.isStage && t.visible && !!t.body?.selfMove && !(t.copyId && parseGridCopyId(t.copyId) && !t.isClone)
@@ -201,9 +187,57 @@ function progress(s: LapState, length: number): number {
   return s.lap * length + (behindLine ? s.d - length : s.d)
 }
 
-/** Count laps for every racer, after the tick's scripts have moved them. Lap hats run on the next tick. */
+/** How much of the speed toward each other two bumping cars trade (classic raceRun.ts bumpCars). */
+const BUMP_TRADE = 0.6
+
+/** How far a racer reaches when bumping: half the smaller side of its picture's opaque box, at its size, whichever way it points. */
+export function racerRadius(world: World, t: Target): number {
+  const costume = costumeOf(world, t)
+  if (!costume) return 0
+  const r = opaqueRect(costume)
+  return (Math.min(r.right - r.left, r.bottom - r.top) / 2) * (t.size / 100)
+}
+
+/**
+ * Cars bump each other, like the classic race (raceRun.ts bumpCars; parity bucket A, 2026-11-03): two racers closer than
+ * their two radii (half the smaller side of each one's box; the Car's is 5.5, classic's CAR_RADIUS) are pushed apart,
+ * half each along the line between them, never into anything solid, and when they were closing in they trade 0.6 of
+ * that speed. A rule of the Racing kit, like lap counting: it runs after the tick's scripts and the physics step, in
+ * world order, with only + - * / and a square root, so every player of a room bumps the same.
+ */
+export function bumpRacers(world: World): void {
+  const racers = world.targets.filter(isRacer)
+  const radius = (t: Target): number => racerRadius(world, t)
+  for (let i = 0; i < racers.length; i++) {
+    for (let j = i + 1; j < racers.length; j++) {
+      const a = racers[i]!
+      const b = racers[j]!
+      const reach = radius(a) + radius(b)
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const d = Math.sqrt(dx * dx + dy * dy)
+      if (d <= 0 || d >= reach) continue
+      const nx = dx / d
+      const ny = dy / d
+      const push = (reach - d) / 2
+      nudgeTarget(world, a, -nx * push, -ny * push)
+      nudgeTarget(world, b, nx * push, ny * push)
+      if (!a.body || !b.body) continue
+      const rel = (b.body.vx - a.body.vx) * nx + (b.body.vy - a.body.vy) * ny
+      if (rel < 0) {
+        a.body.vx += nx * rel * BUMP_TRADE
+        a.body.vy += ny * rel * BUMP_TRADE
+        b.body.vx -= nx * rel * BUMP_TRADE
+        b.body.vy -= ny * rel * BUMP_TRADE
+      }
+    }
+  }
+}
+
+/** Bump cars apart, then count laps for every racer, after the tick's scripts have moved them. Lap hats run next tick. */
 export function raceStep(runtime: RuntimeApi): void {
   const world = runtime.world
+  bumpRacers(world)
   const loop = raceLoopOf(world)
   if (!loop.ok) return
   for (const t of world.targets) {
@@ -305,19 +339,19 @@ function directionAlongTrack(ctx: PrimitiveCtx): number {
 
 // ------------------------------------------------------------------------------------------------ ground under me
 
-/** Grid character -> brick name, per world. */
-const groundNames = new WeakMap<World, Map<string, string>>()
+/** Grid character -> brick name, per set of bricks (an edit replaces `world.bricks`). */
+const groundNames = new WeakMap<World['bricks'], Map<string, string>>()
 
 function groundUnder(ctx: PrimitiveCtx): string {
   const world = ctx.runtime.world
   const cell = cellAt(world, ctx.target.x, ctx.target.y)
   const ch = cell ? (world.tiles as TileLayer).data[cell[1]]?.[cell[0]] ?? '.' : '.'
   if (ch === '.') return 'Grass'
-  let names = groundNames.get(world)
+  let names = groundNames.get(world.bricks)
   if (!names) {
     names = new Map()
     for (const b of Object.values(world.bricks)) if (b.grid) names.set(b.grid.char, b.name)
-    groundNames.set(world, names)
+    groundNames.set(world.bricks, names)
   }
   return names.get(ch) ?? 'Grass'
 }
@@ -325,6 +359,6 @@ function groundUnder(ctx: PrimitiveCtx): string {
 export const racePrimitives: PrimitiveTable = {
   race_groundunder: groundUnder,
   race_trackdirection: directionAlongTrack,
-  race_lapsdone: (ctx) => (ctx.target.isStage ? 0 : laps.get(ctx.target)?.lap ?? 0),
+  race_lapsdone: (ctx) => (ctx.target.isStage ? 0 : ctx.target.lap?.lap ?? 0),
   race_myplace: (ctx) => placeOf(ctx.runtime.world, ctx.target),
 }

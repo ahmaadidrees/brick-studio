@@ -219,7 +219,7 @@ describe('Starter level (starter.ts)', () => {
         { SIDE: 'right', BRICK: '_any_' },
       ])
       // its basics and feel scripts are all still there, and only the plumbing is a My Block to go inside
-      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(19)
+      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(22)
       expect(hero.program.procedures.map((x) => x.proccode)).toEqual(['move and collide'])
     })
 
@@ -252,7 +252,7 @@ describe('Starter level (starter.ts)', () => {
     const copies = p.design.copies.filter((c) => c.brickId === 'brick_walker')
     expect(copies.map((c) => c.knobs)).toEqual([undefined, undefined])
     const speeds = instantiate(p.design).targets.filter((t) => t.brickId === 'brick_walker').map((t) => t.variables.brick_walker_speed)
-    expect(speeds.sort()).toEqual([3, 3])
+    expect(speeds.sort()).toEqual([1, 1])
   })
 
   it('lays the level out inside the bounds, with the Hero above the ground', () => {
@@ -321,10 +321,11 @@ describe('Starter level (starter.ts)', () => {
       vF.add(fast.body!.vx); vS.add(slow.body!.vx)
       expect([fast.y, slow.y]).toEqual([24, 24])
     }
+    // At the classic 30 steps a second (1 a tick) they cross their lanes in 600 ticks too.
     expect([minF, maxF, minS, maxS]).toEqual([119, 233, 519, 617])
     // 0 appears for the one tick between a bump and the turn-around script (STEP3.md step 7).
-    expect([...vF].sort((a, b) => a - b)).toEqual([-3, 0, 3])
-    expect([...vS].sort((a, b) => a - b)).toEqual([-3, 0, 3])
+    expect([...vF].sort((a, b) => a - b)).toEqual([-1, 0, 1])
+    expect([...vS].sort((a, b) => a - b)).toEqual([-1, 0, 1])
   })
 
   // ---- Play tests that go through the bricks' own code. They need the engine lane (cells become targets running the
@@ -338,12 +339,13 @@ describe('Starter level (starter.ts)', () => {
     run(20)
     const h = of('copy_hero')
     h.x = 736; h.y = 100
-    run(20 + 60)
+    // Getting hurt takes 75 ticks: a stop, the hop, then back at the start.
+    run(20 + 60 + 80)
     expect([h.x, h.y]).toEqual([60, 24])
     void rt
   })
 
-  it('lava (Lava brick: forever, if touching Hero -> broadcast hero hurt): the Hero set into lava is back at the start 20 ticks later (lava is not solid)', () => {
+  it('lava (Lava brick: forever, if touching Hero -> broadcast hero hurt): the Hero set into lava is back at the start once getting hurt is done (lava is not solid)', () => {
     const rt = play((() => {
       const p = createStarterProject()
       const rows = p.design.tiles!.data.slice()
@@ -353,12 +355,16 @@ describe('Starter level (starter.ts)', () => {
     for (let i = 0; i < 20; i++) rt.step()
     const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
     h.x = 168; h.y = 88
-    for (let i = 0; i < 20; i++) rt.step()
+    for (let i = 0; i < 20 + 80; i++) rt.step()
     expect([h.x, h.y]).toEqual([60, 24])
   })
 
   // The fast Walker patrols x 119..233 on the ground, right under these two blocks, and hurts the Hero if they touch; take it out of the test.
-  const withoutWalkers = (rt: ReturnType<typeof play>) => { rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker') }
+  // Hidden first: its scripts keep running, and a hidden Walker touches nothing.
+  const withoutWalkers = (rt: ReturnType<typeof play>) => {
+    for (const t of rt.world.targets) if (t.brickId === 'brick_walker') t.visible = false
+    rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker')
+  }
 
   it('? block: the Hero jumping into cell:12:3 makes it used and counts one coin; a second jump gives nothing; the coin clone is deleted', () => {
     const { rt, of, run } = fresh()
@@ -488,16 +494,17 @@ describe('Starter level (starter.ts)', () => {
   })
 
 
-  it('the Spring launches the Hero higher than its own best jump (62)', () => {
+  it('the Spring launches the Hero higher than its own best jump (62) when jump is held, like the classic spring', () => {
     const { rt, of, run } = fresh()
     run(20)
     const h = of('copy_hero'), spring = of('copy_spring')
-    h.x = spring.x; h.y = spring.y + 4
-    const y0 = h.y
+    h.x = spring.x; h.y = spring.y + 30
+    const y0 = spring.y + 4
     let peak = y0
-    for (let i = 0; i < 40; i++) { run(1); peak = Math.max(peak, h.y) }
+    run(4) // in the air: holding jump now starts no jump of its own
+    rt.pressKey('space')
+    for (let i = 0; i < 60; i++) { run(1); peak = Math.max(peak, h.y) }
     expect(peak - y0).toBeGreaterThan(62)
-    void rt
   })
 
   it('the coin counts once and only that coin hides', () => {
@@ -525,7 +532,7 @@ describe('Starter level (starter.ts)', () => {
       run(20)
       const h = of('copy_hero'), w = of('copy_walker_slow')
       h.x = w.x + 6; h.y = w.y
-      run(4)
+      run(4 + 80)
       expect([h.x, h.y, w.visible]).toEqual([60, 24, true])
     }
   })

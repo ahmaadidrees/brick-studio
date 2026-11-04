@@ -3,24 +3,48 @@
  * are ordinary bricks that broadcast these messages (starter.ts "check for the Hero", hero/heroBrick.ts "hero hurt"),
  * and the builder only listens (Runtime.onBroadcast). A test keeps the words below in step with those bricks.
  */
-import type { BrickDef, LevelDesign, Value } from '../../core/contracts'
+import type { BrickDef, LevelDesign, Target, Value, World } from '../../core/contracts'
 import type { Runtime } from '../../core/runtime'
+import { targetsTouch } from '../../core/touching'
 import { powerKeysOf } from '../powers/powers'
 
 /** The Goal says this when the Hero reaches it. */
 export const COURSE_CLEAR = 'course clear'
 /** Anything that hurts the Hero (spikes, lava, a Walker) says this; the Hero goes back to the start. */
 export const HERO_HURT = 'hero hurt'
+/**
+ * What the Hero says when it really gets hurt (since parity bucket A: not while it blinks, safe, and also in a pit).
+ * A Hero that never says it (one a kid changed before) is heard by HERO_HURT instead.
+ */
+export const HERO_OUCH = 'ouch'
+
+/** Does any brick in the level say "ouch"? Then the Play screen listens for that instead of "hero hurt". */
+export function saysOuch(design: LevelDesign): boolean {
+  return design.bricks.some((b) => JSON.stringify(b.program).includes(`"${HERO_OUCH}"`))
+}
+/**
+ * In a room, is this broadcast about our own Hero (rooms: `me`, our player number)? A Hero's own words ("ouch") are
+ * its player's. Anything else (the Goal's "course clear", a Spike's "hero hurt") is about the Heroes touching whoever
+ * said it, so it is ours when ours is one of them; when no Hero touches it (a kid's own broadcast), it is everyone's.
+ * Outside a room (`me` 0) everything is ours. It only reads the world.
+ */
+export function aboutMyHero(world: World, from: Target | undefined, me: number): boolean {
+  if (!me || !from || !world.players?.length) return true
+  if (from.player !== undefined) return from.player === me
+  const touching = world.targets.filter((t) => t.player !== undefined && !t.isClone && t !== from && targetsTouch(world, t, from))
+  return touching.length === 0 || touching.some((t) => t.player === me)
+}
+
 /** The Stage's score variable (a Coin says "coin collected", the Stage adds one). */
 export const COINS_VARIABLE = 'coins'
 
-/** The keys the Hero reads (hero/heroBrick.ts "read keys"). */
-export const PLAY_CONTROLS_HINT = 'move · Space jumps (hold to go higher) · hold X to run'
+/** The keys the Hero reads (hero/heroBrick.ts "read keys"), the classic Platformer's: shown after the ← → keys. */
+export const PLAY_CONTROLS_HINT = 'or A D move · Space, X or K jumps (hold to go higher) · hold Z, J or Shift to run'
 
 /** Keys the Hero already has (the touch buttons press these): a power reading one needs no button or hint of its own. */
-export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'space', 'x', 'any'])
+export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'a', 'd', 'space', 'x', 'k', 'z', 'j', 'shift', 'any'])
 
-/** A key a snapped power reads beyond the Hero's own, and the power's name (Dash reads z). */
+/** A key a snapped power reads beyond the Hero's own, and the power's name (Dash reads c). */
 export interface PowerKey {
   key: string
   power: string
@@ -84,6 +108,36 @@ export const NO_GOAL_NOTE = 'There is no Goal yet, so there is nowhere to finish
  * The Stage's variable called "coins", read live from the running game, or null if the level has none (then no counter
  * is shown). Looks the variable up by its name, so it works for any project.
  */
+/** Ticks a second: the runtime's fixed step. */
+export const TICKS_PER_SECOND = 30
+
+/** A play time like the classic game's timer: minutes, then seconds to a tenth ("0:07.3"). */
+export function formatPlayTime(ticks: number): string {
+  const s = Math.max(0, ticks) / TICKS_PER_SECOND
+  const m = Math.floor(s / 60)
+  return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`
+}
+
+/**
+ * Best clear times, per level, for as long as the page is open (like the classic game's best time on a kid's own
+ * level). A level is known by its painted cells and placed copies, so changing the level starts a new best.
+ */
+const bestTimes = new Map<string, number>()
+const levelKey = (design: LevelDesign): string => JSON.stringify([design.id, design.tiles?.data ?? null, design.copies.map((c) => [c.brickId, c.x, c.y])])
+
+/** The best time for this level so far (ticks), or null. */
+export function bestTime(design: LevelDesign): number | null {
+  return bestTimes.get(levelKey(design)) ?? null
+}
+
+/** Record a clear; true when it beats an earlier best (the first clear is not a "new best": there was none). */
+export function recordClear(design: LevelDesign, ticks: number): boolean {
+  const key = levelKey(design)
+  const old = bestTimes.get(key)
+  if (old === undefined || ticks < old) bestTimes.set(key, ticks)
+  return old !== undefined && ticks < old
+}
+
 export function readCoins(runtime: Runtime, design: LevelDesign): number | null {
   const decl = design.stage.program.variables.find((v) => isNamed(v.name, COINS_VARIABLE))
   if (!decl) return null

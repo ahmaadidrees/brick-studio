@@ -13,12 +13,12 @@ import { DROP_PX, FRAME_MS, type FrameInput, type HeroRunner, type Sample, type 
 
 export const TICK_MS = 1000 / 30
 
-/** The Scratch key behind each input. Controls: arrows, space = jump, x = run (STEP5.md). */
+/** The Scratch key behind each input. Controls: arrows, space = jump, z = run (the classic keys since parity A). */
 export const KEYS = {
   left: 'left arrow',
   right: 'right arrow',
   jump: 'space',
-  run: 'x',
+  run: 'z',
   down: 'down arrow',
 } as const satisfies Record<string, string>
 

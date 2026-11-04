@@ -1,0 +1,22 @@
+/* Hackable rooms (docs/qa/hackable-rooms M1): the room bar and the join page. */
+.hk-room-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 16px; background: #E4F2FF; color: #0b3558; font-size: 14px; }
+.hk-room-who { display: inline-flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.hk-room-count { font-weight: 700; }
+.hk-room-names { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.hk-room-name { padding: 1px 8px; border-radius: 999px; background: #fff; }
+.hk-room-me { font-weight: 700; }
+.hk-room-away { opacity: 0.6; font-style: italic; }
+.hk-room-closed { padding: 1px 8px; border-radius: 999px; background: #0b3558; color: #fff; font-size: 13px; }
+.hk-room-menu-head { display: block; padding: 4px 4px 2px; font-size: 13px; color: var(--text-muted); }
+.hk-room-hint, .hk-room-notice { color: #2c4a66; }
+.hk-room-notice { font-weight: 600; }
+.hk-room-invite { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }
+.hk-room-link { width: 18em; max-width: 40vw; min-width: 0; padding: 4px 8px; border: 1px solid #b6d3ee; border-radius: 6px; font: inherit; font-size: 13px; background: #fff; color: inherit; }
+@media (max-width: 767px) {
+  .hk-room-hint, .hk-room-link { display: none; }
+  .hk-room-invite { margin-left: 0; }
+}
+
+.hk-room-page { display: flex; flex-direction: column; height: 100dvh; background: #11151c; }
+.hk-room-stage { position: relative; flex: 1; min-height: 0; }
+.hk-room-stage > * { height: 100%; }

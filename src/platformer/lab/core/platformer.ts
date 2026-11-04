@@ -13,7 +13,7 @@
  * target block, and bumps are reported on both sides (the mover and the solid it hit both get `when I bump`).
  */
 import { DEFAULT_PHYSICS } from './contracts'
-import type { Body, PhysicsSettings, PrimitiveCtx, PrimitiveTable, RuntimeApi, StageBounds, Target, World } from './contracts'
+import type { Body, PhysicsSettings, PrimitiveCtx, PrimitiveTable, RuntimeApi, SavedBump, StageBounds, Target, World } from './contracts'
 import { targetBounds } from './geometry'
 import { toNumber } from './values'
 
@@ -303,13 +303,12 @@ function moveY(world: World, index: SolidIndex, mover: Target, body: Body, P: Ph
 export function physicsStep(runtime: RuntimeApi): void {
   const world = runtime.world
   const P = world.physics ?? DEFAULT_PHYSICS
-  const told = toldBumps.get(runtime) ?? []
-  toldBumps.delete(runtime)
+  const told = toldFrom(world)
   frameIndex.delete(world)
   const movers: Target[] = []
   for (const t of world.targets) if (isMover(t)) movers.push(t)
   // Snapshot the list: bump hats start later, but nothing here adds or removes targets.
-  const bumps: { mover: Target; bump: Bump }[] = [...told]
+  const bumps: { mover: Target; bump: Bump; otherBrickId?: string }[] = [...told]
   const grounded: { mover: Target; was: boolean }[] = []
   if (movers.length > 0) {
     const index = buildIndex(world)
@@ -331,13 +330,13 @@ export function physicsStep(runtime: RuntimeApi): void {
       if (mover.x !== fromX || mover.y !== fromY) runtime.requestRedraw()
     }
   }
-  for (const { mover, bump } of bumps) startBumpHats(runtime, mover, bump)
+  for (const { mover, bump, otherBrickId } of bumps) startBumpHats(runtime, mover, bump, otherBrickId)
   for (const { mover, was } of grounded) groundHats(runtime, mover, was)
   // Bricks that move themselves set "on ground?" with their own blocks; compare with the end of the last tick.
   for (const t of world.targets) {
     if (!t.body?.selfMove || t.isStage) continue
-    groundHats(runtime, t, selfGround.get(t) ?? false)
-    selfGround.set(t, t.body.onGround)
+    groundHats(runtime, t, t.wasOnGround ?? false)
+    t.wasOnGround = t.body.onGround
   }
 }
 
@@ -347,28 +346,46 @@ function groundHats(runtime: RuntimeApi, mover: Target, was: boolean): void {
   else if (was && !now) runtime.startHats('platformer_whenleaveground', { target: mover })
 }
 
-/** Runtimes between a green flag and a stop: only they run "every tick" scripts. */
-const ticking = new WeakSet<RuntimeApi>()
+/** Only between a green flag and a stop do "every tick" scripts run (world.everyTick, so a saved world keeps it). */
 export const everyTickLifecycle = {
   /** The first tick's "every tick" threads start right behind the green flag's, like a forever loop under the flag. */
-  afterGreenFlag: (runtime: RuntimeApi) => { ticking.add(runtime); runtime.startHats('platformer_everytick') },
-  stopAll: (runtime: RuntimeApi) => { ticking.delete(runtime) },
+  afterGreenFlag: (runtime: RuntimeApi) => { runtime.world.everyTick = true; runtime.startHats('platformer_everytick') },
+  stopAll: (runtime: RuntimeApi) => { runtime.world.everyTick = false },
   /**
    * Queue next tick's "every tick" scripts. This runs in `afterTick` BEFORE the physics step, so these threads sweep
    * ahead of the bump and landing hats the physics step starts: a script sees a bump on the tick after it happened, the
    * way a forever loop does. A script still running from the last tick (it waited) is not started again.
    */
-  afterTick: (runtime: RuntimeApi) => { if (ticking.has(runtime)) runtime.startHats('platformer_everytick') },
+  afterTick: (runtime: RuntimeApi) => { if (runtime.world.everyTick) runtime.startHats('platformer_everytick') },
 }
 
 // ------------------------------------------------------------------------------------------------ bricks that move themselves
 
-/** What each self-moving brick's last "move … until I hit something" stopped at (null: nothing in the way). */
-const lastHit = new WeakMap<Target, Bump | null>()
-/** Bumps told this tick, started by the next physics step so they run next tick, like the engine's own. */
-const toldBumps = new WeakMap<RuntimeApi, { mover: Target; bump: Bump }[]>()
-/** "on ground?" of each self-moving brick at the end of the last tick, for the landing and leaving hats. */
-const selfGround = new WeakMap<Target, boolean>()
+/*
+ * A self-moving brick's last hit (target.lastHit), its "on ground?" at the end of the last tick (target.wasOnGround)
+ * and the bumps told this tick (world.toldBumps) are kept in the world by id, so a saved world carries them.
+ */
+const saveBump = (bump: Bump): SavedBump => ({ side: bump.side, otherId: bump.other?.id ?? null, ...(bump.other ? { otherBrickId: bump.other.brickId } : {}) })
+const bumpKey = (b: SavedBump): string => `${b.side}|${b.otherId ?? 'edge'}`
+
+/**
+ * Take this tick's told bumps off the world, with their targets found again. A solid that is gone by now (a clone
+ * deleted after the bump) still names its brick to the mover, but hears nothing itself.
+ */
+function toldFrom(world: World): { mover: Target; bump: Bump; otherBrickId?: string }[] {
+  const told = world.toldBumps
+  if (!told || told.length === 0) return []
+  delete world.toldBumps
+  const byId = new Map<string, Target>()
+  for (const t of world.targets) byId.set(t.id, t)
+  const out: { mover: Target; bump: Bump; otherBrickId?: string }[] = []
+  for (const { moverId, bump } of told) {
+    const mover = byId.get(moverId)
+    if (!mover) continue
+    out.push({ mover, bump: { side: bump.side, other: bump.otherId === null ? null : byId.get(bump.otherId) ?? null }, otherBrickId: bump.otherId === null ? undefined : bump.otherBrickId })
+  }
+  return out
+}
 /**
  * The solids, indexed once per tick the first time a brick moves itself (the engine rebuilds its own in the physics
  * step). Solids that move this tick are read live, as in the engine; one that a script moves without speeds (go to,
@@ -385,6 +402,18 @@ function indexFor(world: World): SolidIndex {
   return index
 }
 
+/**
+ * Move a target by (dx, dy), x then y, stopping flush against anything solid, as "move [x] by (n) until I hit
+ * something" does, but for a kit's own rules (Racing's bumps, core/race.ts). Its own index, read now: it runs after the
+ * physics step, and must not leave a stale one for the next tick's scripts.
+ */
+export function nudgeTarget(world: World, target: Target, dx: number, dy: number): void {
+  const P = world.physics ?? DEFAULT_PHYSICS
+  const index = buildIndex(world)
+  if (dx) sweepX(world, index, target, dx, P)
+  if (dy) sweepY(world, index, target, dy, P)
+}
+
 function moveSelf(ctx: PrimitiveCtx): void {
   const t = ctx.target
   if (t.isStage) return
@@ -395,19 +424,20 @@ function moveSelf(ctx: PrimitiveCtx): void {
   const fromX = t.x
   const fromY = t.y
   const bump = axisOf(ctx) === 'x' ? sweepX(world, indexFor(world), t, n, P) : sweepY(world, indexFor(world), t, n, P)
-  lastHit.set(t, bump)
+  t.lastHit = bump ? saveBump(bump) : null
   if (t.x !== fromX || t.y !== fromY) ctx.runtime.requestRedraw()
 }
 
 function tellHit(ctx: PrimitiveCtx): void {
-  const bump = lastHit.get(ctx.target)
+  const bump = ctx.target.lastHit
   if (!bump) return
-  const list = toldBumps.get(ctx.runtime) ?? []
+  const world = ctx.runtime.world
+  const list = world.toldBumps ?? []
   // Like the engine, one bump per side and thing per tick.
-  const k = `${bump.side}|${bump.other ? bump.other.id : 'edge'}`
-  if (list.some((b) => b.mover === ctx.target && `${b.bump.side}|${b.bump.other ? b.bump.other.id : 'edge'}` === k)) return
-  list.push({ mover: ctx.target, bump })
-  toldBumps.set(ctx.runtime, list)
+  const k = bumpKey(bump)
+  if (list.some((b) => b.moverId === ctx.target.id && bumpKey(b.bump) === k)) return
+  list.push({ moverId: ctx.target.id, bump: { ...bump } })
+  world.toldBumps = list
 }
 
 export const selfMovePrimitives: PrimitiveTable = {
@@ -415,11 +445,11 @@ export const selfMovePrimitives: PrimitiveTable = {
     if (ctx.target.isStage) return
     const body = bodyOf(ctx.target)
     body.selfMove = ctx.field('MOVER') === 'self'
-    selfGround.set(ctx.target, body.onGround)
+    ctx.target.wasOnGround = body.onGround
     paceLikeMotion(ctx)
   },
   platformer_moveuntilhit: moveSelf,
-  platformer_hitsomething: (ctx) => !!lastHit.get(ctx.target),
+  platformer_hitsomething: (ctx) => !!ctx.target.lastHit,
   platformer_tellhit: tellHit,
   platformer_setonground(ctx) {
     if (ctx.target.isStage) return
@@ -430,13 +460,18 @@ export const selfMovePrimitives: PrimitiveTable = {
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }
 
 /** Both sides hear about a bump: the mover (side of the thing it hit) and the thing it hit (side of the mover). */
-function startBumpHats(runtime: RuntimeApi, mover: Target, bump: Bump): void {
-  startHatsFor(runtime, mover, bump.side, bump.other === null ? '_edge_' : brickNameOf(runtime, bump.other))
+function startBumpHats(runtime: RuntimeApi, mover: Target, bump: Bump, goneBrickId?: string): void {
+  const otherName = bump.other ? brickNameOf(runtime, bump.other) : goneBrickId ? nameOfBrick(runtime, goneBrickId) : '_edge_'
+  startHatsFor(runtime, mover, bump.side, otherName)
   if (bump.other) startHatsFor(runtime, bump.other, OPPOSITE[bump.side], brickNameOf(runtime, mover))
 }
 
 function brickNameOf(runtime: RuntimeApi, t: Target): string | undefined {
-  const name = runtime.world.bricks[t.brickId]?.name
+  return nameOfBrick(runtime, t.brickId)
+}
+
+function nameOfBrick(runtime: RuntimeApi, brickId: string): string | undefined {
+  const name = runtime.world.bricks[brickId]?.name
   return name === '_any_' || name === '_edge_' ? undefined : name
 }
 

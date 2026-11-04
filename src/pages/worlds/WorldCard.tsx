@@ -67,7 +67,7 @@ export function FormatChip({ world }: { world: WorldsWorld }) {
 export function SharingChip({ world }: { world: WorldsWorld }) {
   if (!isShared(world)) return null
   return <span className="worlds-chip-tag worlds-chip-shared">
-    <Users size={14} aria-hidden="true" /> Shared · {isInviteOnly(world) ? classmatesLabel(world.members?.length ?? 0) : sharedForBuilding(world) ? 'build together' : 'look only'}
+    <Users size={14} aria-hidden="true" /> Shared · {isInviteOnly(world) ? classmatesLabel(world.members?.length ?? 0) : world.format === 'hackable' ? 'play together' : sharedForBuilding(world) ? 'build together' : 'look only'}
   </span>
 }
 
@@ -93,12 +93,12 @@ export function PresenceChips({ world }: { world: WorldsWorld }) {
   </>
 }
 
-/** "2 building now" on a classmate's or an invited world: somebody is in that room this second. */
+/** "2 building now" (or "playing now" in a Hackable room) on a classmate's or an invited world: somebody is in that room this second. */
 export function BuildingChip({ world }: { world: WorldsWorld }) {
   const count = buildingCount(world)
   if (count <= 0) return null
   return <span className="worlds-chip-tag worlds-chip-building">
-    <span className="worlds-live-dot" aria-hidden="true" /> {count} building now
+    <span className="worlds-live-dot" aria-hidden="true" /> {count} {world.format === 'hackable' ? 'playing' : 'building'} now
   </span>
 }
 
@@ -109,6 +109,7 @@ export function InviteesChip({ world }: { world: WorldsWorld }) {
 }
 
 export function AccessChip({ world }: { world: WorldsWorld }) {
+  if (world.format === 'hackable') return <span className="worlds-chip-tag worlds-chip-build"><Users size={14} aria-hidden="true" /> Play together</span>
   return world.canEdit
     ? <span className="worlds-chip-tag worlds-chip-build"><Hammer size={14} aria-hidden="true" /> Build together</span>
     : <span className="worlds-chip-tag worlds-chip-look"><Eye size={14} aria-hidden="true" /> Look only</span>

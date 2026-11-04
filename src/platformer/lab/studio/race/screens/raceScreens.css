@@ -25,6 +25,48 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.race-hud > .race-hud-time,
+.race-hud > .race-hud-best {
+  min-height: 40px;
+  font-size: 17px;
+}
+
+/* Everyone in race order, like the classic standings box: top right, under the view buttons. */
+.race-standings {
+  position: absolute;
+  z-index: var(--z-hud, 30);
+  top: 64px;
+  right: max(12px, env(safe-area-inset-right));
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  color: var(--text, #263c51);
+  background: rgba(255, 255, 255, 0.94);
+  border: 2px solid var(--text, #263c51);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md, 0 3px 10px rgba(0, 0, 0, 0.25));
+  font: 700 14px/1.2 var(--font-display, system-ui);
+  pointer-events: none;
+}
+.race-standings li {
+  display: grid;
+  grid-template-columns: 1.4em 1fr auto;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 8px;
+}
+.race-standings li.is-you { color: #fff; background: #263c51; }
+.race-standings em { font-style: normal; font-size: 12px; opacity: 0.8; }
+.race-results-time { margin-left: auto; font-style: normal; font-variant-numeric: tabular-nums; }
+@media (max-width: 600px) {
+  .race-standings { display: none; }
+  .race-hud > .race-hud-best { display: none; }
+}
+
 .race-hud > .race-hud-place {
   min-height: 52px;
   padding: 0 16px;

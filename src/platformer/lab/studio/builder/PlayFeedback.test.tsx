@@ -6,7 +6,11 @@ import { createStarterProject, STARTER_GOAL } from '../starter'
 import { builtInPowers } from '../powers/powers'
 import { StudioStore } from '../store'
 import { StudioShell } from '../screen/StudioShell'
-import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins } from './playRules'
+import { roomGame, TestRoom } from '../testRoom'
+import { PlayFeedback } from './PlayFeedback'
+import { aboutMyHero, checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins, saysOuch } from './playRules'
+import { HERO_OUCH as HERO_SAYS } from '../hero/heroBrick'
+import beforePits from '../hero/__fixtures__/hero-before-pits.json'
 
 afterEach(cleanup)
 
@@ -18,10 +22,9 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(store.getState().mode).toBe('play')
-    const hint = screen.getByText(/Space jumps/)
+    const hint = screen.getByText(/Space, X or K jumps/)
     expect(hint.textContent).toMatch(/move/)
-    expect(hint.textContent).toMatch(/hold X to run/)
-    expect(hint.textContent).not.toMatch(/Shift/) // the Hero runs on X (heroBrick.ts "read keys")
+    expect(hint.textContent).toMatch(/hold Z, J or Shift to run/)
     expect(screen.getByRole('status', { name: 'Coins: 0' })).toBeTruthy()
     // a Coin was collected: the Stage's variable changes, the counter follows
     const runtime = store.getState().runtime!
@@ -40,19 +43,40 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByRole('status', { name: /Coins/ })).toBeNull()
-    expect(screen.getByText(/Space jumps/)).toBeTruthy()
+    expect(screen.getByText(/Space, X or K jumps/)).toBeTruthy()
   })
 
-  it('"Try again" when the Hero is hurt (hero hurt broadcast), and it goes away by itself', async () => {
+  it('"Try again" when the Hero says ouch (it really got hurt, not while it blinks safe), and it goes away by itself', async () => {
+    expect(HERO_OUCH).toBe(HERO_SAYS)
     const store = new StudioStore(createStarterProject())
+    expect(saysOuch(store.getState().project.design)).toBe(true)
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByText(/Try again/)).toBeNull()
+    // "hero hurt" alone may be ignored (the Hero blinks, safe): the Hero says ouch when it is hurt.
+    act(() => {
+      store.getState().runtime!.broadcast(HERO_HURT)
+    })
+    expect(screen.queryByText(/Try again/)).toBeNull()
+    act(() => {
+      store.getState().runtime!.broadcast(HERO_OUCH)
+    })
+    expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
+    await waitForElementToBeRemoved(() => screen.queryByText(/Ouch/), { timeout: 3000 })
+  })
+
+  it('a Hero from before that never says ouch: "Try again" on hero hurt, as before', () => {
+    const project = createStarterProject()
+    project.design.bricks.find((b) => b.id === 'brick_hero')!.program = structuredClone(beforePits.program) as never
+    project.workspaces.brick_hero = structuredClone(beforePits.workspace)
+    const store = new StudioStore(project)
+    expect(saysOuch(store.getState().project.design)).toBe(false)
+    render(<StudioShell store={store} />)
+    startPlay(store)
     act(() => {
       store.getState().runtime!.broadcast(HERO_HURT)
     })
     expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
-    await waitForElementToBeRemoved(() => screen.queryByText(/Ouch/), { timeout: 3000 })
   })
 
   it('"You made it!" when the Goal says course clear, with Play again and Keep building', () => {
@@ -86,12 +110,12 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     expect(screen.getByText(NO_HERO_MESSAGE)).toBeTruthy()
   })
 
-  it('names a snapped power\'s own key in the hint (Dash: Z)', () => {
+  it('names a snapped power\'s own key in the hint (Dash: C)', () => {
     const store = new StudioStore(createStarterProject())
     store.snapPower('brick_hero', builtInPowers().find((p) => p.id === 'dash')!)
     render(<StudioShell store={store} />)
     startPlay(store)
-    expect(screen.getByText(/Space jumps/).textContent).toMatch(/hold X to run · Z for Dash/)
+    expect(screen.getByText(/Space, X or K jumps/).textContent).toMatch(/hold Z, J or Shift to run · C for Dash/)
   })
 
   it('Play with no Goal plays, and the hint says there is nowhere to finish', () => {
@@ -165,5 +189,120 @@ describe('the words the builder listens for are the ones the bricks use', () => 
     expect(checkLevelForPlay(design)).toEqual({ hero: true, goal: true })
     const bare = { ...design, copies: design.copies.filter((c) => c.brickId !== 'brick_hero' && c.brickId !== 'brick_goal') }
     expect(checkLevelForPlay(bare)).toEqual({ hero: false, goal: false })
+  })
+})
+
+describe('the time (parity bucket A, 2026-11-03)', () => {
+  it('formats like the classic timer, and keeps a best time per level for as long as the page is open', async () => {
+    const { bestTime, formatPlayTime, recordClear } = await import('./playRules')
+    expect(formatPlayTime(0)).toBe('0:00.0')
+    expect(formatPlayTime(30 * 75.25)).toBe('1:15.3')
+    // Its own level id: other tests here clear the starter level too.
+    const design = { ...createStarterProject().design, id: 'best_time_test' }
+    const other = { ...design, copies: design.copies.map((c) => (c.id === 'copy_goal' ? { ...c, x: c.x - 16 } : c)) }
+    expect(bestTime(design)).toBeNull()
+    expect(recordClear(design, 600)).toBe(false)
+    expect(recordClear(design, 700)).toBe(false)
+    expect(bestTime(design)).toBe(600)
+    expect(recordClear(design, 500)).toBe(true)
+    expect(bestTime(design)).toBe(500)
+    expect(bestTime(other)).toBeNull()
+  })
+
+  it('shows the time while playing, and the time and best on "You made it!"', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<StudioShell store={store} />)
+    startPlay(store)
+    expect(screen.getByRole('timer').textContent).toMatch(/0:00\.0/)
+    const runtime = store.getState().runtime!
+    for (let i = 0; i < 90; i++) runtime.step()
+    act(() => {
+      runtime.broadcast(COURSE_CLEAR)
+    })
+    const dialog = screen.getByRole('dialog', { name: 'You made it' })
+    expect(dialog.textContent).toMatch(/Time 0:03\.0/)
+  })
+
+  it('in a room the time counts from the play\'s start, and the host\'s Play again forgets the last finish', () => {
+    const project = createStarterProject()
+    project.design.id = 'room_time_test'
+    const store = new StudioStore(project)
+    // The room's clock was already at 300 when this play started.
+    const room = new TestRoom(roomGame(project.design, ['Maya'], 300))
+    store.enterRoom(room)
+    store.play()
+    render(<PlayFeedback store={store} />)
+    for (let i = 0; i < 60; i++) room.game.step()
+    act(() => {
+      room.game.broadcast(COURSE_CLEAR)
+    })
+    expect(screen.getByRole('dialog', { name: 'You made it' }).textContent).toMatch(/Time 0:02\.0/)
+
+    // Play again rebuilds the game under the same screen: the card goes, and the new game is still heard.
+    room.rebuild(roomGame(project.design, ['Maya'], 1000))
+    act(() => {
+      room.game.broadcast('boing')
+    })
+    expect(screen.queryByRole('dialog', { name: 'You made it' })).toBeNull()
+    for (let i = 0; i < 30; i++) room.game.step()
+    act(() => {
+      room.game.broadcast(COURSE_CLEAR)
+    })
+    expect(screen.getByRole('dialog', { name: 'You made it' }).textContent).toMatch(/Time 0:01\.0/)
+  })
+})
+
+describe('in a room, each screen shows its own Hero\'s feedback', () => {
+  /** Maya (1) and Sam (2) in the starter level; the Goal, and a Hero moved onto it. */
+  function room() {
+    const project = createStarterProject()
+    const game = roomGame(project.design, ['Maya', 'Sam'])
+    game.step()
+    const world = game.world
+    const hero = (num: number) => world.targets.find((t) => t.player === num && !t.isClone)!
+    const goal = world.targets.find((t) => t.brickId === 'brick_goal' && !t.isClone)!
+    const onGoal = (num: number) => Object.assign(hero(num), { x: goal.x, y: goal.y })
+    return { project, game, world, hero, goal, onGoal }
+  }
+
+  it('a Hero\'s own words are its player\'s; the Goal\'s are about the Hero touching it; outside a room, everyone\'s', () => {
+    const { world, hero, goal, onGoal } = room()
+    expect(aboutMyHero(world, hero(1), 1)).toBe(true)
+    expect(aboutMyHero(world, hero(2), 1)).toBe(false)
+    // Nobody at the Goal (a kid's own "course clear"): everyone's.
+    expect(aboutMyHero(world, goal, 1)).toBe(true)
+    onGoal(2)
+    expect(aboutMyHero(world, goal, 1)).toBe(false)
+    expect(aboutMyHero(world, goal, 2)).toBe(true)
+    // Not in a room, or the screen's own broadcast.
+    expect(aboutMyHero(world, hero(2), 0)).toBe(true)
+    expect(aboutMyHero(world, undefined, 1)).toBe(true)
+  })
+
+  it('"Try again" for our Hero\'s ouch only, and "You made it!" only when our Hero reaches the Goal', () => {
+    const { project, game, hero, goal, onGoal } = room()
+    const store = new StudioStore(project)
+    store.enterRoom(new TestRoom(game, 1))
+    store.play()
+    render(<PlayFeedback store={store} />)
+    act(() => {
+      game.broadcast(HERO_OUCH, hero(2))
+    })
+    expect(screen.queryByText(/Try again/)).toBeNull()
+    act(() => {
+      game.broadcast(HERO_OUCH, hero(1))
+    })
+    expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
+
+    onGoal(2)
+    act(() => {
+      game.broadcast(COURSE_CLEAR, goal)
+    })
+    expect(screen.queryByRole('dialog', { name: 'You made it' })).toBeNull()
+    onGoal(1)
+    act(() => {
+      game.broadcast(COURSE_CLEAR, goal)
+    })
+    expect(screen.getByRole('dialog', { name: 'You made it' })).toBeTruthy()
   })
 })

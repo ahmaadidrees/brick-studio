@@ -1,5 +1,6 @@
 import { browserClassroomClient } from '../../classroom/client'
 import { hackableHref } from '../../platformer/lab/studio/persist/hackableProjects'
+import { roomHref } from '../../platformer/lab/rooms/hrefs'
 import type { ClassroomCheckpoint, ClassroomClass, ClassroomClientSurface, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
 
 /**
@@ -42,10 +43,12 @@ export const joinHost = () => `${window.location.host}/join`
 
 /**
  * Where "Open" goes for a classroom world, the same place `/projects` sends it (`liveHref` in worldsData): a 3D
- * build's live room, a 2D level's room, or a Hackable Platformer's own page (it has no live room yet).
+ * build's live room, a 2D level's room, or a Hackable project's room to play together (the teacher hosts it).
  */
 export const worldRoomHref = (world: Pick<ClassroomWorld, 'id' | 'format' | 'kit'>) =>
-  world.format === 'hackable' ? hackableHref.world(world.id, world.kit) : `${world.format === '2d' ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+  world.format === 'hackable' ? roomHref.classroom(world.id) : `${world.format === '2d' ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+/** A Hackable project opened to look inside its bricks (the studio, look only, with Make my own copy). */
+export const worldLookHref = (world: Pick<ClassroomWorld, 'id' | 'kit'>) => hackableHref.world(world.id, world.kit)
 
 export const loadClasses = (client: ClassPageClient) =>
   client.request<{ classes: ClassPageClass[] }>('/classes').then(result => result.classes ?? [])

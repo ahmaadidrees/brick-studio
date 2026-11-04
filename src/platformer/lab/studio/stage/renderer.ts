@@ -275,6 +275,8 @@ export function renderPlayMode(
       effects: target.effects,
       imageCache,
     })
+    // A finish line's cells show the way racers cross it.
+    if (brick.grid?.finish !== undefined && target.copyId?.startsWith('cell:')) drawFinishArrow(ctx, camera, viewport, renderX, renderY, brick.grid.finish)
 
     // Draw say/think bubble if present
     if (target.bubble && target.bubble.text) {
@@ -304,17 +306,50 @@ export function drawGridCells(
       if (!brick) continue
       const costume = brick.costumes[cellCostumeIndex(layer, brick, col, row)] ?? brick.costumes[0]
       if (!costume) continue
+      const x = col * TILE_SIZE + TILE_SIZE / 2
+      const y = row * TILE_SIZE + TILE_SIZE / 2
       drawSprite(ctx, camera, viewport, {
-        x: col * TILE_SIZE + TILE_SIZE / 2,
-        y: row * TILE_SIZE + TILE_SIZE / 2,
-        direction: 90,
+        x,
+        y,
+        // A brick that points a way (a boost pad) faces it, as its cells do in Play.
+        direction: brick.grid?.way ?? 90,
         size: 100,
         costume,
         rotationStyle: 'all around',
         imageCache,
       })
+      if (brick.grid?.finish !== undefined) drawFinishArrow(ctx, camera, viewport, x, y, brick.grid.finish)
     }
   }
+}
+
+/**
+ * The way racers cross a finish line, drawn on each of its cells (parity bucket A: classic draws the arrow on the track,
+ * not only on the brick's card): a white arrow with a dark edge, pointing `direction` (90 right, 0 up).
+ */
+export function drawFinishArrow(ctx: CanvasRenderingContext2D, camera: Camera, viewport: Viewport, x: number, y: number, direction: number): void {
+  const [sx, sy] = worldToScreen(camera, viewport, x, y)
+  const s = (TILE_SIZE / 2) * getCameraZoom(camera, viewport)
+  if (s < 3) return
+  ctx.save()
+  ctx.translate(sx, sy)
+  ctx.rotate(((direction - 90) * Math.PI) / 180)
+  ctx.beginPath()
+  ctx.moveTo(s * 0.75, 0)
+  ctx.lineTo(-s * 0.1, -s * 0.6)
+  ctx.lineTo(-s * 0.1, -s * 0.22)
+  ctx.lineTo(-s * 0.7, -s * 0.22)
+  ctx.lineTo(-s * 0.7, s * 0.22)
+  ctx.lineTo(-s * 0.1, s * 0.22)
+  ctx.lineTo(-s * 0.1, s * 0.6)
+  ctx.closePath()
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.85)'
+  ctx.lineWidth = Math.max(1, s * 0.12)
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  ctx.fill()
+  ctx.restore()
 }
 
 /** A translucent preview of the armed grid brick (or an eraser outline) on the cell under the pointer. */

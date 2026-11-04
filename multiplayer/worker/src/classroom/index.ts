@@ -1150,7 +1150,7 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
-  // Hackable projects have no live rooms yet: never hand one to a 3D room.
+  // Hackable projects have their own rooms (HackableRoom, loadClassroomHackable): never hand one to a 3D room.
   if (worldFormat(row) === 'hackable') fail(409, 'wrong_world_kind', notHackableHere(hackableKit(row)));
   return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }
@@ -1165,6 +1165,16 @@ export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Pr
   const level = validatePlatformerDocument(row.document);
   if (!level.ok) fail(409, 'invalid_document', 'This level could not be opened.');
   return { ...(worldView(row) as Omit<ClassroomLevelSnapshot, 'document'>), document: level.ok ? level.document : (null as never) };
+}
+/** A stored Hackable project as a HackableRoom consumes it: the save without the editor's workspaces, as text. */
+export type ClassroomHackableSnapshot = { id: string; title: string; revision: number; kit: HackableKit; project: string };
+export async function loadClassroomHackable(env: ClassroomEnv, worldId: string): Promise<ClassroomHackableSnapshot> {
+  if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
+  const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
+  if (!row) fail(404, 'not_found', 'World not found.');
+  if (worldFormat(row) !== 'hackable') fail(409, 'wrong_world_kind', 'This project is not a Hackable game.');
+  const { workspaces: _workspaces, ...save } = hackableDocument(row.document).save as Row;
+  return { id: row.id, title: row.title, revision: row.revision, kit: hackableKit(row), project: JSON.stringify(save) };
 }
 export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity, format: WorldFormat = 'brick'): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');

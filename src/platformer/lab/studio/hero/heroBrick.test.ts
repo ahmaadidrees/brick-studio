@@ -78,7 +78,7 @@ function oldEngine(opts: { startRow?: number; startCol?: number; floorCols?: num
 function newEngine(options: HeroTestOptions = {}): Engine {
   const rt = play(createHeroTestDesign(options))
   const hero = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
-  const keys: Record<keyof Input, string> = { left: 'left arrow', right: 'right arrow', jump: 'space', run: 'x' }
+  const keys: Record<keyof Input, string> = { left: 'left arrow', right: 'right arrow', jump: 'space', run: 'z' }
   const held = new Set<string>()
   return {
     dt: TICK_MS,
@@ -288,13 +288,14 @@ describe('The Hero brick is built from open blocks', () => {
     const { workspace, brick } = createHeroBrick()
     const variables = heroVariables()
     // `coins` is the Stage's global: the editor offers the Stage's variables in every brick's variable menu.
-    registerEditorBlocks({ getVariables: () => [...variables, { id: 'coins', name: 'coins', value: 0 }], getBricks: () => ['Hero'] })
+    registerEditorBlocks({ getVariables: () => [...variables, { id: 'coins', name: 'coins', value: 0 }], getBricks: () => ['Hero'], getSounds: () => brick.sounds.map((s) => s.name) })
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 1 flag script, 19 "every tick" scripts (the basics, the feel scripts and Move), 4 bump hats (wall slide and run
-      // meter, left and right), 4 broadcast hats (boing, stomped, hero hurt, bounce), and the one My Block: move and collide.
-      expect(ws.getTopBlocks(false)).toHaveLength(29)
+      // 1 flag script, 22 "every tick" scripts (the basics, the feel scripts, Move, and since parity A the pit, getting hurt
+      // and safe time), 4 bump hats (wall slide and run meter, left and right), 4 broadcast hats (boing, stomped, hero
+      // hurt, bounce), and the one My Block: move and collide.
+      expect(ws.getTopBlocks(false)).toHaveLength(32)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -336,6 +337,8 @@ describe('The Hero brick is built from open blocks', () => {
       'event_whenbroadcastreceived', 'event_broadcast', 'motion_gotoxy', 'text',
       // getting hurt sends the Hero back to where it started this level
       'motion_xposition', 'motion_yposition', 'control_wait_until',
+      // parity bucket A: getting hurt stops with an Ouch, pops away, comes back and blinks
+      'sound_play', 'looks_seteffectto', 'looks_changeeffectby', 'looks_cleargraphiceffects', 'looks_hide', 'looks_show', 'operator_mod',
     ])
     expect([...opcodes].filter((o) => !known.has(o))).toEqual([])
     expect(JSON.stringify(workspace)).toContain('"GRAVITY":"off"')
@@ -352,11 +355,11 @@ describe('The Hero brick is built from open blocks', () => {
     const ticks = brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_everytick').map((s) => labelOf(s.id).split(':')[0])
     // The order is the order they run in each tick: each feel script sits just before the basic it changes.
     expect(ticks).toEqual([
-      'Read the arrow keys, x and space',
+      'Read the keys',
       'Start each tick with the normal numbers',
       'Wall jump (part 1)',
       'Wall slide (part 1)',
-      'Run with x',
+      'Run with Z, J or Shift',
       'Skid',
       'Walk',
       'Run meter',
@@ -371,6 +374,9 @@ describe('The Hero brick is built from open blocks', () => {
       'Wall slide (part 2)',
       'Top fall speed',
       'Move',
+      'Fall into a pit',
+      'Getting hurt',
+      'Safe time',
     ])
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
     expect(flag.body.some((s) => s.opcode === 'control_forever')).toBe(false)
@@ -389,9 +395,9 @@ describe('The Hero brick is built from open blocks', () => {
     const shown = createHeroBrick().brick.program.variables.filter((v) => v.showInBuild)
     expect(shown.map((v) => v.id)).toEqual(['walk_top', 'run_top', 'jump_stand', 'fall_gravity'])
     // The working memory is not a knob either.
-    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 29)
+    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 31)
     // The groups hold every other tuning number exactly once, in Walking / Running / Jumping / Falling / Walls order.
-    expect(HERO_KNOB_GROUPS.map((g) => g.label)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls'])
+    expect(HERO_KNOB_GROUPS.map((g) => g.label)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls', 'Getting hurt'])
     const grouped = HERO_KNOB_GROUPS.flatMap((g) => g.knobIds)
     expect(new Set(grouped).size).toBe(grouped.length)
     expect(grouped.sort()).toEqual(HERO_KNOBS.filter((k) => !HERO_BUILD_KNOB_IDS.includes(k.id)).map((k) => k.id).sort())
@@ -510,7 +516,7 @@ describe('Watching the Hero on a flat floor', () => {
     expect(hero.direction).toBe(90)
   })
 
-  it('runs faster than it walks when you hold x', () => {
+  it('runs faster than it walks when you hold z', () => {
     const walked = steadySpeed(settled(newEngine()), { right: true }, 1000)
     const ran = steadySpeed(settled(newEngine()), { right: true, run: true }, 1000)
     expect(ran).toBeGreaterThan(walked * 1.5)

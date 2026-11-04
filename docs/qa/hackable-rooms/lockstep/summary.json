@@ -1,0 +1,453 @@
+{
+  "ticks": 1800,
+  "rejoinAt": 900,
+  "node": "v26.8.2",
+  "kits": {
+    "platformer solo": {
+      "events": 640,
+      "keyEvents": 636,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [],
+      "applied": [
+        "tick 300: Stage: \"change coins by 1\" is now \"by 5\" (script stage_6)",
+        "tick 750: Hero: \"jump power\" x 1.3 on 1 copy"
+      ],
+      "skipped": [],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.123,
+          "final": {
+            "coins": 6,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 736.75,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "d1ba91c93e2bf738"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.11,
+          "final": {
+            "coins": 6,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 736.75,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "d1ba91c93e2bf738"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.11,
+          "final": {
+            "coins": 6,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 736.75,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "d1ba91c93e2bf738"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.103,
+          "final": {
+            "coins": 6,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 736.75,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "d1ba91c93e2bf738"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 112898,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "platformer room": {
+      "events": 1347,
+      "keyEvents": 1338,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 300: Stage: \"change coins by 1\" is now \"by 5\" (script stage_6)",
+        "tick 750: Hero: \"jump power\" x 1.3 on 3 copies"
+      ],
+      "skipped": [],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.168,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.165,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.159,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.143,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 224383,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "race solo": {
+      "events": 675,
+      "keyEvents": 671,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [],
+      "applied": [
+        "tick 750: Car: \"top speed\" x 1.3 on 1 copy"
+      ],
+      "skipped": [
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.295,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 938.5,
+                "y": 117.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              }
+            ]
+          },
+          "finalHash": "e57c7b31cc04ad1f"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.281,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 938.5,
+                "y": 117.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              }
+            ]
+          },
+          "finalHash": "e57c7b31cc04ad1f"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.234,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 938.5,
+                "y": 117.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              }
+            ]
+          },
+          "finalHash": "e57c7b31cc04ad1f"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.309,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 938.5,
+                "y": 117.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              }
+            ]
+          },
+          "finalHash": "e57c7b31cc04ad1f"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 565048,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "race room": {
+      "events": 1439,
+      "keyEvents": 1430,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 750: Car: \"top speed\" x 1.3 on 3 copies"
+      ],
+      "skipped": [
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.348,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              },
+              {
+                "name": "Car",
+                "x": 712.1179650343938,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "75c4843900bce8bd"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.346,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              },
+              {
+                "name": "Car",
+                "x": 712.1179650343938,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "75c4843900bce8bd"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.272,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              },
+              {
+                "name": "Car",
+                "x": 712.1179650343938,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "75c4843900bce8bd"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.397,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
+              },
+              {
+                "name": "Computer racer",
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
+              },
+              {
+                "name": "Car",
+                "x": 712.1179650343938,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "75c4843900bce8bd"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 620300,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    }
+  }
+}

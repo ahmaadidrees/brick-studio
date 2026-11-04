@@ -225,6 +225,12 @@ export interface LevelDesign {
    * Play every filled cell becomes a painted-copy target of that brick (see GridSpec). Missing means no grid.
    */
   tiles?: TileLayer
+  /**
+   * The bottom of the level is open (parity bucket A, 2026-11-03): whatever falls off it falls into a pit, like the
+   * classic Platformer, and the Hero's own blocks notice and get hurt. Missing means a solid floor: levels saved before
+   * the Hero knew about pits, Racing tracks, and test rooms.
+   */
+  pits?: boolean
 }
 
 // ---------------------------------------------------------------- grid bricks (step 7, docs/qa/code-lab-core/STEP7.md)
@@ -251,6 +257,12 @@ export interface GridSpec {
    * right, 0 up, 180 down, -90 left). Laps count from it (core/race.ts). Missing means an ordinary brick.
    */
   finish?: number
+  /**
+   * Hackable Racing (parity bucket A, 2026-11-03): this grid brick points a way, like a boost pad: its cells face this
+   * Scratch direction (so its art turns, and `direction of` the brick says it), and the Car's own blocks boost only when
+   * they drive that way. Missing means its cells face right (90), as every cell did before.
+   */
+  way?: number
 }
 
 export const gridCopyId = (col: number, row: number): string => `cell:${col}:${row}`
@@ -330,6 +342,53 @@ export interface Target {
   dragging?: boolean
   /** Platformer extension state (step 3). Absent until a Platformer block touches this target. Clones copy it. */
   body?: Body
+  /*
+   * Game state that used to live in module WeakMaps (docs/qa/hackable-rooms M0): kept on the target so a saved world
+   * (a room's keyframe, a rewind) carries it. Plain data only. Clones start without any of it, as they always did.
+   */
+  /** Looks: counts this target's say/think bubbles, so a timed one clears only itself. */
+  bubbleId?: number
+  /** Self-move: what the last "move … until I hit something" stopped at (null: nothing). Missing: it never moved. */
+  lastHit?: SavedBump | null
+  /** Self-move: "on ground?" at the end of the last tick, for the landing and leaving hats. */
+  wasOnGround?: boolean
+  /** Hackable Racing: this racer's laps so far (core/race.ts). */
+  lap?: LapState
+  /**
+   * Rooms (core/players.ts): the player whose Hero this is (or a clone of it). Its "key pressed?" and "when key pressed"
+   * read that player's keys only. Missing: not anyone's, so it hears every player's keys (and, alone, the keyboard).
+   */
+  player?: number
+}
+
+/** Rooms: one player in the game, in the order they joined. */
+export interface PlayerSlot {
+  /** The room's player number, from 1. */
+  num: number
+  name: string
+  /** Keys this player holds, Scratch names (like World.keysDown). */
+  keys: string[]
+}
+
+/** A bump kept in the world: the side, and the solid's target id (null for a level wall or the floor). */
+export interface SavedBump {
+  side: 'top' | 'bottom' | 'left' | 'right'
+  otherId: string | null
+  /** The solid's brick, so its name is still known if it is gone by the time the bump is told. */
+  otherBrickId?: string
+}
+
+/** Hackable Racing: one racer's progress round the loop (core/race.ts). */
+export interface LapState {
+  /** Laps finished. */
+  lap: number
+  /** Bit per hidden gate passed this lap. */
+  gates: number
+  /** Last known distance round the loop (kept while off the road). */
+  d: number
+  onFinish: boolean
+  /** Tick each lap finished on. */
+  lapTicks: number[]
 }
 
 // ---------------------------------------------------------------- Platformer extension (step 3)
@@ -435,7 +494,10 @@ export interface World {
   /** Sprites back-to-front (draw order). The stage is not in this list. */
   targets: Target[]
   bricks: Record<string, BrickDef>
-  /** Scratch key names: 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'a'..'z', '0'..'9'. */
+  /**
+   * Scratch key names: 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'a'..'z', '0'..'9', plus 'shift'. In a room,
+   * every key some player holds.
+   */
   keysDown: Set<string>
   mouse: Mouse
   answer: string
@@ -456,6 +518,19 @@ export interface World {
   hostClock: HostClock | null
   /** Serialized interpreter threads (optional snapshot representation). */
   threads?: SerializedThread[]
+  /** The id the next started script gets, so a restored world numbers its scripts as the original would. */
+  nextThreadId?: number
+  /** Platformer: between a green flag and a stop, "every tick" scripts start each tick. */
+  everyTick?: boolean
+  /** Rooms: the players, in join order. Missing outside a room; then World.keysDown is the one keyboard. */
+  players?: PlayerSlot[]
+  /** Self-move: bumps told this tick with "tell what I hit", started by the next physics step. Mover id first. */
+  toldBumps?: { moverId: string; bump: SavedBump }[]
+  /**
+   * Rooms: the project this game runs, as edited up to now (where a joining Hero starts, what Play again builds).
+   * Like `bricks` it is shared between copies and never changed in place; an edit replaces it.
+   */
+  design?: LevelDesign
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives
@@ -481,8 +556,11 @@ export interface RuntimeApi {
   requestRedraw(): void
   /** Seeded uniform float in [0, 1). */
   random(): number
-  /** Start every matching hat. Restart/ignore rules for already-running scripts follow H02–H06. */
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target }): ThreadHandle[]
+  /**
+   * Start every matching hat. Restart/ignore rules for already-running scripts follow H02–H06. `only` skips targets
+   * (rooms: a player's key starts hats only on their own Hero and on bricks that are no one's).
+   */
+  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[]
   /** Starts event_whenbroadcastreceived scripts for `message` (case-insensitive match, like Scratch). */
   broadcast(message: string): ThreadHandle[]
   stopAll(): void

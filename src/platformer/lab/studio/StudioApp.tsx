@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { browserClassroomClient, type ClassroomClientSurface } from '../../../classroom/client'
 import type { ClassroomWorld } from '../../../classroom/contracts'
-import { Button } from '../../../ui'
+import { Users } from 'lucide-react'
+import { Button, MenuItem } from '../../../ui'
+import { clientKey, savedGuestName } from '../../ui/prefs'
+import { designText } from '../core/save'
+import { RoomBar } from '../rooms/RoomBar'
+import { RoomSession } from '../rooms/session'
+import { StudioRoomLink } from '../rooms/studioRoom'
+import { classRoomSocketUrl, createGuestRoom, guestRoomSocketUrl, rememberOwnerToken, roomHref } from '../rooms/endpoints'
 import type { HeaderSaveStatus } from '../../../shell/AppHeader'
 import { StudioShell } from './screen/StudioShell'
 import { loadProject, watchAndSave } from './storage'
@@ -37,6 +44,8 @@ export interface StudioRoute {
   fresh: boolean
   /** The address's game (/2d/hackable-race): what a new project is, and which newest one opens. Absent: the Platformer. */
   kit?: 'race'
+  /** Open the project's room at once (the owner, after inviting classmates to play). */
+  together?: boolean
 }
 
 const routeKit = (route: Pick<StudioRoute, 'kit'>): ScreensKit => route.kit ?? 'platformer'
@@ -119,8 +128,9 @@ async function openWhere(route: StudioRoute): Promise<Opening> {
   if (route.world) {
     try {
       const { world, project } = await loadHackableWorld(route.world)
-      // Only the owner saves into it. There are no live rooms for Hackable projects, so a classmate (or a teacher)
-      // who may build in it would save over the owner's project; they look, and make their own copy to keep changes.
+      // Only the owner saves into it. A Hackable project's room is for playing (docs/qa/hackable-rooms), not building
+      // together, so a classmate (or a teacher) who may build in it would save over the owner's project; they look,
+      // play in the room, and make their own copy to keep changes.
       const mine = world.canEdit && !!session && world.ownerId === session.user.id
       return mine ? { kind: 'account', world, project } : { kind: 'viewer', world, project }
     } catch (error) {
@@ -288,10 +298,10 @@ export default function StudioApp({ route }: { route: StudioRoute }) {
       </div>
     )
   }
-  return <OpenProject opened={opening} />
+  return <OpenProject opened={opening} together={!!route.together} />
 }
 
-function OpenProject({ opened }: { opened: Opened }) {
+function OpenProject({ opened, together }: { opened: Opened; together: boolean }) {
   const store = useMemo(() => new StudioStore(opened.project), [opened])
   // Dev only: the console can reach the store (window.__studio) to check state while testing.
   if (import.meta.env.DEV) (window as unknown as { __studio?: StudioStore }).__studio = store
@@ -570,6 +580,37 @@ function OpenProject({ opened }: { opened: Opened }) {
                 : { source: { kind: 'local', state: localSave }, explain: SAVE_WORDS.local }
               : { source: { kind: 'local' }, explain: SAVE_WORDS.newLocal }
 
+  // Play together (docs/qa/hackable-rooms M1): an account project opens its class room, anything else a room by link.
+  // Someone else's project joins the owner's room instead.
+  const [room, setRoom] = useState<OpenRoom | null>(null)
+  const roomRef = useRef(room)
+  roomRef.current = room
+  useEffect(() => () => roomRef.current?.stop(), [])
+  const leaveRoom = useCallback(() => {
+    roomRef.current?.stop()
+    setRoom(null)
+  }, [])
+  const startRoom = async () => {
+    if (home.kind === 'viewer') return window.location.assign(roomHref.classroom(home.world.id))
+    if (roomRef.current) return
+    try {
+      setRoom(await openRoom(store, home.kind === 'account' ? home.world.id : null))
+    } catch (error) {
+      setStorageNotice({ id: 'room', type: 'error', message: error instanceof Error ? error.message : 'The room could not be opened. Try again.' })
+    }
+  }
+  // Invited classmates to play (My projects): the owner arrives with the room already open. Only the owner's account
+  // project has a room to open here; anyone else's address goes to the room's own page.
+  const openTogether = useRef(together)
+  useEffect(() => {
+    if (!openTogether.current || home.kind === 'new') return
+    openTogether.current = false
+    if (home.kind === 'account') settle(hackableHref.world(home.world.id, kitIn(store.getState().project)))
+    if (home.kind === 'account' || home.kind === 'viewer') void startRoom()
+  })
+  const viewerBanner = home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined
+  const roomBanner = room ? <RoomBar session={room.session} invite={room.invite} onLeave={leaveRoom} leaveLabel="Stop playing together" editing /> : undefined
+
   return (
     <div className="studio-screen">
       <StudioShell
@@ -578,10 +619,67 @@ function OpenProject({ opened }: { opened: Opened }) {
         onRenameProject={home.kind === 'viewer' ? undefined : async (title) => store.renameProject(title)}
         onLeave={saveBeforeLeaving}
         firstRunTips
-        banner={home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined}
+        banner={roomBanner || viewerBanner ? <>{roomBanner}{viewerBanner}</> : undefined}
+        menuExtra={!room && (
+          <MenuItem
+            icon={<Users size={18} />}
+            label="Play together"
+            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : 'Open a room and send the link: everyone plays your game, each with their own Hero.'}
+            onSelect={() => void startRoom()}
+          />
+        )}
       />
     </div>
   )
+}
+
+interface OpenRoom {
+  session: RoomSession
+  /** The page people join from. */
+  invite: string
+  stop: () => void
+}
+
+/**
+ * Open this project's room and play in it: Play shows the room's game from now on, and changes to the project go to
+ * everyone (studio/store.ts StudioRoom, rooms/studioRoom.ts).
+ */
+async function openRoom(store: StudioStore, worldId: string | null): Promise<OpenRoom> {
+  const design = store.getState().project.design
+  const text = designText(design)
+  let url: string | (() => Promise<string>)
+  let invite: string
+  if (worldId) {
+    url = () => classRoomSocketUrl(worldId)
+    invite = roomHref.classroom(worldId)
+  } else {
+    const { roomId, ownerToken } = await createGuestRoom(text, design.name)
+    rememberOwnerToken(roomId, ownerToken)
+    url = guestRoomSocketUrl(roomId, ownerToken)
+    invite = roomHref.guest(roomId)
+  }
+  const session = new RoomSession({ name: savedGuestName() || 'Player', url, key: clientKey() })
+  // A class room starts from the account's copy; the host's project as it is on screen goes in at once.
+  const link = new StudioRoomLink(session, worldId ? '' : text)
+  let pushed = false
+  const unsubscribe = session.subscribe(() => {
+    if (pushed || !session.view.host || !session.runtime) return
+    pushed = true
+    link.playAgain(store.getState().project.design, false)
+  })
+  const unwatch = link.watch(store)
+  session.connect()
+  store.enterRoom(link)
+  return {
+    session,
+    invite,
+    stop: () => {
+      unsubscribe()
+      unwatch()
+      session.close()
+      store.leaveRoom()
+    },
+  }
 }
 
 type LocalSave = 'saving' | 'saved' | 'error'

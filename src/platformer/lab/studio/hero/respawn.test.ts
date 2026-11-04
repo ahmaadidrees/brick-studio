@@ -17,7 +17,9 @@ import { createStarterProject } from '../starter'
 import { StudioStore } from '../store'
 import feelScriptsHero from '../__fixtures__/hero-before-feel-scripts.json'
 import startRespawnHero from './__fixtures__/hero-before-start-respawn.json'
-import { HERO_START } from './heroBrick'
+import { HERO_KNOBS, HERO_START } from './heroBrick'
+
+const HURT_BACK = HERO_KNOBS.find((k) => k.id === 'hurt_back')!.value
 import { createHeroTestDesign, HERO_STAND_Y } from './heroLevel'
 
 beforeAll(() => {
@@ -30,7 +32,7 @@ function placedAt(design: LevelDesign, x: number, y: number): LevelDesign {
   return { ...design, copies: design.copies.map((c) => (c.brickId === 'brick_hero' ? { ...c, x, y } : c)) }
 }
 
-/** Play, let the Hero settle, put it somewhere else, hurt it, and return where it ends up one tick later. */
+/** Play, let the Hero settle, put it somewhere else, hurt it, and return where it ends up once getting hurt is done. */
 function hurtAfter(design: LevelDesign, settleTicks: number): { settled: { x: number; y: number }; after: { x: number; y: number } } {
   const rt = play(design)
   for (let i = 0; i < settleTicks; i++) rt.step()
@@ -39,7 +41,9 @@ function hurtAfter(design: LevelDesign, settleTicks: number): { settled: { x: nu
   hero.x += 200
   hero.y += 60
   rt.broadcast('hero hurt')
+  // Getting hurt takes a while now (a stop, a hop): look on the tick it comes back.
   rt.step()
+  for (let i = 0; i <= HURT_BACK + 2 && heroOf(rt).variables.hurt_time !== 0; i++) rt.step()
   return { settled, after: { x: heroOf(rt).x, y: heroOf(rt).y } }
 }
 

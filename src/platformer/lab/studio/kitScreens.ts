@@ -91,7 +91,7 @@ const PLATFORMER_COPY: KitCopy = {
     codeSmall: 'On a bigger screen, open a brick’s code. Switch a script off to see what it does.',
     play: 'Press Play to try your level.',
   },
-  helpPlay: 'Press Play to try your level. Arrow keys move and Space jumps. On a touch screen, use the buttons on the screen. Press Build to go back.',
+  helpPlay: 'Press Play to try your level. The arrow keys (or A and D) move, Space, X or K jumps, and Z, J or Shift runs. On a touch screen, use the buttons on the screen. Press Build to go back.',
 }
 
 export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {

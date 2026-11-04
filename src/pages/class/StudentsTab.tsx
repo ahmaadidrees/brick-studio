@@ -5,7 +5,8 @@ import type { ClassroomStudent } from '../../classroom/contracts'
 import { ConfirmDialog } from '../../classroom/ConfirmDialog'
 import { RosterSection } from '../../classroom/RosterView'
 import { ClassCodeCard, ClassCodeStrip, PrintableCode } from './ClassCodeCard'
-import { classCode, worldRoomHref, type ClassPageClass, type ClassPageWorld } from './classPageData'
+import { classCode, type ClassPageClass, type ClassPageWorld } from './classPageData'
+import { WorldOpenButtons } from './WorldOpenButtons'
 
 type Props = {
   currentClass: ClassPageClass
@@ -25,7 +26,9 @@ type Props = {
 function ShareChip({ world }: { world: ClassPageWorld }) {
   const count = world.visibility === 'members' ? world.members?.length ?? 0 : null
   return <>
-    <span className={`class-chip class-chip-${world.canEdit ? 'edit' : 'view'}`}>{world.canEdit ? 'Build together' : 'Look only'}</span>
+    {world.format === 'hackable'
+      ? <span className="class-chip class-chip-edit">Play together</span>
+      : <span className={`class-chip class-chip-${world.canEdit ? 'edit' : 'view'}`}>{world.canEdit ? 'Build together' : 'Look only'}</span>}
     {count !== null && <span className="class-chip class-chip-group">{count} {count === 1 ? 'classmate' : 'classmates'}</span>}
   </>
 }
@@ -69,7 +72,7 @@ export function StudentsTab({ currentClass, students, studentsLoading, search, b
             </div>
             <p className="class-card-owner">{world.ownerName || 'A student'}{world.hiddenByTeacher && ' · Hidden from the class'}</p>
             <div className="class-card-actions">
-              <Button variant="secondary" size="sm" href={worldRoomHref(world)} aria-label={`Open ${world.title}`}>Open</Button>
+              <WorldOpenButtons world={world} />
               <Button variant="quiet" size="sm" icon={world.hiddenByTeacher ? <Eye size={16} /> : <EyeOff size={16} />} disabled={busy} onClick={() => onToggleHidden(world)}>
                 {world.hiddenByTeacher ? 'Show again' : 'Hide from class'}
               </Button>

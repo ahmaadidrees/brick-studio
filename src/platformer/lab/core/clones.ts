@@ -52,6 +52,8 @@ export function makeClone(world: World, source: Target): Target {
     edgeHatState: { ...source.edgeHatState },
     // Platformer body (step 3): a clone keeps the source's gravity, solid, speeds and onGround.
     ...(source.body ? { body: { ...source.body } } : {}),
+    // Rooms: a clone of a player's Hero is still that player's.
+    ...(source.player !== undefined ? { player: source.player } : {}),
   }
 }
 

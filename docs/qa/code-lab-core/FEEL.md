@@ -73,8 +73,8 @@ Positions are measured in pixels (1 Code Lab step = 1 pixel), y up. Times are in
 
 | Metric | Old | New | Diff | Tolerance | Result |
 | --- | ---: | ---: | ---: | --- | --- |
-| Wall slide speed (px/s) | 60.0 | 90.0 | +30.0 | report | report |
-| Wall jump apex (px) | 62.00 | 62.00 | +0.00 | report | report |
+| Wall slide speed (px/s) | 60.0 | 60.0 | +0.0 | report | report |
+| Wall jump apex (px) | 62.00 | 60.00 | -2.00 | report | report |
 
 ## Known gaps (out of scope for step 5)
 

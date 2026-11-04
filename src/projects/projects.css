@@ -1,39 +1,196 @@
-/* New project and My projects. Uses the app's tokens from src/styles.css. */
+/* New project ("Make a game") and My projects. Uses the app's tokens from src/styles.css; the picker takes the
+   landing's palette (src/brick/landing/landing.css, .landing-home) so it looks the same from either page. */
 
-.projects-kinds {
+.projects-new {
+  --text: #16213E;
+  --text-muted: #3A4664;
+  --primary: #2F5BEA;
+  --primary-strong: #2F5BEA;
+  --primary-soft: #EAF0FF;
+  --focus: #2F5BEA;
+  --border: #E3E8F4;
+  --surface-2: #F5F8FF;
+  --backdrop: rgba(22, 33, 62, 0.45);
+  --sheet-width: 1060px;
+}
+.projects-new .ui-sheet { border-radius: 28px; }
+.projects-new .ui-sheet-header { padding: 24px 32px 4px; border-bottom: 0; }
+.projects-new .ui-sheet-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3vw, 34px); letter-spacing: -0.01em; }
+.projects-new .ui-sheet-description { margin-top: 6px; font-size: 17px; }
+.projects-new .ui-sheet-body { display: flex; flex-direction: column; gap: 18px; padding: 14px 32px 22px; }
+
+/* One card per game, side by side; one column on phones. */
+.projects-games {
   display: grid;
-  /* Two by two (the sheet is never wide enough for four readable cards), one column on phones. */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
 }
 
-@media (max-width: 559px) {
-  .projects-kinds { grid-template-columns: minmax(0, 1fr); }
-}
-
-.projects-kind {
-  /* A card never grows past its column because of a long title or button (it used to run into the next card). */
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr);
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-  padding: var(--space-3);
+.projects-game {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 2px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 20px;
   background: var(--surface);
 }
 
-.projects-kind-picture,
-.projects-starter-picture {
+.projects-game-picture {
   display: block;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: var(--radius-md);
-  background: var(--studio-panel-soft, #f3f5f9);
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  background: #78B6FC;
 }
 
-.projects-kind-picture img,
+.projects-game-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 8px;
+}
+
+.projects-game h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 600;
+}
+
+.projects-game p {
+  flex: 1;
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.projects-game-other {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--primary-strong);
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.projects-game-other:hover { background: var(--primary-soft); }
+
+.projects-game-blank { border-style: dashed; border-color: #9AA8C8; }
+.projects-game-blank-picture {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 2px dashed #C9D3EA;
+  background: #FBFCFF;
+}
+.projects-game-blank-picture span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* "Or build in 3D": one wide row. */
+.projects-3d {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 10px 18px 10px 10px;
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.projects-3d:hover { border-color: var(--primary-strong); }
+.projects-3d img {
+  flex: 0 0 auto;
+  width: 150px;
+  height: 84px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  object-position: 50% 80%;
+}
+.projects-3d-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.projects-3d-copy strong { font-family: var(--font-display); font-size: 21px; font-weight: 600; }
+.projects-3d-copy span { color: var(--text-muted); font-size: 15px; font-weight: 600; line-height: 1.4; }
+.projects-3d-start {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 10px 18px;
+  border: 2px solid var(--primary-strong);
+  border-radius: var(--radius-md);
+  color: var(--primary-strong);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.projects-starters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.projects-starters h3 {
+  margin: 0;
+  color: #4A5675;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.projects-starter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.projects-starter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 10px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  background: var(--surface-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.projects-starter:hover,
+.projects-starter:focus-visible {
+  border-color: var(--primary-strong);
+}
+
+.projects-starter-picture {
+  flex: 0 0 auto;
+  width: 76px;
+  height: 50px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
 .projects-starter-picture img {
   display: block;
   width: 100%;
@@ -41,129 +198,39 @@
   object-fit: cover;
 }
 
-.projects-kind h3 {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  flex-wrap: wrap;
-  font: 600 19px var(--font-display);
-}
-
-.projects-kind p,
-.projects-muted {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  line-height: 1.45;
-}
-
-.projects-kind-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.projects-kind-actions > * {
-  max-width: 100%;
-  white-space: normal;
-  text-align: center;
-}
-
-/* The Hackable Platformer card: two blocks over the level picture, and a "New" tag. */
-.projects-kind-hackable .projects-kind-picture {
-  position: relative;
-}
-
-.projects-hack-blocks {
-  position: absolute;
-  left: 8%;
-  bottom: 12%;
-  display: grid;
-  justify-items: start;
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.25));
-}
-
-.projects-hack-block {
-  padding: 4px 10px;
-  border-radius: 4px;
-  background: #ff8c1a;
-  color: #fff;
-  font: 600 12px/1.2 var(--font-body, system-ui);
-  white-space: nowrap;
-}
-
-.projects-hack-block b {
-  font-weight: 600;
-  padding: 0 4px;
-  border-radius: 3px;
-  background: rgb(0 0 0 / 0.15);
-}
-
-.projects-hack-block i {
-  display: inline-block;
-  min-width: 18px;
-  padding: 0 5px;
-  border-radius: 9px;
-  background: #fff;
-  color: #333;
-  font-style: normal;
-  text-align: center;
-}
-
-.projects-hack-hat {
-  border-radius: 12px 12px 4px 4px;
-  background: #ffbf00;
-  color: #3d2c00;
-}
-
-.projects-new-tag {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--accent, #2563eb);
-  color: var(--accent-contrast, #fff);
-  font: 700 11px/1.6 var(--font-body, system-ui);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.projects-starters {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
-
-.projects-starters h3 {
-  margin: 0;
-  font: 600 17px var(--font-display);
-}
-
-.projects-starter-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: var(--space-2);
-}
-
-.projects-starter {
-  display: grid;
-  gap: 4px;
-  padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.projects-starter:hover,
-.projects-starter:focus-visible {
-  border-color: var(--primary);
-}
+.projects-starter-text { display: flex; flex-direction: column; min-width: 0; }
 
 .projects-starter-title {
+  font-size: 16px;
   font-weight: 800;
+}
+
+.projects-muted {
+  color: #4A5675;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.projects-new-saving {
+  margin: 0;
+  color: #4A5675;
+  font-size: 14px;
+  font-weight: 600;
+}
+.projects-new-saving a { color: var(--primary-strong); font-weight: 800; text-underline-offset: 3px; }
+
+@media (max-width: 900px), (pointer: coarse) {
+  .projects-new .ui-sheet { border-radius: 24px 24px 0 0; }
+  .projects-new .ui-sheet-header { padding: 14px 20px 4px; }
+  .projects-new .ui-sheet-body { gap: 18px; padding: 12px 20px 24px; }
+}
+
+@media (max-width: 559px) {
+  .projects-games { grid-template-columns: minmax(0, 1fr); }
+  .projects-game-picture { height: 120px; }
+  .projects-3d { flex-wrap: wrap; padding: 10px; }
+  .projects-3d img { width: 100%; height: 110px; }
+  .projects-3d-copy { flex: 1 1 160px; }
 }
 
 /* My projects: the kind chip on every card and the "On this computer" cards. */

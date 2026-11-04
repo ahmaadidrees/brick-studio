@@ -59,6 +59,9 @@ export interface RuntimeLifecycle {
 
 export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
 
+/** Hears a broadcast: the message, and the sprite whose script said it (missing for the screen's own broadcast). */
+export type BroadcastListener = (message: string, from?: Target) => void
+
 /** Blockly ids executed in one tick, grouped by runtime target (painted copy or clone). */
 export type ExecutedBlocks = ReadonlyMap<string, ReadonlySet<string>>
 
@@ -113,6 +116,7 @@ export class Runtime implements RuntimeApi {
     this.world = world
     this.primitives = primitives
     this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [], afterTick: lifecycle.afterTick ?? [], afterGreenFlag: lifecycle.afterGreenFlag ?? [] }
+    this._nextThreadId = Math.max(1, world.nextThreadId ?? 1)
     if (this.world.threads && this.world.threads.length > 0) {
       this.restoreThreadsFromWorld()
     } else {
@@ -143,9 +147,12 @@ export class Runtime implements RuntimeApi {
       warpOpCount: t.warpOpCount,
       isStackClick: t.isStackClick,
     }))
+    this.world.nextThreadId = this._nextThreadId
   }
 
   restoreThreadsFromWorld(): void {
+    // A saved world numbers its next script itself; older snapshots fall back to the highest live id + 1 below.
+    if (this.world.nextThreadId !== undefined) this._nextThreadId = Math.max(1, this.world.nextThreadId)
     if (!this.world.threads) return
     const allTargets = [this.world.stage, ...this.world.targets]
     const targetMap = new Map<string, Target>(allTargets.map((t) => [t.id, t]))
@@ -274,14 +281,31 @@ export class Runtime implements RuntimeApi {
     for (const hook of this.lifecycle.afterGreenFlag ?? []) hook(this)
   }
 
-  pressKey(key: string): void {
+  /**
+   * A key goes down. With `player` (rooms, core/players.ts) it is that player's: their Hero's "when key pressed"
+   * scripts start, and every brick that is no one's; other players' Heroes don't hear it.
+   */
+  pressKey(key: string, player?: number): void {
+    const slot = player === undefined ? undefined : this.world.players?.find((p) => p.num === player)
+    // A key from someone who is not (or no longer) in the game changes nothing.
+    if (player !== undefined && !slot) return
+    if (slot && !slot.keys.includes(key)) slot.keys.push(key)
     this.world.keysDown.add(key)
-    this.startHats('event_whenkeypressed', { fields: { KEY_OPTION: key } })
+    this.startHats('event_whenkeypressed', {
+      fields: { KEY_OPTION: key },
+      ...(slot ? { only: (t: Target) => t.player === undefined || t.player === slot.num } : {}),
+    })
   }
 
-  releaseKey(key: string): void {
-    this.world.keysDown.delete(key)
-    this.world.keysDown.delete(key.toLowerCase())
+  /** A key comes up. In a room it stays in `world.keysDown` while another player still holds it. */
+  releaseKey(key: string, player?: number): void {
+    const slot = player === undefined ? undefined : this.world.players?.find((p) => p.num === player)
+    if (player !== undefined && !slot) return
+    const names = [key, key.toLowerCase()]
+    if (slot) slot.keys = slot.keys.filter((k) => !names.includes(k))
+    for (const name of names) {
+      if (!this.world.players?.some((p) => p.keys.includes(name))) this.world.keysDown.delete(name)
+    }
   }
 
   clickTarget(target: Target): void {
@@ -292,13 +316,15 @@ export class Runtime implements RuntimeApi {
     }
   }
 
-  private broadcastListeners = new Set<(message: string) => void>()
+  private broadcastListeners = new Set<BroadcastListener>()
 
   /**
    * Watch broadcasts without changing anything: the Studio uses it to show "You made it!" when the Goal broadcasts
-   * `course clear`. A listener only observes; it never touches the world, so runs stay deterministic. Returns an unsubscribe.
+   * `course clear`. `from` is the sprite whose script said it (missing when the screen or a test broadcast), so a room's
+   * screen can tell its own Hero's "ouch" from someone else's. A listener only observes; it never touches the world, so
+   * runs stay deterministic. Returns an unsubscribe.
    */
-  onBroadcast(listener: (message: string) => void): () => void {
+  onBroadcast(listener: BroadcastListener): () => void {
     this.broadcastListeners.add(listener)
     return () => this.broadcastListeners.delete(listener)
   }
@@ -344,8 +370,8 @@ export class Runtime implements RuntimeApi {
     this.emitExecutedBlocks()
   }
 
-  broadcast(message: string): ThreadHandle[] {
-    for (const l of [...this.broadcastListeners]) l(message)
+  broadcast(message: string, from?: Target): ThreadHandle[] {
+    for (const l of [...this.broadcastListeners]) l(message, from)
     return this.startHats('event_whenbroadcastreceived', {
       fields: { BROADCAST_OPTION: message },
     })
@@ -358,7 +384,7 @@ export class Runtime implements RuntimeApi {
     return thread
   }
 
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target }): ThreadHandle[] {
+  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[] {
     const restartExisting = this.shouldRestartExistingThreads(opcode)
     const started: ThreadHandle[] = []
 
@@ -368,6 +394,7 @@ export class Runtime implements RuntimeApi {
       : [...this.world.targets].reverse().concat([this.world.stage])
 
     for (const target of targetsToCheck) {
+      if (opts?.only && !opts.only(target)) continue
       const brick = this.world.bricks[target.brickId]
       if (!brick) continue
 
@@ -1023,7 +1050,7 @@ export class Runtime implements RuntimeApi {
         } else if (stmt.fields?.BROADCAST_OPTION) {
           msg = stmt.fields.BROADCAST_OPTION
         }
-        this.broadcast(msg)
+        this.broadcast(msg, thread.target)
         frame.pc++
         continue
       }
@@ -1043,7 +1070,7 @@ export class Runtime implements RuntimeApi {
           } else if (stmt.fields?.BROADCAST_OPTION) {
             msg = stmt.fields.BROADCAST_OPTION
           }
-          const receivers = this.broadcast(msg)
+          const receivers = this.broadcast(msg, thread.target)
           if (receivers.length === 0) {
             frame.pc++
             continue

@@ -476,16 +476,18 @@ function doubleJump(): PowerBrick {
   const b = new Blocks('dj')
   const keyDown = (key: string) => ({ block: b.blk('sensing_keypressed', { fields: { KEY_OPTION: key } }) })
   const and = (x: unknown, y: unknown) => ({ block: b.blk('operator_and', { inputs: { OPERAND1: x, OPERAND2: y } }) })
+  const or = (x: unknown, y: unknown) => ({ block: b.blk('operator_or', { inputs: { OPERAND1: x, OPERAND2: y } }) })
   // "in the air" is remembered from the last tick: on the tick I jump off the ground, this press is the first jump.
-  const tick = b.script('Double jump: press space again in the air to jump a second time', b.blk('platformer_everytick'), [
-    b.either(keyDown('space'), [
+  // Jump is Space, X or K, like the Hero's own keys (parity bucket A, 2026-11-03).
+  const tick = b.script('Double jump: press jump again in the air to jump a second time', b.blk('platformer_everytick'), [
+    b.either(or(or(keyDown('space'), keyDown('x')), keyDown('k')), [
       b.when(and(and(b.eq(b.v('was_down'), 0), b.eq(b.v('in_air'), 1)), b.gt(b.v('left'), 0)), [b.setSpeed('y', b.v('power')), b.change('left', -1)]),
       b.set('was_down', 1),
     ], [b.set('was_down', 0)]),
     b.either({ block: b.blk('platformer_onground') }, [b.set('in_air', 0)], [b.set('in_air', 1)]),
   ])
   const land = b.script('Double jump: get it back when I land', b.blk('platformer_whenland'), [b.set('left', 1)])
-  return builtIn('double-jump', 'Double jump', 'Press space again in the air to jump a second time.', [tick, land], [
+  return builtIn('double-jump', 'Double jump', 'Press jump (Space, X or K) again in the air to jump a second time.', [tick, land], [
     { id: 'left', name: 'jumps left', value: 1 },
     { id: 'was_down', name: 'space was down', value: 1 },
     { id: 'in_air', name: 'was in the air', value: 0 },
@@ -498,11 +500,12 @@ function dash(): PowerBrick {
   const keyDown = (key: string) => ({ block: b.blk('sensing_keypressed', { fields: { KEY_OPTION: key } }) })
   const and = (x: unknown, y: unknown) => ({ block: b.blk('operator_and', { inputs: { OPERAND1: x, OPERAND2: y } }) })
   const facing = { block: b.blk('motion_direction') }
-  const tick = b.script('Dash: press z for a quick burst of speed the way I face, then wait a moment', b.blk('platformer_everytick'), [
+  // c, not z: z runs, like the classic Platformer (parity bucket A, 2026-11-03).
+  const tick = b.script('Dash: press c for a quick burst of speed the way I face, then wait a moment', b.blk('platformer_everytick'), [
     b.when(b.gt(b.v('wait'), 0), [b.change('wait', -1)]),
-    b.when(and(keyDown('z'), b.eq(b.v('wait'), 0)), [b.setSpeed('x', b.mul(b.v('speed'), { block: b.blk('operator_divide', { inputs: { NUM1: facing, NUM2: b.num(90) } }) })), b.set('wait', b.v('cooldown'))]),
+    b.when(and(keyDown('c'), b.eq(b.v('wait'), 0)), [b.setSpeed('x', b.mul(b.v('speed'), { block: b.blk('operator_divide', { inputs: { NUM1: facing, NUM2: b.num(90) } }) })), b.set('wait', b.v('cooldown'))]),
   ])
-  return builtIn('dash', 'Dash', 'Press z for a quick burst of speed, then wait a moment before the next one.', [tick], [
+  return builtIn('dash', 'Dash', 'Press c for a quick burst of speed, then wait a moment before the next one.', [tick], [
     { id: 'wait', name: 'dash wait', value: 0 },
     { id: 'speed', name: 'dash speed', value: 14, showInBuild: true },
     { id: 'cooldown', name: 'dash rest time', value: 20 },

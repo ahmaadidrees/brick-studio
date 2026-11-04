@@ -47,6 +47,8 @@ export const DEFAULT_KEYS: readonly MenuOption[] = [
   ['down arrow', 'down arrow'],
   ['right arrow', 'right arrow'],
   ['left arrow', 'left arrow'],
+  // Not one of Scratch's keys: the classic Platformer runs with Shift, and so does the Hero.
+  ['shift', 'shift'],
   ['any', 'any'],
   ['a', 'a'],
   ['b', 'b'],

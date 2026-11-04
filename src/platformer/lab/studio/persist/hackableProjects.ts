@@ -355,4 +355,6 @@ export const hackableHref = {
   local: (id: string, kit?: KitId) => `${hackableRoute(kit)}?draft=${encodeURIComponent(id)}`,
   world: (id: string, kit?: KitId) => `${hackableRoute(kit)}?world=${encodeURIComponent(id)}`,
   fresh: (kit?: KitId) => `${hackableRoute(kit)}?new=1`,
+  /** The owner's account project with its class room open at once (after inviting classmates to play). */
+  together: (id: string, kit?: KitId) => `${hackableRoute(kit)}?world=${encodeURIComponent(id)}&together=1`,
 }

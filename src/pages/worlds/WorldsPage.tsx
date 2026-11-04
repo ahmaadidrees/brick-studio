@@ -10,10 +10,10 @@ import { InviteSheet } from '../../classroom/InviteSheet'
 import { useStudentInvites } from '../../classroom/inviteStore'
 import { inviteWorldHref, StudentInviteList } from '../../classroom/StudentInvites'
 import {
-  browserWorldsClient, buildHref, byNewest, canBuildTogether, invitedHref, isInviteOnly, isMine, isShared, liveHref, matchesSearch,
-  sharedForBuilding, signInHref, type Classmate, type DeletedWorld, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
+  browserWorldsClient, buildHref, byNewest, canBuildTogether, canPlayTogether, invitedHref, isInviteOnly, isMine, isShared, liveHref, matchesSearch,
+  ownRoomHref, sharedForBuilding, signInHref, type Classmate, type DeletedWorld, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
-import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
+import { createFakeWorldsClient, fixtureWorld, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
 import { NewProjectSheet } from '../../projects/NewProjectSheet'
 import { ImportProjectButton, LocalProjectsSection, StartersSection } from '../../projects/ProjectSections'
 import { accountProject } from '../../projects/projects'
@@ -37,7 +37,7 @@ type Props = {
 let resolvedDefault: WorldsClient | null = null
 
 /**
- * Dev-only preview clients for the QA screenshots: `/worlds?demo=student|teacher`.
+ * Dev-only preview clients for the QA screenshots: `/worlds?demo=student|teacher|hackable`.
  * Resolved once per document: a fresh client on every render would resubscribe
  * and reload in a loop.
  */
@@ -54,6 +54,11 @@ function pickDefaultClient(): WorldsClient {
     if (demo === 'teacher') return createFakeWorldsClient({ session: teacherSession })
     if (demo === 'closed') return createFakeWorldsClient({ classes: [{ ...FIXTURE_CLASS, collaborationOpen: false }] })
     if (demo === 'empty') return createFakeWorldsClient({ worlds: [] })
+    if (demo === 'hackable') return createFakeWorldsClient({ worlds: [
+      fixtureWorld({ id: 'world-ava-hackable', title: 'Coin Cave', format: 'hackable' }),
+      fixtureWorld({ id: 'world-ava-hackable-race', title: 'Ice Loop', format: 'hackable', kit: 'race', visibility: 'class', sharedAt: '2026-11-03T10:00:00.000Z' }),
+      fixtureWorld({ id: 'world-ben-hackable', title: 'Lava Jumps', format: 'hackable', ownerId: 'student-ben', ownerName: 'Ben K.', canEdit: false, visibility: 'class', sharedAt: '2026-11-03T09:00:00.000Z', buildingNow: 2, buildingNames: ['Ben K.', 'Chloe M.'] }),
+    ] })
   }
   return browserWorldsClient
 }
@@ -244,14 +249,15 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
 
   /**
    * The one answer to the invite sheet. Inviting people to BUILD ends in the live room, the same room
-   * "Join and build" opens for them, so the owner is already there when the first friend arrives.
+   * "Join and build" opens for them, so the owner is already there when the first friend arrives. Inviting them to
+   * PLAY a Hackable project ends in its room too: the owner's studio with the room open.
    * Look-only sharing (and Stop sharing) stays on this page and just refreshes the card.
    */
   const invite = (target: WorldsWorld, asked: WorldSharing) => run(async () => {
-    // No live room for a Hackable Platformer: classmates only look (and make their own copy), never build in it.
+    // A Hackable project's room is for playing: classmates play (and can make their own copy); only the owner changes it.
     const sharing = canBuildTogether(target) ? asked : { ...asked, canEdit: false }
     await client.setWorldSharing(target.id, sharing)
-    if (sharing.visibility !== 'private' && sharing.canEdit) { window.location.assign(invitedHref(target)); return }
+    if (sharing.visibility !== 'private' && (sharing.canEdit || canPlayTogether(target))) { window.location.assign(invitedHref(target)); return }
     await reload(); setInviteWorld(null)
     if (sharing.visibility === 'private') setNotice(`“${target.title}” is private again.`)
   })
@@ -368,8 +374,9 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                 action={myWorlds.length ? undefined : <Button variant="primary" icon={<Plus size={18} />} onClick={() => setNewOpen(true)}>New project</Button>} />
               : <div className="worlds-grid">{filter(myWorlds).map(world => {
                 const shared = isShared(world)
-                // Shared for building: the world is a room now, so the obvious button walks into it.
-                const together = shared && sharedForBuilding(world) && canBuildTogether(world)
+                // Shared for building (or a Hackable project shared to play): the world is a room now, so the obvious
+                // button walks into it.
+                const together = shared && (canPlayTogether(world) || (sharedForBuilding(world) && canBuildTogether(world)))
                 return <WorldCard
                   key={world.id}
                   world={world}
@@ -385,7 +392,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                   ]} />}
                 >
                   {together
-                    ? <OpenWorldButton href={liveHref(world)} label="Build together" busy={busy} />
+                    ? <OpenWorldButton href={ownRoomHref(world)} label={canPlayTogether(world) ? 'Play together' : 'Build together'} busy={busy} />
                     : <OpenWorldButton href={buildHref(world)} label="Open" busy={busy} />}
                   {shared
                     ? <Button variant="secondary" size="sm" iconOnly icon={<Settings size={16} />} aria-label="Who can join" disabled={busy} onClick={() => openInvite(world)}>Who can join</Button>
@@ -425,7 +432,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                     byline={world.ownerName}
                     chip={<><AccessChip world={world} /><BuildingChip world={world} />{teacher && <InviteesChip world={world} />}</>}
                   >
-                    <OpenWorldButton href={liveHref(world)} label="Go to world" busy={busy} />
+                    <OpenWorldButton href={liveHref(world)} label={canPlayTogether(world) ? 'Play together' : 'Go to world'} busy={busy} />
+                    {canPlayTogether(world) && <Button variant="secondary" size="sm" href={buildHref(world)} disabled={busy}>Look inside</Button>}
                     {teacher
                       ? <Button variant="secondary" size="sm" disabled={busy} onClick={() => hide(world)}>{world.hiddenByTeacher ? 'Show to class' : 'Hide from class'}</Button>
                       : <Button variant="secondary" size="sm" disabled={busy} onClick={() => copy(world)}>Make my own copy</Button>}

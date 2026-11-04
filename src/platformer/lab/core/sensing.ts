@@ -65,12 +65,13 @@ function keyOption(ctx: PrimitiveCtx): Value {
   return ctx.field('KEY_OPTION')
 }
 
-const SPECIAL_KEYS = new Set(['space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'enter'])
+const SPECIAL_KEYS = new Set(['space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'enter', 'shift'])
 
 /** Block argument → contract key name. Letters are lowercase to match `world.keysDown`. */
 function toScratchKey(arg: Value): string {
   if (typeof arg === 'number' && Number.isFinite(arg)) {
     if (arg >= 48 && arg <= 90) return String.fromCharCode(arg).toLowerCase()
+    if (arg === 16) return 'shift'
     if (arg === 32) return 'space'
     if (arg === 37) return 'left arrow'
     if (arg === 38) return 'up arrow'
@@ -84,12 +85,20 @@ function toScratchKey(arg: Value): string {
   return text.toLowerCase()
 }
 
+/** The keys a target hears: its player's in a room (core/players.ts), otherwise every key that is down. */
+function keysFor(ctx: PrimitiveCtx): ReadonlySet<string> {
+  const world = ctx.runtime.world
+  const num = ctx.target.player
+  if (num === undefined || !world.players) return world.keysDown
+  return new Set(world.players.find((p) => p.num === num)?.keys ?? [])
+}
+
 function keyPressed(ctx: PrimitiveCtx): boolean {
   const option = keyOption(ctx)
-  if (option === 'any') return ctx.runtime.world.keysDown.size > 0
+  const down = keysFor(ctx)
+  if (option === 'any') return down.size > 0
   const key = toScratchKey(option)
   if (key === '') return false
-  const down = ctx.runtime.world.keysDown
   if (down.has(key)) return true
   // Hosts that stored Scratch's uppercase letter still match.
   return key.length === 1 && down.has(key.toUpperCase())

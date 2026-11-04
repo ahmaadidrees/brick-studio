@@ -18,12 +18,26 @@ export interface MyBlock {
 /** Builds one brick's workspace JSON. Block ids are `<prefix>_<n>`, so they never repeat inside a brick. */
 export class Blocks {
   private n = 0
+  private laterN = 0
+  private inLater = 0
   private row = 0
   readonly scripts: BlockJson[] = []
   constructor(private readonly prefix: string) {}
 
   id(): string {
-    return `${this.prefix}_${++this.n}`
+    return this.inLater ? `${this.prefix}_later_${++this.laterN}` : `${this.prefix}_${++this.n}`
+  }
+  /**
+   * Blocks added to a built-in brick after it shipped take ids from their own sequence, so every older block keeps its
+   * id (the Hero does the same, hero/heroBrick.ts `later`).
+   */
+  later<T>(make: () => T): T {
+    this.inLater++
+    try {
+      return make()
+    } finally {
+      this.inLater--
+    }
   }
   blk(type: string, extra: BlockJson = {}): BlockJson {
     return { type, id: this.id(), ...extra }

@@ -69,7 +69,11 @@ export function HelpPage() {
             <dt>Platformers and race tracks</dt>
             <dd>Choose New project, then Platformer or Race track. Pick bricks from the Bricks drawer and tap or click to place them, then press Play to run or race through what you made. Signed-in students find every project in My projects and share it with the class the same way.</dd>
             <dt>Hackable Platformer</dt>
-            <dd>Choose New project, then Hackable Platformer. Build and Play work like a platformer; Code shows the blocks inside the brick you picked. Switch a script off to see what it does, or tap + Power to snap one on. Hackable Platformers save like other projects, but can't be played together in a room yet.</dd>
+            <dd>Choose New project, then Hackable Platformer. Build and Play work like a platformer; Code shows the blocks inside the brick you picked. Switch a script off to see what it does, or tap + Power to snap one on. Hackable projects save like other projects.</dd>
+            <dt>Hackable Racing</dt>
+            <dd>Choose New project, then Hackable Racing. Paint a track, place the Finish line and the Starter, and race your Car against computer racers. Every brick has code inside, just like the Hackable Platformer: open the Car to change how it drives.</dd>
+            <dt>Playing a Hackable game together</dt>
+            <dd>Open the ⋯ menu (This project) and choose Play together, or invite classmates from My projects. Everyone gets their own Hero or Car in the same game. Only the owner changes the project, and their changes reach everyone as they make them. Restart starts everyone again; Room lets the owner remove a player or close the room to new players.</dd>
             <dt>Saving</dt>
             <dd>Signed-in students save to their account as they build, and every project is in My projects. Without an account, projects stay on this computer. Any project can be downloaded as a .brickgineers file and imported again later.</dd>
             <dt>Sharing</dt>
