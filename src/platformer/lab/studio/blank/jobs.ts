@@ -207,6 +207,14 @@ export function giveJob(store: StudioStore, brickId: string, job: JobId, way: Pl
   return snap
 }
 
+/** Every job a brick can be given, Player once per way of moving (tiles can't be the player): Code's lists. */
+export interface JobChoice { key: string; job: JobId; way?: PlayerWay; name: string; what: string }
+export function jobChoices(brick: Pick<BrickDef, 'grid'>): JobChoice[] {
+  return JOBS.flatMap((j): JobChoice[] => j.id === 'player'
+    ? brick.grid ? [] : PLAYER_WAY_INFO.map((w) => ({ key: `player:${w.id}`, job: j.id, way: w.id, name: jobName('player', w.id), what: w.what }))
+    : [{ key: j.id, job: j.id, name: j.name, what: j.what }])
+}
+
 /** The jobs on a brick, with their snaps, in order. */
 export function jobSnaps(brick: Pick<BrickDef, 'powers'>): Array<{ job: JobId; snap: SnappedPower }> {
   return (brick.powers ?? []).flatMap((snap) => {

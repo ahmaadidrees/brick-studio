@@ -6,7 +6,7 @@ import { ArrowDownToLine, Car, Code2, Footprints, Goal, Move, PlusCircle, Square
 import { useState, type ReactNode } from 'react'
 import type { BrickDef } from '../../core/contracts'
 import type { StudioStore } from '../store'
-import { giveJob, JOB_LINES, JOBS, jobSnaps, PLAYER_WAY_INFO } from './jobs'
+import { giveJob, JOB_LINES, jobChoices, JOBS, jobSnaps, PLAYER_WAY_INFO } from './jobs'
 import type { JobId, PlayerWay } from './blankRules'
 
 const JOB_ICONS: Readonly<Record<JobId, ReactNode>> = {
@@ -88,6 +88,18 @@ export function JobChips({ store, brick, noCode }: { store: StudioStore; brick: 
         </div>
       ))}
       <button type="button" className="cl-link" onClick={() => setPicking(true)}>{jobs.length ? 'Add another job' : 'Give it a job'}</button>
+    </div>
+  )
+}
+
+/** Code's "Start from…" in a game from nothing: a fresh brick starts from a job (lane D). Its blocks appear at once. */
+export function JobStarts({ store, brick }: { store: StudioStore; brick: BrickDef }) {
+  return (
+    <div className="cl-start cl-fade" role="group" aria-label="Start from a job">
+      <span>Drag blocks under the hat, or start from a job:</span>
+      <div className="cl-row">
+        {jobChoices(brick).map((c) => <button key={c.key} type="button" className="cl-chip-btn" title={c.what} onClick={() => giveJob(store, brick.id, c.job, c.way)}>{c.name}</button>)}
+      </div>
     </div>
   )
 }

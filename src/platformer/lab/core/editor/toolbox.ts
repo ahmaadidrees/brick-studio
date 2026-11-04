@@ -62,6 +62,11 @@ function textShadow(value: string): { shadow: ToolboxShadow } {
 export interface KitPalette {
   racing: boolean
   hide: readonly string[]
+  /**
+   * Start from nothing (docs/qa/blank-2d): one Game category instead of Platformer and Racing, holding its own blocks
+   * ("touching the player?") and then every Platformer and Racing block.
+   */
+  game?: boolean
 }
 
 /** The Platformer's palette: everything, as it has always been. */
@@ -77,9 +82,29 @@ export const RACE_PALETTE: KitPalette = {
   hide: ['platformer_whenland', 'platformer_whenleaveground', 'platformer_setgravity', 'platformer_onground', 'platformer_setonground'],
 }
 
-/** A kit's palette: Hackable Racing's, or the Platformer's (no kit, the Platformer, or a kit with no palette of its own). */
+/** Start from nothing's palette: everything, in one Game category. */
+export const GAME_PALETTE: KitPalette = { racing: true, hide: [], game: true }
+
+/** A kit's palette: Hackable Racing's, Start from nothing's, or the Platformer's (no kit, or one with no palette of its own). */
 export function paletteForKit(kit: KitId | undefined): KitPalette {
-  return kit === 'race' ? RACE_PALETTE : PLATFORMER_PALETTE
+  return kit === 'race' ? RACE_PALETTE : kit === 'blank' ? GAME_PALETTE : PLATFORMER_PALETTE
+}
+
+/** The Game category: its own blocks first, then the Platformer's and Racing's under their own labels. */
+function gameCategory(platformer: ToolboxCategory, racing: ToolboxCategory): ToolboxCategory {
+  const body = (cat: ToolboxCategory) => cat.contents ?? []
+  return {
+    kind: 'category',
+    name: 'Game',
+    colour: CATEGORY_COLORS.game,
+    cssConfig: { container: 'code-extension-category' },
+    contents: [
+      { kind: 'label', text: 'Game blocks' },
+      { kind: 'block', type: 'game_touchingplayer' },
+      ...body(platformer),
+      ...body(racing),
+    ],
+  }
 }
 
 /** The Racing extension (Hackable Racing R1): laps and the track, in the Racing colour. */
@@ -453,13 +478,17 @@ export function createContinuousToolbox(
   ]
 
   // Racing comes just before Platformer: a race brick's own blocks first, then the ones that move it.
-  if (palette.racing) allCategories.splice(allCategories.findIndex((cat) => cat.name === 'Platformer'), 0, racingCategory())
+  if (palette.game) {
+    // Start from nothing: one Game category where Platformer was.
+    const at = allCategories.findIndex((cat) => cat.name === 'Platformer')
+    allCategories.splice(at, 1, gameCategory(allCategories[at], racingCategory()))
+  } else if (palette.racing) allCategories.splice(allCategories.findIndex((cat) => cat.name === 'Platformer'), 0, racingCategory())
   const hide = new Set(palette.hide)
   const kitCategories = hide.size ? allCategories.map((cat) => withoutHidden(cat, hide)) : allCategories
 
   // Motion, Platformer and Racing all act on a brick's body; the Stage has none of them.
   const contents = isStage
-    ? kitCategories.filter((cat) => cat.name !== 'Motion' && cat.name !== 'Platformer' && cat.name !== 'Racing')
+    ? kitCategories.filter((cat) => cat.name !== 'Motion' && cat.name !== 'Platformer' && cat.name !== 'Racing' && cat.name !== 'Game')
     : kitCategories
 
   return {

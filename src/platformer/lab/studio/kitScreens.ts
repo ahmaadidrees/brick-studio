@@ -81,8 +81,8 @@ export interface KitScreens {
   powers: boolean
   /** Code offers "Just this brick" (a small test room built around a helper Hero). */
   testRoom: boolean
-  /** The palette: a Racing category, and block types left out. */
-  toolbox: { racing: boolean; hide: readonly string[] }
+  /** The palette: a Racing category, block types left out, and Start from nothing's one Game category. */
+  toolbox: { racing: boolean; hide: readonly string[]; game?: boolean }
   /** What the Stage draws behind the level when it has no backdrop (Start from nothing: the design's, backgroundOf). */
   background: StageBackground
   /** Play's follow camera width in steps; the Stage's own choice when missing. */
@@ -168,7 +168,7 @@ export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {
     // The test room is built around a helper Hero; a game from nothing runs whole.
     testRoom: false,
     // Every Platformer and Racing block, in one Game category (core/editor/toolbox.ts).
-    toolbox: { racing: true, hide: [] },
+    toolbox: { racing: true, hide: [], game: true },
     background: 'paper',
     get copy() { return BLANK_COPY },
   },

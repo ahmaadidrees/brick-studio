@@ -5,6 +5,7 @@ import { useStudio, type StudioStore } from '../store'
 import { builtInPowers, forGame, makePower, powerChanged, powerProblem, readPowerFile, whyNot, type PowerBrick } from '../powers/powers'
 import { downloadPower, keepPower, makerName, myPowers, onPowersChange, rememberMakerName } from '../powers/library'
 import { getLabelText } from './labels'
+import { giveJob, jobChoices } from '../blank/jobs'
 import { useClassShelf } from '../powers/useClassShelf'
 import type { ShelfClient } from '../../../../classroom/shelfClient'
 import type { ClassroomSessionState } from '../../../../shell'
@@ -21,7 +22,7 @@ const credit = (credits: string[]) => (credits.length <= 1 ? `from ${credits[0] 
  * no powers yet, like Hackable Racing) there is no "+ Power": the row only shows powers a brick already has, so they can
  * still be switched off or taken off.
  */
-export function PowersBar({ store, brick, shelfApi, session, canAdd = true }: { store: StudioStore; brick: BrickDef; canAdd?: boolean } & ShelfOverrides) {
+export function PowersBar({ store, brick, shelfApi, session, canAdd = true, jobs = false }: { store: StudioStore; brick: BrickDef; canAdd?: boolean; /** Start from nothing: "Jobs and powers", and the picker lists the jobs first. */ jobs?: boolean } & ShelfOverrides) {
   const workspace = useStudio(store, (s) => s.project.workspaces[brick.id])
   const [open, setOpen] = useState<null | 'pick' | 'make'>(null)
   // The snap whose "Take off" is asking first, because the kid changed its blocks.
@@ -38,7 +39,7 @@ export function PowersBar({ store, brick, shelfApi, session, canAdd = true }: { 
   }
   return (
     <div className="cl-powers" role="group" aria-label="Powers on this brick">
-      <span className="cl-powers-title">Powers</span>
+      <span className="cl-powers-title">{jobs ? 'Jobs and powers' : 'Powers'}</span>
       {powers.map((p) => {
         const on = store.isPowerOn(brick.id, p.id)
         if (asking === p.id) {
@@ -59,14 +60,14 @@ export function PowersBar({ store, brick, shelfApi, session, canAdd = true }: { 
           </span>
         )
       })}
-      {canAdd && <button type="button" className="cl-chip-btn cl-power-add" aria-expanded={open !== null} onClick={() => setOpen(open ? null : 'pick')}><Plus size={14} aria-hidden="true" /> Power</button>}
-      {canAdd && open === 'pick' && <PowerPicker store={store} brick={brick} shelf={shelf} onMake={() => setOpen('make')} onClose={() => setOpen(null)} />}
+      {canAdd && <button type="button" className="cl-chip-btn cl-power-add" aria-expanded={open !== null} onClick={() => setOpen(open ? null : 'pick')}><Plus size={14} aria-hidden="true" /> {jobs ? 'Job or power' : 'Power'}</button>}
+      {canAdd && open === 'pick' && <PowerPicker store={store} brick={brick} shelf={shelf} jobs={jobs} onMake={() => setOpen('make')} onClose={() => setOpen(null)} />}
       {canAdd && open === 'make' && <PowerMaker store={store} brick={brick} shelf={shelf} onClose={() => setOpen(null)} />}
     </div>
   )
 }
 
-function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioStore; brick: BrickDef; shelf: Shelf; onMake: () => void; onClose: () => void }) {
+function PowerPicker({ store, brick, shelf, jobs = false, onMake, onClose }: { store: StudioStore; brick: BrickDef; shelf: Shelf; jobs?: boolean; onMake: () => void; onClose: () => void }) {
   // A power shows only in its own game: Racing powers never list in the Platformer, and the other way round.
   const kit = useStudio(store, (s) => designKit(s.project.design))
   const allMine = useSyncExternalStore(onPowersChange, myPowers)
@@ -107,8 +108,19 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
   return (
     <div className="cl-power-panel cl-pop" role="dialog" aria-label={`Snap a power onto ${brick.name}`}>
       <div className="cl-power-panel-head"><b>Snap a power onto {brick.name}</b><button type="button" className="cl-icon-btn" aria-label="Close" onClick={onClose}><X size={16} /></button></div>
-      <span className="cl-power-group">Built in</span>
-      <ul className="cl-power-list">{builtIn.map(row)}</ul>
+      {jobs && <>
+        <span className="cl-power-group">Jobs</span>
+        <ul className="cl-power-list">{jobChoices(brick).map((c) => (
+          <li key={c.key}>
+            <button type="button" className="cl-power-pick" onClick={() => { giveJob(store, brick.id, c.job, c.way); onClose() }}>
+              <span aria-hidden="true" className="cl-power-dot" />
+              <span className="cl-power-pick-text"><b>{c.name}</b> <span className="cl-muted">from Brickgineers</span><span className="cl-power-what">{c.what}</span></span>
+            </button>
+          </li>
+        ))}</ul>
+      </>}
+      {builtIn.length > 0 && <><span className="cl-power-group">Built in</span>
+      <ul className="cl-power-list">{builtIn.map(row)}</ul></>}
       <div className="cl-power-group-row">
         <span className="cl-power-group">Class shelf</span>
         {shelf.signedIn && <button type="button" className="cl-power-refresh" disabled={checking || shelf.state.kind === 'loading'} onClick={() => void checkShelf()}>{checking ? 'Checking…' : 'Check again'}</button>}
