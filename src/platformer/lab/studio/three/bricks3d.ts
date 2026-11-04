@@ -155,7 +155,9 @@ export function createCoin3d(id: string, name = 'Coin'): Made3 {
 export function createGoal3d(id: string, name = 'Goal'): Made3 {
   const b = new Blocks3(id)
   b.flag('When the game starts: be solid', [b.solidOn()])
-  b.bump('When a Hero reaches me: you win', '_any_', [b.sayFor('You made it!', 2), b.broadcast(MSG_WIN)], 'Hero')
+  // "you win" first: a Hero still walking into the flag restarts this script every tick, so a say-for-2-seconds
+  // before it would never finish (the mock had them the other way round).
+  b.bump('When a Hero reaches me: you win', '_any_', [b.broadcast(MSG_WIN), b.sayFor('You made it!', 2)], 'Hero')
   return made(id, name, { w: STUD, h: 9 * PLATE, d: STUD, color: '#16213e', model: 'flag' }, b, [], { limit: 1 })
 }
 
@@ -204,7 +206,8 @@ export const CODE_BRICKS_3D: readonly CodeBrick3[] = [
   {
     key: 'buttonDoor', label: 'Button + Door', does: 'Step on the button and the door opens', color: '#7b5238', parts: [
       { id: 'brick3d_button', make: (id) => createButton3d(id), offset: { x: 0, y: 0, z: 0 } },
-      { id: 'brick3d_door', make: (id) => createDoor3d(id), offset: { x: 0, y: 0, z: -3 * STUD } },
+      // The Door stands 2½ studs behind the Button's middle: a stud-wide wall on the grid, one stud clear of the Button.
+      { id: 'brick3d_door', make: (id) => createDoor3d(id), offset: { x: 0, y: 0, z: -2.5 * STUD } },
     ],
   },
 ]
@@ -218,3 +221,13 @@ export function createStage3dWorkspace(): WorkspaceJson {
 }
 
 export const STAGE_VARIABLES_3D: VariableDecl[] = [{ id: 'coins', name: 'coins', value: 0 }]
+
+/** + New brick in 3D: a 1 × 1 brick with one empty flag hat, ready for the kid's own blocks. */
+export function createEmpty3d(id: string, name: string): Made3 {
+  const workspace: WorkspaceJson = { blocks: { blocks: [{ type: 'event_whenflagclicked', id: `${id}_flag`, x: 20, y: 20, data: 'label:Drag blocks under this hat.' }] as never } }
+  const program = compileWorkspace(workspace).program
+  return {
+    brick: { id, name, costumes: [brickIcon3d('#a9b7bd', name)], sounds: [], program, shape3d: { w: STUD, h: 3 * PLATE, d: STUD, look: { color: '#a9b7bd', model: 'box' } } },
+    workspace,
+  }
+}

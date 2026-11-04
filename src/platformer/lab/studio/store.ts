@@ -528,6 +528,14 @@ export class StudioStore {
     else this.setDesign({ ...d, bricks: d.bricks.map((b) => (b.id === brickId ? fn(b) : b)) }, workspaces)
   }
 
+  /**
+   * Hackable 3D's Build (studio/three/build3d.ts): change the design where no other action fits (the build bricks, a
+   * copy's z), and add workspaces for bricks it adds. Code and costumes still change only through their own actions.
+   */
+  updateDesign(fn: (design: LevelDesign) => LevelDesign, workspaces?: Record<string, unknown>) {
+    this.setDesign(fn(this.state.project.design), workspaces ? { ...this.state.project.workspaces, ...workspaces } : undefined)
+  }
+
   // ------------------------------------------------------------ painted copies (Build)
 
   addCopy(brickId: string, x: number, y: number): string {

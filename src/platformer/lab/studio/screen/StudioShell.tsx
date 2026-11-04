@@ -9,7 +9,9 @@ import { Stage } from '../Stage'
 import { screenOf, useStudio, type StudioScreen, type StudioStore } from '../store'
 import { TestRoom } from '../workshop/TestRoom'
 import { hasPlayer, screensFor } from '../kitScreens'
-import { KIT_PARTS } from './kitParts'
+import { KIT_PARTS, type KitParts } from './kitParts'
+
+type KitTestRoom = NonNullable<KitParts['TestRoom']>
 import { ensureTiles } from '../builder/ensureTiles'
 import { limitedStore } from '../builder/limits'
 import { builderSession } from '../builder/session'
@@ -74,6 +76,10 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   // The kit's screens (kitScreens.ts) and its React slots (kitParts.tsx).
   const screens = useStudio(store, (s) => screensFor(s.project.design))
   const parts = KIT_PARTS[screens.kit]
+  // A kit may bring its own world view, drawer and paint strip (Hackable 3D); the rest of the shell is shared.
+  const KitStage = parts.Stage ?? Stage
+  const Drawer = parts.Drawer ?? BuildDrawer
+  const Strip = parts.Strip ?? PaintStrip
   const phone = useMedia(PHONE)
   const noCode = useMedia(NO_CODE)
   const touch = useTouch()
@@ -228,7 +234,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
       <div className="cl-body">
         <div className="cl-slot cl-slot-drawer" inert={screen !== 'build' || (phone && !sheet) ? true : undefined}>
-          <BuildDrawer store={store} history={history} erasing={erasing} onErasing={setErasing} onPicked={phone ? () => setSheet(false) : undefined} />
+          <Drawer store={store} history={history} erasing={erasing} onErasing={setErasing} onPicked={phone ? () => setSheet(false) : undefined} />
         </div>
 
         <div className="cl-slot cl-slot-code" inert={screen !== 'code' ? true : undefined}>
@@ -237,10 +243,11 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
         <div className="cl-slot cl-slot-stage">
           <div className="cl-stage-frame">
-            <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
-            {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} />}
+            {/* A kit's own world keeps its own one-per-world rules (Hackable 3D: studio/three/build3d.ts). */}
+            <KitStage store={parts.Stage ? store : stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
+            {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} Room={parts.TestRoom} />}
           </div>
-          {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
+          {screen === 'build' && <Strip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'build' && parts.BuildChip && <parts.BuildChip store={store} />}
           {screen === 'play' && <parts.PlayHud store={store} />}
           {screen === 'play' && touch && runtime && !paused && <parts.TouchControls runtime={runtime} store={store} />}
@@ -317,14 +324,14 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
  * Over Code's small level: pause, restart, and run the whole level or just this brick. A kit without a test room
  * (`testRoom`, Racing for now: the room is built around a helper Hero) always runs the whole level.
  */
-function CodeStageBar({ store, testRoom }: { store: StudioStore; testRoom: boolean }) {
+function CodeStageBar({ store, testRoom, Room = TestRoom }: { store: StudioStore; testRoom: boolean; Room?: typeof TestRoom | KitTestRoom }) {
   const solo = useStudio(store, (s) => s.codeSolo) && testRoom
   const paused = useStudio(store, (s) => s.previewPaused)
   const pending = useStudio(store, (s) => s.pendingCodeChanges)
   const brickId = useStudio(store, (s) => s.selectedBrickId)
   const [restartKey, setRestartKey] = useState(0)
   return <>
-    {solo && <div className="cl-room-box cl-fade"><TestRoom store={store} brickId={brickId} bare restartKey={restartKey} /></div>}
+    {solo && <div className="cl-room-box cl-fade"><Room store={store} brickId={brickId} bare restartKey={restartKey} /></div>}
     <div className="cl-stage-bar" role="toolbar" aria-label="Level preview">
       {!solo && <button type="button" className="cl-btn cl-btn-sm cl-btn-icon" aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} onMouseDown={(e) => e.preventDefault()} onClick={() => paused ? store.startPreview() : store.pausePreview()}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}
       <button type="button" className={`cl-btn cl-btn-sm cl-btn-icon${pending && !solo ? ' cl-btn-attn' : ''}`} aria-label="Restart" title={pending && !solo ? 'Restart to try your changes' : 'Restart'} onMouseDown={(e) => e.preventDefault()} onClick={() => solo ? setRestartKey((n) => n + 1) : store.restartPreview()}><RotateCcw size={16} /></button>

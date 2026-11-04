@@ -152,7 +152,7 @@ export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {
 }
 
 const COPY_3D: KitCopy = {
-  projectName: PROJECT_NAME_3D,
+  get projectName() { return PROJECT_NAME_3D },
   player: 'Hero',
   noPlayer: 'Place the Hero first: it is under Code bricks in the Bricks drawer.',
   controlsHint: 'Arrows or WASD move, Space jumps, X runs, drag to look around',
