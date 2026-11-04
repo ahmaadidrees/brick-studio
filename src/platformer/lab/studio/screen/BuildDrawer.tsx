@@ -14,7 +14,8 @@ import { screensFor } from '../kitScreens'
 import type { History } from '../builder/history'
 import { copyToMove, limitOf } from '../builder/limits'
 import { CostumeThumb } from '../builder/tileArt'
-import { NewBrickSheet } from './NewBrickSheet'
+import { NewBrickSheet, type BrickKind } from './NewBrickSheet'
+import { BorrowPanel, DrawerExtras, StageCard } from '../blank/BlankBuild'
 
 /** The drawer's tabs for a kit: All, then the kit's own categories (kitScreens drawer.categories). */
 const drawerCategories = new WeakMap<object, { tabs: Array<{ id: string; label: string }>; labels: Map<string, string> }>()
@@ -34,13 +35,15 @@ interface Props {
   onErasing: (on: boolean) => void
   /** Phone: the drawer is a sheet and closes after a pick. */
   onPicked?: () => void
+  /** A brick was made with + New brick (a game from nothing also says One thing or Tiles). */
+  onBrickMade?: (brickId: string, kind?: BrickKind) => void
 }
 
 /**
  * Build's left column: Select (the default tool), Erase, undo and redo, then the Bricks drawer. Picking a brick arms
  * painting with it; Select, Esc or picking it again goes back to selecting.
  */
-export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Props) {
+export function BuildDrawer({ store, history, erasing, onErasing, onPicked, onBrickMade }: Props) {
   const bricks = useStudio(store, (s) => s.project.design.bricks)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const drawer = useStudio(store, (s) => screensFor(s.project.design).drawer)
@@ -55,6 +58,10 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
   const active = erasing ? null : drawer.active(brushBrickId, bricks)
   const selecting = !erasing && !brushBrickId
   const [making, setMaking] = useState(false)
+  // A game from nothing (docs/qa/blank-2d): Borrow a brick is the drawer's other page, and the Stage card opens from it.
+  const fromNothing = useStudio(store, (s) => screensFor(s.project.design).fromNothing)
+  const [borrowing, setBorrowing] = useState(false)
+  const [stageCard, setStageCard] = useState(false)
 
   const choose = (id: string) => {
     // A new brick never needs Code: pick a picture, name it, and it is armed here (NewBrickSheet).
@@ -80,7 +87,7 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
   }
 
   return (
-    <section className="cl-drawer cl-panel" aria-label="Bricks">
+    <section className={`cl-drawer cl-panel${fromNothing ? ' cl-drawer-blank' : ''}`} aria-label="Bricks">
       <div className="cl-tools" role="toolbar" aria-label="Build tools">
         <button type="button" className="cl-tool" aria-pressed={selecting} title="Select (Esc)" onClick={() => { onErasing(false); store.setBrush(null) }}>
           <MousePointer2 size={18} aria-hidden="true" /><span>Select</span>
@@ -92,10 +99,15 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
         <button type="button" className="cl-icon-btn" aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!history.canUndo} onClick={() => history.undo()}><Undo2 size={18} /></button>
         <button type="button" className="cl-icon-btn" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled={!history.canRedo} onClick={() => history.redo()}><Redo2 size={18} /></button>
       </div>
-      <div className="cl-drawer-picker">
-        <PartPicker items={items} categories={tabs} activeId={active} onChoose={choose} labels={BRICK_DRAWER_LABELS} denseCatalog searchText={searchText} />
-      </div>
-      <NewBrickSheet store={store} open={making} onClose={() => setMaking(false)} onMade={() => { onErasing(false); onPicked?.() }} />
+      {fromNothing && borrowing
+        ? <BorrowPanel store={store} onBack={() => setBorrowing(false)} onBorrowed={() => { onErasing(false); onPicked?.() }} />
+        : <div className="cl-drawer-picker">
+          {fromNothing && <p className="cl-blank-drawer-title">My bricks</p>}
+          <PartPicker items={items} categories={tabs} activeId={active} onChoose={choose} labels={BRICK_DRAWER_LABELS} denseCatalog searchText={searchText} />
+        </div>}
+      {fromNothing && !borrowing && <DrawerExtras store={store} onBorrow={() => setBorrowing(true)} onStage={() => setStageCard(true)} />}
+      {fromNothing && <StageCard store={store} history={history} open={stageCard} onClose={() => setStageCard(false)} />}
+      <NewBrickSheet store={store} open={making} onClose={() => setMaking(false)} onMade={(id, kind) => { onErasing(false); onPicked?.(); onBrickMade?.(id, kind) }} />
     </section>
   )
 }

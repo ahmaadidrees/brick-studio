@@ -458,6 +458,56 @@ export class StudioStore {
     this.set({ editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
+  // ------------------------------------------------------------ Start from nothing (docs/qa/blank-2d)
+
+  /** Make this brick the player (or nobody, with null): the camera follows it, and a room gives each friend a copy. */
+  setPlayer(brickId: string | null) {
+    const d = this.state.project.design
+    if ((d.player ?? null) === brickId || (brickId !== null && !d.bricks.some((b) => b.id === brickId))) return
+    const { player: _player, ...rest } = d
+    this.setDesign(brickId === null ? rest : { ...rest, player: brickId })
+  }
+
+  /** The Stage card: the stage's size (its bounds, cells and placed bricks together) and backdrop. */
+  setStageLayout(layout: { bounds: LevelDesign['bounds']; tiles: NonNullable<LevelDesign['tiles']>; copies: CopyPlacement[] }) {
+    this.setDesign({ ...this.state.project.design, bounds: layout.bounds, tiles: layout.tiles, copies: layout.copies })
+  }
+
+  setBackdrop(backdrop: NonNullable<LevelDesign['backdrop']>) {
+    const d = this.state.project.design
+    if ((d.backdrop ?? 'paper') === backdrop) return
+    const { backdrop: _b, ...rest } = d
+    this.setDesign(backdrop === 'paper' ? rest : { ...rest, backdrop })
+  }
+
+  /** One thing / Tiles: a brick painted on the grid with this character, or placed one at a time (null). */
+  setGridChar(brickId: string, char: string | null) {
+    this.updateBrick(brickId, (b) => {
+      if (char === null) {
+        const { grid: _grid, ...rest } = b
+        return rest
+      }
+      return { ...b, grid: { ...b.grid, char } }
+    })
+  }
+
+  /**
+   * Stage variables and lists some borrowed code reads (Score, Racing's laps to win), added when missing. The Stage's
+   * workspace declares them too, so they show in its Variables.
+   */
+  ensureStageData(variables: ReadonlyArray<{ id: string; name: string; value: Value }>, lists: ReadonlyArray<{ id: string; name: string }> = []) {
+    const d = this.state.project.design
+    const program = d.stage.program
+    const newVars = variables.filter((v) => !program.variables.some((x) => x.id === v.id))
+    const newLists = lists.filter((l) => !program.lists.some((x) => x.id === l.id))
+    if (!newVars.length && !newLists.length) return
+    const raw = this.state.project.workspaces[STAGE_ID]
+    const ws = (typeof raw === 'string' ? JSON.parse(raw) : raw && typeof raw === 'object' ? structuredClone(raw) : { blocks: { languageVersion: 0, blocks: [] } }) as { variables?: Array<{ id: string; name: string; type?: string }> }
+    ws.variables = [...(ws.variables ?? []), ...newVars.map((v) => ({ id: v.id, name: v.name })), ...newLists.map((l) => ({ id: l.id, name: l.name, type: 'list' }))]
+    this.setDesign({ ...d, stage: { ...d.stage, program: { ...program, variables: [...program.variables, ...newVars.map((v) => ({ id: v.id, name: v.name, value: v.value }))], lists: [...program.lists, ...newLists.map((l) => ({ id: l.id, name: l.name, value: [] }))] } } },
+      { ...this.state.project.workspaces, [STAGE_ID]: ws })
+  }
+
   /** The project's own name (the header's title, and its name in My projects). */
   renameProject(name: string) {
     const clean = name.trim().slice(0, 80)
@@ -473,7 +523,8 @@ export class StudioStore {
     const d = this.state.project.design
     const workspaces = { ...this.state.project.workspaces }
     delete workspaces[brickId]
-    this.setDesign({ ...d, bricks: d.bricks.filter((b) => b.id !== brickId), copies: d.copies.filter((c) => c.brickId !== brickId) }, workspaces)
+    const { player, ...rest } = d
+    this.setDesign({ ...rest, ...(player && player !== brickId ? { player } : {}), bricks: d.bricks.filter((b) => b.id !== brickId), copies: d.copies.filter((c) => c.brickId !== brickId) }, workspaces)
     const s = this.state
     this.set({
       selectedBrickId: s.selectedBrickId === brickId ? (d.bricks.find((b) => b.id !== brickId)?.id ?? STAGE_ID) : s.selectedBrickId,

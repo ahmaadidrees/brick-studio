@@ -117,7 +117,7 @@ export function createStarterWorkspace(): WorkspaceJson {
   return b.workspace()
 }
 
-function createStarterBrick(): BrickDef {
+export function createStarterBrick(): BrickDef {
   const rows = Array.from({ length: 16 }, (_, y) =>
     Array.from({ length: 16 }, (_, x) => (x === 2 ? 'P' : x > 2 && x < 14 && y < 9 ? ((Math.floor((x - 3) / 3) + Math.floor(y / 3)) % 2 ? 'W' : 'K') : '.')).join(''),
   )

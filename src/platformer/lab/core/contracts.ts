@@ -153,6 +153,11 @@ export interface SnappedPower {
    * changed them. Missing on snaps made before it was recorded.
    */
   fingerprint?: string
+  /**
+   * Start from nothing (docs/qa/blank-2d): this power is one of the built-in jobs (studio/blank/jobs.ts), named by its
+   * job id ('player', 'wall', ...), and for the Player job its way of moving ('player:walk'). Missing: a power.
+   */
+  job?: string
 }
 
 export interface BrickDef {
