@@ -1,7 +1,7 @@
 {
   "ticks": 1800,
   "rejoinAt": 900,
-  "node": "v22.23.2",
+  "node": "v26.8.2",
   "kits": {
     "platformer solo": {
       "events": 640,
@@ -18,77 +18,77 @@
       "skipped": [],
       "runs": [
         {
-          "engine": "Node v22.23.2",
+          "engine": "Node v26.8.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.129,
+          "stepMsPerTick": 0.123,
           "final": {
-            "coins": 15,
+            "coins": 6,
             "players": [
               {
                 "name": "Hero",
-                "x": 778,
-                "y": 101
+                "x": 736.75,
+                "y": 24
               }
             ]
           },
-          "finalHash": "5e5feaf55efdcc45"
+          "finalHash": "d1ba91c93e2bf738"
         },
         {
-          "engine": "Node v22.23.2 again",
+          "engine": "Node v26.8.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.104,
+          "stepMsPerTick": 0.11,
           "final": {
-            "coins": 15,
+            "coins": 6,
             "players": [
               {
                 "name": "Hero",
-                "x": 778,
-                "y": 101
+                "x": 736.75,
+                "y": 24
               }
             ]
           },
-          "finalHash": "5e5feaf55efdcc45"
+          "finalHash": "d1ba91c93e2bf738"
         },
         {
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.104,
+          "stepMsPerTick": 0.11,
           "final": {
-            "coins": 15,
+            "coins": 6,
             "players": [
               {
                 "name": "Hero",
-                "x": 778,
-                "y": 101
+                "x": 736.75,
+                "y": 24
               }
             ]
           },
-          "finalHash": "5e5feaf55efdcc45"
+          "finalHash": "d1ba91c93e2bf738"
         },
         {
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.094,
+          "stepMsPerTick": 0.103,
           "final": {
-            "coins": 15,
+            "coins": 6,
             "players": [
               {
                 "name": "Hero",
-                "x": 778,
-                "y": 101
+                "x": 736.75,
+                "y": 24
               }
             ]
           },
-          "finalHash": "5e5feaf55efdcc45"
+          "finalHash": "d1ba91c93e2bf738"
         }
       ],
       "mismatchExplain": {},
       "rejoin": {
-        "snapshotBytes": 105230,
+        "snapshotBytes": 112898,
         "matches": true,
         "firstMismatchTick": null
       }
@@ -114,58 +114,7 @@
       "skipped": [],
       "runs": [
         {
-          "engine": "Node v22.23.2",
-          "matches": true,
-          "firstMismatchTick": null,
-          "stepMsPerTick": 0.157,
-          "final": {
-            "coins": 10,
-            "players": [
-              {
-                "name": "Hero",
-                "x": 912.875,
-                "y": 54.5
-              }
-            ]
-          },
-          "finalHash": "d98db0a8a82e3512"
-        },
-        {
-          "engine": "Node v22.23.2 again",
-          "matches": true,
-          "firstMismatchTick": null,
-          "stepMsPerTick": 0.153,
-          "final": {
-            "coins": 10,
-            "players": [
-              {
-                "name": "Hero",
-                "x": 912.875,
-                "y": 54.5
-              }
-            ]
-          },
-          "finalHash": "d98db0a8a82e3512"
-        },
-        {
-          "engine": "Chrome 156.0.8078.80",
-          "matches": true,
-          "firstMismatchTick": null,
-          "stepMsPerTick": 0.149,
-          "final": {
-            "coins": 10,
-            "players": [
-              {
-                "name": "Hero",
-                "x": 912.875,
-                "y": 54.5
-              }
-            ]
-          },
-          "finalHash": "d98db0a8a82e3512"
-        },
-        {
-          "engine": "WebKit 26.5",
+          "engine": "Node v26.8.2",
           "matches": true,
           "firstMismatchTick": null,
           "stepMsPerTick": 0.168,
@@ -174,17 +123,68 @@
             "players": [
               {
                 "name": "Hero",
-                "x": 912.875,
-                "y": 54.5
+                "x": 115.1875,
+                "y": 40
               }
             ]
           },
-          "finalHash": "d98db0a8a82e3512"
+          "finalHash": "17265b44e6939ff4"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.165,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.159,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.143,
+          "final": {
+            "coins": 10,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 115.1875,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "17265b44e6939ff4"
         }
       ],
       "mismatchExplain": {},
       "rejoin": {
-        "snapshotBytes": 199922,
+        "snapshotBytes": 224383,
         "matches": true,
         "firstMismatchTick": null
       }
@@ -205,113 +205,113 @@
       ],
       "runs": [
         {
-          "engine": "Node v22.23.2",
+          "engine": "Node v26.8.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.27,
+          "stepMsPerTick": 0.295,
           "final": {
             "players": [
               {
                 "name": "Car",
-                "x": 970.5,
-                "y": 209.18206534439665
+                "x": 938.5,
+                "y": 117.5
               },
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               }
             ]
           },
-          "finalHash": "630d51f79ccefd0c"
+          "finalHash": "e57c7b31cc04ad1f"
         },
         {
-          "engine": "Node v22.23.2 again",
+          "engine": "Node v26.8.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.264,
+          "stepMsPerTick": 0.281,
           "final": {
             "players": [
               {
                 "name": "Car",
-                "x": 970.5,
-                "y": 209.18206534439665
+                "x": 938.5,
+                "y": 117.5
               },
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               }
             ]
           },
-          "finalHash": "630d51f79ccefd0c"
+          "finalHash": "e57c7b31cc04ad1f"
         },
         {
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.195,
+          "stepMsPerTick": 0.234,
           "final": {
             "players": [
               {
                 "name": "Car",
-                "x": 970.5,
-                "y": 209.18206534439665
+                "x": 938.5,
+                "y": 117.5
               },
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               }
             ]
           },
-          "finalHash": "630d51f79ccefd0c"
+          "finalHash": "e57c7b31cc04ad1f"
         },
         {
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.25,
+          "stepMsPerTick": 0.309,
           "final": {
             "players": [
               {
                 "name": "Car",
-                "x": 970.5,
-                "y": 209.18206534439665
+                "x": 938.5,
+                "y": 117.5
               },
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               }
             ]
           },
-          "finalHash": "630d51f79ccefd0c"
+          "finalHash": "e57c7b31cc04ad1f"
         }
       ],
       "mismatchExplain": {},
       "rejoin": {
-        "snapshotBytes": 555626,
+        "snapshotBytes": 565048,
         "matches": true,
         "firstMismatchTick": null
       }
@@ -338,113 +338,113 @@
       ],
       "runs": [
         {
-          "engine": "Node v22.23.2",
+          "engine": "Node v26.8.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.326,
+          "stepMsPerTick": 0.348,
           "final": {
             "players": [
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               },
               {
                 "name": "Car",
-                "x": 797.9145767176082,
+                "x": 712.1179650343938,
                 "y": 69.5
               }
             ]
           },
-          "finalHash": "dbbde6b55c240741"
+          "finalHash": "75c4843900bce8bd"
         },
         {
-          "engine": "Node v22.23.2 again",
+          "engine": "Node v26.8.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.956,
+          "stepMsPerTick": 0.346,
           "final": {
             "players": [
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               },
               {
                 "name": "Car",
-                "x": 797.9145767176082,
+                "x": 712.1179650343938,
                 "y": 69.5
               }
             ]
           },
-          "finalHash": "dbbde6b55c240741"
+          "finalHash": "75c4843900bce8bd"
         },
         {
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.235,
+          "stepMsPerTick": 0.272,
           "final": {
             "players": [
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               },
               {
                 "name": "Car",
-                "x": 797.9145767176082,
+                "x": 712.1179650343938,
                 "y": 69.5
               }
             ]
           },
-          "finalHash": "dbbde6b55c240741"
+          "finalHash": "75c4843900bce8bd"
         },
         {
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.351,
+          "stepMsPerTick": 0.397,
           "final": {
             "players": [
               {
                 "name": "Computer racer",
-                "x": 916.2145155543208,
-                "y": 362.7089576003228
+                "x": 924.6640184727906,
+                "y": 297.5184518465607
               },
               {
                 "name": "Computer racer",
-                "x": 917.6067000257748,
-                "y": 357.0689138893835
+                "x": 909.9906849251265,
+                "y": 238.63372082932986
               },
               {
                 "name": "Car",
-                "x": 797.9145767176082,
+                "x": 712.1179650343938,
                 "y": 69.5
               }
             ]
           },
-          "finalHash": "dbbde6b55c240741"
+          "finalHash": "75c4843900bce8bd"
         }
       ],
       "mismatchExplain": {},
       "rejoin": {
-        "snapshotBytes": 607815,
+        "snapshotBytes": 620300,
         "matches": true,
         "firstMismatchTick": null
       }
