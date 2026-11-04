@@ -12,6 +12,7 @@ import { PlayTouchControls } from './PlayTouchControls'
 import { RaceHud } from '../race/screens/RaceHud'
 import { RaceTouch } from '../race/screens/RaceTouch'
 import { LapsChip } from '../race/screens/LapsChip'
+import { BlankHud } from '../blank/BlankHud'
 
 export interface KitParts {
   /** Over the level while it plays: hints, counters, "You made it!". */
@@ -25,6 +26,8 @@ export interface KitParts {
 export const KIT_PARTS: Readonly<Record<ScreensKit, KitParts>> = {
   platformer: { PlayHud: PlayFeedback, TouchControls: PlayTouchControls },
   race: { PlayHud: RaceHud, TouchControls: RaceTouch, BuildChip: LapsChip },
+  // The d-pad presses the arrow keys every way of moving reads; Space is Runs and jumps' jump.
+  blank: { PlayHud: BlankHud, TouchControls: PlayTouchControls },
 }
 
 export const partsFor = (design: Pick<LevelDesign, 'kit'>): KitParts => KIT_PARTS[screensFor(design).kit]

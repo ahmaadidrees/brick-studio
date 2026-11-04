@@ -33,10 +33,11 @@ export type ClassroomWorld = {
   /** What the world holds: a 3D brick build, a 2D level (`/2d`) or a Hackable Platformer. Older servers omit it: treat that as 'brick'. */
   format?: 'brick' | '2d' | 'hackable'
   /**
-   * 'race' for a race track (format '2d') or a Hackable Racing project, '3d' for a Hackable 3D project. Absent means a
-   * platformer, a Hackable Platformer or a 3D build (or an older server): `format` says which builder opens it.
+   * 'race' for a race track (format '2d') or a Hackable Racing project, '3d' for a Hackable 3D project, 'blank' for a
+   * Start from nothing game ("Own game"). Absent means a platformer, a Hackable Platformer or a 3D build (or an older
+   * server): `format` says which builder opens it.
    */
-  kit?: 'race' | '3d'
+  kit?: 'race' | '3d' | 'blank'
   visibility: ClassroomWorldVisibility
   /** Whether the caller may change bricks: owner, shared with edit, or the class/group rules. */
   canEdit: boolean

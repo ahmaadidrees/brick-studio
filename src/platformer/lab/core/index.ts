@@ -60,8 +60,15 @@ const raceEngine: KitEngine = {
   },
 }
 
+/**
+ * Start from nothing (docs/qa/blank-2d): no runtime of its own. Racing's engine already holds every Platformer block and
+ * every Racing block, and bodies start with gravity off, so an empty stage behaves like Scratch until a brick's own code
+ * (or its job) says otherwise.
+ */
+const blankEngine: KitEngine = raceEngine
+
 /** The kits this core can run. 3D (D1) registers here when it lands. */
-const KIT_ENGINES: Partial<Record<KitId, KitEngine>> = { platformer: platformerEngine, race: raceEngine }
+const KIT_ENGINES: Partial<Record<KitId, KitEngine>> = { platformer: platformerEngine, race: raceEngine, blank: blankEngine }
 
 export const hasKitEngine = (kit: KitId): boolean => !!KIT_ENGINES[kit]
 

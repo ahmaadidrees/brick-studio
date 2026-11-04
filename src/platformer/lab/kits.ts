@@ -2,7 +2,7 @@
  * The Hackable kits (docs/qa/hackable-modes): one studio and one save format, three games. A project's kit comes from
  * its own design (`design.kit`), never from the address it was opened at, so a saved project always opens as itself.
  *
- * The Platformer and Racing (R1, docs/qa/hackable-modes/R1-SCREENS.md) are ready. 3D (D1) is listed so its projects
+ * The Platformer, Racing (R1, docs/qa/hackable-modes/R1-SCREENS.md) and Start from nothing (docs/qa/blank-2d) are ready. 3D (D1) is listed so its projects
  * and powers can be named and refused politely; it turns `ready` on when its engine, toolbox, Build drawer and Stage
  * land.
  */
@@ -23,6 +23,8 @@ export const KITS: Readonly<Record<KitId, KitInfo>> = {
   platformer: { id: 'platformer', name: 'Hackable Platformer', route: '/2d/hackable', ready: true },
   race: { id: 'race', name: 'Hackable Racing', route: '/2d/hackable-race', ready: true },
   '3d': { id: '3d', name: 'Hackable 3D', route: '/3d/hackable', ready: false },
+  // Start from nothing (docs/qa/blank-2d): an empty stage, the kid's own bricks and code. My projects calls it "Own game".
+  blank: { id: 'blank', name: 'Own game', route: '/2d/hackable-blank', ready: true },
 }
 
 export const kitOf = (design: Pick<LevelDesign, 'kit'>): KitInfo => KITS[designKit(design)]

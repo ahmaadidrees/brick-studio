@@ -20,7 +20,7 @@ type Fail = (status: number, code: string, message: string) => never;
 
 const STATUSES = ['pending', 'approved', 'hidden'] as const;
 /** The Hackable games a power can be for (app: src/platformer/lab/core/contracts.ts KIT_IDS). Missing means the Platformer. */
-const GAMES = ['platformer', 'race', '3d'] as const;
+const GAMES = ['platformer', 'race', '3d', 'blank'] as const;
 type Game = (typeof GAMES)[number];
 /** A row's game: lists select it from the payload as `game`, single reads carry the payload itself. */
 const gameOf = (row: Row): Game => {

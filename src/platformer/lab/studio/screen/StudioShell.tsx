@@ -137,7 +137,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
     // Play needs the kit's player (the Hero, the Car). Without one, say so kindly and stay put instead of starting a level
     // where nothing moves.
     const design = store.getState().project.design
-    if (next === 'play' && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
+    if (next === 'play' && screensFor(design).playNeedsPlayer && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
     setNote(null)
     setSheet(false)
     if (next !== 'build') setErasing(false)

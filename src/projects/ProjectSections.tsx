@@ -12,7 +12,7 @@ import { PROJECT_FILE_ACCEPT, PROJECT_KIND_LABEL, downloadProjectFile, readProje
 import { LOCAL_3D_ID, importProject, listLocalProjects, localProject, localProjectAge, moveToAccount, removeLocalProject, type LocalProject } from './projects'
 import './projects.css'
 
-const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag, hackable: Code2, 'hackable-race': Code2 }
+const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag, hackable: Code2, 'hackable-race': Code2, 'hackable-blank': Code2 }
 
 /** "3D build", "Platformer", "Race track", "Hackable Platformer" or "Hackable Racing", on every project card. */
 export function KindChip({ kind }: { kind: ProjectKind }) {

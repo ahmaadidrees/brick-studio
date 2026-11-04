@@ -19,7 +19,7 @@ export const LEGACY_ID = 'main'
 export const MAX_HACKABLE_PROJECTS = 30
 export const NEW_PROJECT_NAME = 'My platformer'
 /** A new project's name in each kit (kitScreens `copy.projectName`; hackableProjects.test.ts checks they agree). */
-export const newProjectName = (kit: KitId = 'platformer'): string => (kit === 'race' ? 'My race track' : NEW_PROJECT_NAME)
+export const newProjectName = (kit: KitId = 'platformer'): string => (kit === 'race' ? 'My race track' : kit === 'blank' ? 'My game' : NEW_PROJECT_NAME)
 /** What an account world can hold (the worlds table's own limit). */
 export const ACCOUNT_DOCUMENT_MAX_BYTES = 2_000_000
 /** The biggest save text the game opens (core/save.ts MAX_SAVE_BYTES, counted in characters; projectIo.test.ts checks they agree). */
@@ -348,7 +348,7 @@ export function documentFromText(text: string): HackableDocument | null {
  * Each kit's studio address (kits.ts `route`; hackableProjects.test.ts checks they agree). Hackable 3D has no address in
  * the 2D studio yet, so its projects open at the Platformer's, which says what they are.
  */
-export const hackableRoute = (kit: KitId | undefined = 'platformer'): string => (kit === 'race' ? '/2d/hackable-race' : '/2d/hackable')
+export const hackableRoute = (kit: KitId | undefined = 'platformer'): string => (kit === 'race' ? '/2d/hackable-race' : kit === 'blank' ? '/2d/hackable-blank' : '/2d/hackable')
 
 /** Where a Hackable project opens: at its own kit's address (the Platformer's when the kit is not known). */
 export const hackableHref = {

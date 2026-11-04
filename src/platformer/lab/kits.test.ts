@@ -80,6 +80,7 @@ describe('kits: which Hackable game a project is', () => {
       ['Hackable Platformer', '/2d/hackable'],
       ['Hackable Racing', '/2d/hackable-race'],
       ['Hackable 3D', '/3d/hackable'],
+      ['Own game', '/2d/hackable-blank'],
     ])
   })
 })

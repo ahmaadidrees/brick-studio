@@ -14,7 +14,7 @@
  *
  * y up, (0, 0) = bottom-left of the level, direction 90 = right.
  */
-import { EFFECT_NAMES, TILE_SIZE, gridCopyId, isKitId } from './contracts'
+import { BACKDROPS, EFFECT_NAMES, TILE_SIZE, gridCopyId, isKitId } from './contracts'
 import type {
   BrickDef,
   BrickProgram,
@@ -139,7 +139,9 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
 
   checkId(design.id, 'id', push)
   checkName(design.name, 'name', push)
-  if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race or 3d.')
+  if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race, 3d or blank.')
+  if (design.player !== undefined && !(typeof design.player === 'string' && design.player.length > 0 && design.player.length <= 64)) push('bad-value', 'player', 'The player must be a brick id.')
+  if (design.backdrop !== undefined && !BACKDROPS.includes(design.backdrop)) push('bad-value', 'backdrop', 'The backdrop must be paper, sky, grass or night.')
   if (design.pits !== undefined && typeof design.pits !== 'boolean') push('bad-value', 'pits', 'Pits must be true or false.')
   checkSeed(design.seed, push)
   checkBounds(design.bounds, push)

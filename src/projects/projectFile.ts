@@ -34,15 +34,18 @@ const TOO_BIG_NOT_HACKABLE = `That file is too big to open. 3D builds and 2D pro
  * both are kept, moved and saved as files the same way (a file's own `kind` is 'hackable' for both; the game is inside
  * its save).
  */
-export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable' | 'hackable-race'
+export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable' | 'hackable-race' | 'hackable-blank'
 
-export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer', 'hackable-race': 'Hackable Racing' }
+/** 'hackable-blank' is Start from nothing (kit `blank`, docs/qa/blank-2d): the kid's "Own game". */
+export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer', 'hackable-race': 'Hackable Racing', 'hackable-blank': 'Own game' }
+
+type HackableKind = 'hackable' | 'hackable-race' | 'hackable-blank'
 
 /** A Hackable project of any game. */
-export const isHackableKind = (kind: ProjectKind): kind is 'hackable' | 'hackable-race' => kind === 'hackable' || kind === 'hackable-race'
+export const isHackableKind = (kind: ProjectKind): kind is HackableKind => kind === 'hackable' || kind === 'hackable-race' || kind === 'hackable-blank'
 
 /** The My projects kind of a Hackable project, from its game. */
-export const hackableKind = (kit: KitId | undefined): 'hackable' | 'hackable-race' => (kit === 'race' ? 'hackable-race' : 'hackable')
+export const hackableKind = (kit: KitId | undefined): HackableKind => (kit === 'race' ? 'hackable-race' : kit === 'blank' ? 'hackable-blank' : 'hackable')
 
 export type ProjectContent =
   | { kind: '3d'; document: BrickStudioDocument }

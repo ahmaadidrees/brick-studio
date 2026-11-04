@@ -10,7 +10,7 @@ import { play, type Runtime } from '../core/index'
 import { deterministicStringify } from '../core/save'
 import { designKit, parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
-import { screensFor } from './kitScreens'
+import { playerIdOf } from './kitScreens'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, powerProblem, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
@@ -255,8 +255,8 @@ export class StudioStore {
     const copyBrick = s.selectedCopyId ? (parseGridCopyId(s.selectedCopyId) ? s.selectedBrickId : d.copies.find((c) => c.id === s.selectedCopyId)?.brickId) : undefined
     if (copyBrick && this.brick(copyBrick)) return copyBrick
     if (this.codeVisited && this.brick(s.selectedBrickId)) return s.selectedBrickId
-    const player = screensFor(d).playerBrickId
-    return (d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player))?.id ?? d.bricks[0]?.id ?? STAGE_ID
+    const player = playerIdOf(d)
+    return (player ? d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player) : undefined)?.id ?? d.bricks[0]?.id ?? STAGE_ID
   }
 
   /** Code: run the whole level, or just the open brick. */
