@@ -126,6 +126,8 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'max_fall', name: 'top fall speed', hint: 'The fastest I can fall.', value: 4.25 * SPEED, from: 'maxFall 4.25 px/frame x 2' },
   { id: 'late_ticks', name: 'late jump time', hint: 'How long after I run off a ledge I can still jump. 30 is one second.', value: 3, from: 'coyoteFrames 4: the old Hero allows a late jump up to 3 frames (1.5 ticks) after the ledge; 3 here allows 2 ticks' },
   { id: 'early_ticks', name: 'early jump time', hint: 'How long before I land a jump press still counts. 30 is one second.', value: 3, from: 'bufferFrames 5: the old Hero counts a press up to 4 frames (2 ticks) before landing; 3 here counts 2 ticks' },
+  // Bumping my head (parity bucket B, 2026-11-04): the old Hero slid around a block's corner instead of stopping
+  { id: 'corner_slip', name: 'corner slip', hint: 'How far I slide around the corner of a block I bump my head on. 0 means I always stop.', value: 4, from: 'cornerNudge 4 px (a distance: the same in steps)' },
   // Walls
   { id: 'wall_slide', name: 'wall slide speed', hint: 'How fast I slide down a wall.', value: 1.0 * SPEED, from: 'wallSlideMax 1.0 px/frame x 2' },
   // A speed shed every frame is a change per frame, like an acceleration (x 4). Until parity bucket A it was x 2 (1.5), so
@@ -163,7 +165,7 @@ export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobId
   {
     id: 'jumping',
     label: 'Jumping',
-    knobIds: ['jump_walk', 'jump_run', 'jump_p', 'walk_jump_from', 'run_jump_from', 'p_jump_from', 'hold_slow', 'hold_fast', 'late_ticks', 'early_ticks'],
+    knobIds: ['jump_walk', 'jump_run', 'jump_p', 'walk_jump_from', 'run_jump_from', 'p_jump_from', 'hold_slow', 'hold_fast', 'late_ticks', 'early_ticks', 'corner_slip'],
   },
   { id: 'falling', label: 'Falling', knobIds: ['max_fall'] },
   { id: 'walls', label: 'Walls', knobIds: ['wall_slide', 'wall_shed', 'wall_push', 'wall_up', 'wall_lock_ticks', 'wall_late_ticks'] },
@@ -632,13 +634,15 @@ export function createHeroWorkspace(): WorkspaceJson {
       when(hit(), [blk('platformer_tellhit'), setX(0)]),
       // up and down: the same, and stopping on the way down means I'm standing on something
       moveUntilHit('y', ySpeed()),
+      // bumping my head on just the corner of a block: slide past it and keep going up (parity bucket B)
+      later(() => when(and(hit(), gt(ySpeed(), 0)), [blk('platformer_slipcorner', { inputs: { STEPS: v('corner_slip') } })])),
       when(hit(), [when(lt(ySpeed(), 0), [blk('platformer_setonground', { fields: { ONGROUND: 'yes' } })]), blk('platformer_tellhit'), setY(0)]),
     ]),
   })
   plumbing.x = 1700
   plumbing.y = 20
   order.push(plumbing)
-  labels.push([plumbing, 'Move and collide: move by my speeds; stop at anything solid, and tell it I bumped it'])
+  labels.push([plumbing, 'Move and collide: move by my speeds; stop at anything solid (or slide past a corner I bump my head on), and tell it I bumped it'])
 
   bump('feel', 'Wall slide (part 3): a wall on my right', 'left', [set('wall_hit', 1)])
   bump('feel', 'Wall slide (part 3): a wall on my left', 'right', [set('wall_hit', -1)])

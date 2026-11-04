@@ -339,6 +339,8 @@ describe('The Hero brick is built from open blocks', () => {
       'motion_xposition', 'motion_yposition', 'control_wait_until',
       // parity bucket A: getting hurt stops with an Ouch, pops away, comes back and blinks
       'sound_play', 'looks_seteffectto', 'looks_changeeffectby', 'looks_cleargraphiceffects', 'looks_hide', 'looks_show', 'operator_mod',
+      // parity bucket B: slide past a corner I bump my head on
+      'platformer_slipcorner',
     ])
     expect([...opcodes].filter((o) => !known.has(o))).toEqual([])
     expect(JSON.stringify(workspace)).toContain('"GRAVITY":"off"')

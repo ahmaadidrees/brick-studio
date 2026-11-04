@@ -446,6 +446,7 @@ export function createContinuousToolbox(
         { kind: 'block', type: 'platformer_setmover' },
         { kind: 'block', type: 'platformer_moveuntilhit', inputs: { DISTANCE: numShadow(5) } },
         { kind: 'block', type: 'platformer_hitsomething' },
+        { kind: 'block', type: 'platformer_slipcorner', inputs: { STEPS: numShadow(4) } },
         { kind: 'block', type: 'platformer_tellhit' },
         { kind: 'block', type: 'platformer_setonground' },
       ],

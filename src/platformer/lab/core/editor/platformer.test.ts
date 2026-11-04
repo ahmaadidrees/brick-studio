@@ -23,6 +23,7 @@ const PLATFORMER_TEXT: Record<string, string> = {
   platformer_hitsomething: 'hit something?',
   platformer_tellhit: 'tell what I hit',
   platformer_setonground: 'set on ground? to %1',
+  platformer_slipcorner: 'slip past a corner up to %1 steps',
 }
 
 describe('Platformer blocks: wording', () => {

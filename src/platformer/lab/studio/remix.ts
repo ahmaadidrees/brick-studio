@@ -234,9 +234,9 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
  * Earlier built-in Heroes' blocks, as generated and after a trip through the editor: the two My Blocks versions, and the
  * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
  * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits. '88bce6fb' is the Hero just
- * before pits (2026-11-03).
+ * before pits (2026-11-03); 'c4c19cce' is the Hero shipped with parity bucket A (2026-11-04), before the corner slip.
  */
-export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65', '88bce6fb']
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65', '88bce6fb', 'c4c19cce']
 
 let currentHeroFingerprint: string | undefined
 

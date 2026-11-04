@@ -1666,6 +1666,16 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       tooltip: 'Starts "when I bump" on this brick and on the brick it hit, a moment later, just like the Platformer does when it stops a brick.',
     },
     {
+      type: 'platformer_slipcorner',
+      message0: 'slip past a corner up to %1 steps',
+      args0: [{ type: 'input_value', name: 'STEPS' }],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: 'After "move until I hit something" stopped at a brick that only just overlaps me (this many steps or less), step aside and finish the move. Bumping your head on a corner, you slide past it instead.',
+    },
+    {
       type: 'platformer_setonground',
       message0: 'set on ground? to %1',
       args0: [{ type: 'field_dropdown', name: 'ONGROUND', options: [['yes', 'yes'], ['no', 'no']] }],
