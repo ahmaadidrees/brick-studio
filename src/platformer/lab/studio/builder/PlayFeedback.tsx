@@ -2,7 +2,7 @@ import { Hammer, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../../ui'
 import { useStudio, type StudioStore } from '../store'
-import { bestTime, checkLevelForPlay, COURSE_CLEAR, formatPlayTime, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, powerKeys, powerKeysHint, readCoins, recordClear, saysOuch } from './playRules'
+import { aboutMyHero, bestTime, checkLevelForPlay, COURSE_CLEAR, formatPlayTime, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, powerKeys, powerKeysHint, readCoins, recordClear, saysOuch } from './playRules'
 
 const HINT_MS = 7000
 const HURT_MS = 1600
@@ -14,7 +14,8 @@ const HURT_MS = 1600
  * game; the engine knows nothing about it. The time is the game's own ticks since Play, so it never drifts.
  *
  * In a room the game goes on across the host's Play again (one clock for the room, rooms/session.ts `playStart`):
- * the time counts from the play's start, and a new play forgets the last one's finish.
+ * the time counts from the play's start, and a new play forgets the last one's finish. Each screen shows its own
+ * Hero's "Try again" and "You made it!" only (playRules.ts aboutMyHero).
  */
 export function PlayFeedback({ store }: { store: StudioStore }) {
   const runtime = useStudio(store, (s) => s.runtime)
@@ -57,9 +58,10 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
       setTime((clearedAt ?? runtime.world.tick) - startTick)
     }, 100)
     const hurtMessage = saysOuch(design) ? HERO_OUCH : HERO_HURT
-    const off = runtime.onBroadcast((message) => {
+    const off = runtime.onBroadcast((message, from) => {
       samePlay()
       const m = message.trim().toLowerCase()
+      if ((m === COURSE_CLEAR || m === hurtMessage) && !aboutMyHero(runtime.world, from, room?.me ?? 0)) return
       if (m === COURSE_CLEAR) {
         if (clearedAt !== null) return
         clearedAt = runtime.world.tick

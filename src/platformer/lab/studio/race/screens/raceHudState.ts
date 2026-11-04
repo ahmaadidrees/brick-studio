@@ -4,6 +4,9 @@
  *
  * It only reads. The countdown is the Starter's own words (whatever a kid makes it say), mirrored because the Starter
  * can be off camera. Laps and places come from core/race.ts, the same numbers `laps done` and `my place` report.
+ *
+ * In a room every player's Car is a copy of the same Car (core/players.ts), so each one's costume says "You": each
+ * screen follows its own player's Car, and names the others by their players' names in the room.
  */
 import type { LevelDesign, Target, World } from '../../../core/contracts'
 import { isRacer, raceLapState, raceLoopOf, racePlace, RACE_LOOP_REASON_TEXT } from '../../../core/race'
@@ -69,8 +72,12 @@ export const racerName = (world: World, t: Target): string => world.bricks[t.bri
 /** "2. Red racer" → "Red racer". */
 const entryName = (entry: unknown): string => String(entry).replace(/^\s*\d+\.\s*/, '')
 
-/** The Car: the first placed copy of the kit's player brick (the Car, a remixed "My Car"), as the camera follows. */
-export function raceCarOf(world: World, design: LevelDesign): Target | undefined {
+/**
+ * The Car: the first placed copy of the kit's player brick (the Car, a remixed "My Car"), as the camera follows. In a
+ * room (`me`, our player number), our own player's Car.
+ */
+export function raceCarOf(world: World, design: LevelDesign, me = 0): Target | undefined {
+  if (me && world.players?.length) return world.targets.find((t) => t.player === me && !t.isClone)
   const players = new Set(design.bricks.filter((b) => isPlayerBrick(design, b.id)).map((b) => b.id))
   return world.targets.find((t) => !t.isStage && !t.isClone && players.has(t.brickId))
 }
@@ -82,10 +89,11 @@ function lapTimes(lapTicks: readonly number[], start: number): number[] {
 
 /**
  * `startTick` is the tick the race said "go" (RaceHud hears the broadcast), so the clock is the game's own ticks: it
- * never drifts, and every player of a room sees the same times.
+ * never drifts, and every player of a room sees the same times. `me`: our player number in a room (0 outside one).
  */
-export function readRaceHud(world: World, design: LevelDesign, startTick: number | null = null): RaceHudState {
-  const car = raceCarOf(world, design)
+export function readRaceHud(world: World, design: LevelDesign, startTick: number | null = null, me = 0): RaceHudState {
+  const room = me > 0 && !!world.players?.length
+  const car = raceCarOf(world, design, me)
   const starter = world.targets.find((t) => isStarter(world, t))
   const said = starter?.bubble?.text.trim() ?? ''
   const countdown = said && said.length <= COUNTDOWN_MAX && !/^results/i.test(said) ? said : null
@@ -99,13 +107,24 @@ export function readRaceHud(world: World, design: LevelDesign, startTick: number
   const loop = raceLoopOf(world)
   const noLaps = loop.ok ? null : RACE_LOOP_REASON_TEXT[loop.reason]
 
-  const results = (world.stage.lists[RACE_GLOBALS.results] ?? []).map(entryName)
-  const carName = car ? racerName(world, car) : ''
+  /** A racer's name: its costume's, or for another player's Car in a room, that player's name. */
+  const nameOf = (t: Target): string =>
+    (room && t !== car && t.player !== undefined && world.players!.find((p) => p.num === t.player)?.name) || racerName(world, t)
+  /** The tick a racer crossed the line for the last time, if it has. */
+  const lineTick = (t: Target): number | undefined => raceLapState(t)?.lapTicks[laps - 1]
+
+  // The results list holds names, and in a room every player's Car is "You": there, finishers go by when they crossed.
+  const finishedRacers = room
+    ? [...racers, ...(car && !racers.includes(car) ? [car] : [])].filter((t) => lineTick(t) !== undefined).sort((a, b) => lineTick(a)! - lineTick(b)!)
+    : []
+  const results = room ? finishedRacers.map(nameOf) : (world.stage.lists[RACE_GLOBALS.results] ?? []).map(entryName)
+  const carName = car ? nameOf(car) : ''
   // A Car that just crossed the line is written on the results a tick later (its lap script runs next tick), or never
   // if a kid's Car has no results script: it goes after whoever is already on the list.
   const finishers = finished && !results.includes(carName) ? [...results, carName] : results
+  const carLine = room && car ? finishedRacers.indexOf(car) : -1
   // After the line `my place` can be passed by a later finisher (R1-engine.md), so a finished Car's place is its line.
-  const place = car ? (finished ? finishers.indexOf(carName) + 1 : racePlace(world, car)) : 0
+  const place = car ? (finished ? (carLine >= 0 ? carLine : finishers.indexOf(carName)) + 1 : racePlace(world, car)) : 0
 
   const started = startTick !== null && startTick <= world.tick
   /** A racer's time over the line: from "go" to the end of its last lap. */
@@ -113,15 +132,18 @@ export function readRaceHud(world: World, design: LevelDesign, startTick: number
     const ticks = t ? raceLapState(t)?.lapTicks : undefined
     return started && ticks && ticks.length >= laps ? ticks[laps - 1]! - startTick! : null
   }
-  const byName = (name: string) => racers.find((t) => racerName(world, t) === name) ?? (car && racerName(world, car) === name ? car : undefined)
+  const byName = (name: string) => racers.find((t) => nameOf(t) === name) ?? (car && nameOf(car) === name ? car : undefined)
 
   let standings: RaceStanding[] = []
   if (car && finished) {
-    standings = finishers.map((name, i) => ({ place: i + 1, name, done: true, you: name === carName, time: finishTime(byName(name)) }))
+    standings = room
+      ? finishedRacers.map((t, i) => ({ place: i + 1, name: nameOf(t), done: true, you: t === car, time: finishTime(t) }))
+      : finishers.map((name, i) => ({ place: i + 1, name, done: true, you: name === carName, time: finishTime(byName(name)) }))
+    const over = room ? new Set(finishedRacers) : null
     const still = racers
-      .filter((t) => !finishers.includes(racerName(world, t)))
+      .filter((t) => (over ? !over.has(t) : !finishers.includes(racerName(world, t))))
       .sort((a, b) => racePlace(world, a) - racePlace(world, b))
-    for (const t of still) standings.push({ place: standings.length + 1, name: racerName(world, t), done: false, you: false })
+    for (const t of still) standings.push({ place: standings.length + 1, name: nameOf(t), done: false, you: false })
   }
 
   // The clock stops when the Car crosses the line for the last time.
@@ -136,7 +158,7 @@ export function readRaceHud(world: World, design: LevelDesign, startTick: number
       .sort((a, b) => a.place - b.place)
       .map(({ t }, i) => {
         const lapsDone = raceLapState(t)?.lap ?? 0
-        return { place: i + 1, name: racerName(world, t), done: lapsDone >= laps, you: t === car, lap: Math.min(lapsDone + 1, laps) }
+        return { place: i + 1, name: nameOf(t), done: lapsDone >= laps, you: t === car, lap: Math.min(lapsDone + 1, laps) }
       })
   }
 

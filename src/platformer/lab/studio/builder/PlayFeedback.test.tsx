@@ -8,7 +8,7 @@ import { StudioStore } from '../store'
 import { StudioShell } from '../screen/StudioShell'
 import { roomGame, TestRoom } from '../testRoom'
 import { PlayFeedback } from './PlayFeedback'
-import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins, saysOuch } from './playRules'
+import { aboutMyHero, checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins, saysOuch } from './playRules'
 import { HERO_OUCH as HERO_SAYS } from '../hero/heroBrick'
 import beforePits from '../hero/__fixtures__/hero-before-pits.json'
 
@@ -249,5 +249,60 @@ describe('the time (parity bucket A, 2026-11-03)', () => {
       room.game.broadcast(COURSE_CLEAR)
     })
     expect(screen.getByRole('dialog', { name: 'You made it' }).textContent).toMatch(/Time 0:01\.0/)
+  })
+})
+
+describe('in a room, each screen shows its own Hero\'s feedback', () => {
+  /** Maya (1) and Sam (2) in the starter level; the Goal, and a Hero moved onto it. */
+  function room() {
+    const project = createStarterProject()
+    const game = roomGame(project.design, ['Maya', 'Sam'])
+    game.step()
+    const world = game.world
+    const hero = (num: number) => world.targets.find((t) => t.player === num && !t.isClone)!
+    const goal = world.targets.find((t) => t.brickId === 'brick_goal' && !t.isClone)!
+    const onGoal = (num: number) => Object.assign(hero(num), { x: goal.x, y: goal.y })
+    return { project, game, world, hero, goal, onGoal }
+  }
+
+  it('a Hero\'s own words are its player\'s; the Goal\'s are about the Hero touching it; outside a room, everyone\'s', () => {
+    const { world, hero, goal, onGoal } = room()
+    expect(aboutMyHero(world, hero(1), 1)).toBe(true)
+    expect(aboutMyHero(world, hero(2), 1)).toBe(false)
+    // Nobody at the Goal (a kid's own "course clear"): everyone's.
+    expect(aboutMyHero(world, goal, 1)).toBe(true)
+    onGoal(2)
+    expect(aboutMyHero(world, goal, 1)).toBe(false)
+    expect(aboutMyHero(world, goal, 2)).toBe(true)
+    // Not in a room, or the screen's own broadcast.
+    expect(aboutMyHero(world, hero(2), 0)).toBe(true)
+    expect(aboutMyHero(world, undefined, 1)).toBe(true)
+  })
+
+  it('"Try again" for our Hero\'s ouch only, and "You made it!" only when our Hero reaches the Goal', () => {
+    const { project, game, hero, goal, onGoal } = room()
+    const store = new StudioStore(project)
+    store.enterRoom(new TestRoom(game, 1))
+    store.play()
+    render(<PlayFeedback store={store} />)
+    act(() => {
+      game.broadcast(HERO_OUCH, hero(2))
+    })
+    expect(screen.queryByText(/Try again/)).toBeNull()
+    act(() => {
+      game.broadcast(HERO_OUCH, hero(1))
+    })
+    expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
+
+    onGoal(2)
+    act(() => {
+      game.broadcast(COURSE_CLEAR, goal)
+    })
+    expect(screen.queryByRole('dialog', { name: 'You made it' })).toBeNull()
+    onGoal(1)
+    act(() => {
+      game.broadcast(COURSE_CLEAR, goal)
+    })
+    expect(screen.getByRole('dialog', { name: 'You made it' })).toBeTruthy()
   })
 })

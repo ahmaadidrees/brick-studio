@@ -3,8 +3,9 @@
  * are ordinary bricks that broadcast these messages (starter.ts "check for the Hero", hero/heroBrick.ts "hero hurt"),
  * and the builder only listens (Runtime.onBroadcast). A test keeps the words below in step with those bricks.
  */
-import type { BrickDef, LevelDesign, Value } from '../../core/contracts'
+import type { BrickDef, LevelDesign, Target, Value, World } from '../../core/contracts'
 import type { Runtime } from '../../core/runtime'
+import { targetsTouch } from '../../core/touching'
 import { powerKeysOf } from '../powers/powers'
 
 /** The Goal says this when the Hero reaches it. */
@@ -21,6 +22,19 @@ export const HERO_OUCH = 'ouch'
 export function saysOuch(design: LevelDesign): boolean {
   return design.bricks.some((b) => JSON.stringify(b.program).includes(`"${HERO_OUCH}"`))
 }
+/**
+ * In a room, is this broadcast about our own Hero (rooms: `me`, our player number)? A Hero's own words ("ouch") are
+ * its player's. Anything else (the Goal's "course clear", a Spike's "hero hurt") is about the Heroes touching whoever
+ * said it, so it is ours when ours is one of them; when no Hero touches it (a kid's own broadcast), it is everyone's.
+ * Outside a room (`me` 0) everything is ours. It only reads the world.
+ */
+export function aboutMyHero(world: World, from: Target | undefined, me: number): boolean {
+  if (!me || !from || !world.players?.length) return true
+  if (from.player !== undefined) return from.player === me
+  const touching = world.targets.filter((t) => t.player !== undefined && !t.isClone && t !== from && targetsTouch(world, t, from))
+  return touching.length === 0 || touching.some((t) => t.player === me)
+}
+
 /** The Stage's score variable (a Coin says "coin collected", the Stage adds one). */
 export const COINS_VARIABLE = 'coins'
 

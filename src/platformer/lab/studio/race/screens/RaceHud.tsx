@@ -35,7 +35,7 @@ function useRaceHud(runtime: Runtime | null, store: StudioStore): RaceHudState |
     }
     const read = () => {
       samePlay()
-      const next = readRaceHud(runtime.world, design, startTick)
+      const next = readRaceHud(runtime.world, design, startTick, room?.me ?? 0)
       setHud((prev) => (same(prev, next) ? prev : next))
     }
     // The first "go" of this game starts the clock, on the exact tick it was said.
