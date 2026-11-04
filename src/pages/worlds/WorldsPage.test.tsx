@@ -186,8 +186,9 @@ describe('student', () => {
     expect(newProject).toHaveClass('ui-button-primary')
     expect(screen.getByRole('button', { name: 'Import a file' })).toBeInTheDocument()
     fireEvent.click(newProject)
-    const sheet = screen.getByRole('dialog', { name: 'New project' })
-    for (const kind of ['3D build', 'Platformer', 'Race track']) expect(within(sheet).getByRole('heading', { name: kind })).toBeInTheDocument()
+    const sheet = screen.getByRole('dialog', { name: 'What do you want to make?' })
+    for (const kind of ['Platformer', 'Racing']) expect(within(sheet).getByRole('heading', { name: kind })).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Or build in 3D' })).toBeInTheDocument()
     fireEvent.click(within(sheet).getAllByRole('button', { name: 'Close' })[0])
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
@@ -567,9 +568,9 @@ describe('teacher', () => {
     draw(createFakeWorldsClient())
     await settled()
     fireEvent.click(screen.getByRole('button', { name: 'New project' }))
-    const sheet = screen.getByRole('dialog', { name: 'New project' })
+    const sheet = screen.getByRole('dialog', { name: 'What do you want to make?' })
     expect(within(sheet).getByRole('button', { name: 'Start a platformer' })).toBeInTheDocument()
-    expect(within(sheet).getByRole('button', { name: 'Starter track' })).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Start a race' })).toBeInTheDocument()
   })
 
   it('offers the way back to the class page: a header button and a link on the selected class', async () => {
