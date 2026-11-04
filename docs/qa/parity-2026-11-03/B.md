@@ -160,7 +160,9 @@ Results for the final tree are under "Final run" below.
     top view now shows a second My Block, and its card has 19 "More sliders". Fixed in `668f5421`.
   - **The other two are the known `CodeEditor.sections` timeout.** They pass alone.
   - **All 3 files re-run alone on `668f5421`:** 24 of 24 passed.
-  - A second full run on `668f5421` is recorded in the commit after this one.
+  - **Second full run, on `668f5421`:** 3731 passed, 25 expected-fail, and 2 failed. The two are the known flakes,
+    `perf.test.ts` (replay timing under load) and one `CodeEditor.sections` timeout. Re-run alone, both files pass, 10
+    of 10. Nothing else fails.
 - **Feel harness:** 25/25, and FEEL.md is unchanged. Racing feel is unchanged.
 - **Lockstep `--strict-rejoin`** (on `842ec1d6`): platformer solo, platformer room, race solo and race room were all
   the same on all 1800 ticks in Node (twice), Chrome 156 and WebKit 26.5. The late joiner at tick 900 was the same to
