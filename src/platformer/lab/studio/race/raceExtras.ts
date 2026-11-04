@@ -4,7 +4,8 @@
  * raceArt.ts drawRaceTile), drawn on grass, 16 x 16.
  *
  * The walls are solid (`solid [on]`, like the Barrier); how hard a car bounces off each is the Car's own business
- * ("how bouncy is what I hit" in carBrick.ts reads the brick's name).
+ * ("how bouncy is what I hit" in carBrick.ts reads the brick's name). Flowers are ground: the Car drives over them as
+ * grass ("Off-road slowdown" reads `ground under me`).
  */
 import type { BrickDef, Costume } from '../../core/contracts'
 import { TILE_SIZE } from '../../core/contracts'
@@ -17,6 +18,7 @@ export const TIRES_BRICK_ID = 'brick_tires'
 export const BUMPER_BRICK_ID = 'brick_bumper'
 export const TREE_BRICK_ID = 'brick_tree'
 export const STAND_BRICK_ID = 'brick_stand'
+export const FLOWERS_BRICK_ID = 'brick_flowers'
 
 interface Spec {
   id: string
@@ -75,6 +77,14 @@ const SPECS: Readonly<Record<string, Spec>> = {
         if (dist(x, y, 2.5 + (i % 3) * 5.5, 3.5 + (i > 2 ? 8 : 0)) < 1.8) return String(i)
       }
       return 'a'
+    },
+  },
+  [FLOWERS_BRICK_ID]: {
+    id: FLOWERS_BRICK_ID, name: 'Flowers', char: 'L', solid: false,
+    palette: { ...GRASS, '0': '#ff7eb6', '1': '#ffd34d', '2': '#ffffff', '3': '#b18cff' },
+    art: (x, y) => {
+      for (let i = 0; i < 4; i++) if (dist(x, y, 4 + (i % 2) * 8, 4 + (i >> 1) * 8) < 1.9) return String(i)
+      return grass(x, y)
     },
   },
 }

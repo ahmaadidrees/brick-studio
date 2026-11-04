@@ -11,7 +11,7 @@ import { extraEntryId, brickEntryId } from '../builder/catalog'
 import { raceDrawerEntries } from './raceDrawer'
 import { createRaceStarterProject } from './raceProject'
 import { CAR_BRICK_ID } from './carBrick'
-import { BUMPER_BRICK_ID, STAND_BRICK_ID, TIRES_BRICK_ID, TREE_BRICK_ID } from './raceExtras'
+import { BUMPER_BRICK_ID, FLOWERS_BRICK_ID, STAND_BRICK_ID, TIRES_BRICK_ID, TREE_BRICK_ID } from './raceExtras'
 
 /** A race starter store with `id` added from the drawer. */
 function withBrick(id: string): StudioStore {
@@ -116,5 +116,38 @@ describe('Grandstand', () => {
     const design = withBrick(STAND_BRICK_ID).getState().project.design
     const { before, after } = crash(wall(design, 'S'))
     expect(Math.abs(after + before * 0.25)).toBeLessThan(0.25)
+  })
+})
+
+describe('Flowers', () => {
+  it('is offered under Scenery and added with its own character; it has no blocks (it is ground)', () => {
+    expect(raceDrawerEntries(createRaceStarterProject().design.bricks).find((e) => e.id === extraEntryId(FLOWERS_BRICK_ID))).toMatchObject({ name: 'Flowers', category: 'scenery' })
+    const design = withBrick(FLOWERS_BRICK_ID).getState().project.design
+    const flowers = design.bricks.find((b) => b.id === FLOWERS_BRICK_ID)!
+    expect(flowers.grid?.char).toBe('L')
+    expect(flowers.program.scripts).toEqual([])
+    expect(validateDesign(design)).toEqual([])
+  })
+
+  it('cars drive over flowers at the grass speed (classic: flowers are grass)', () => {
+    const base = withBrick(FLOWERS_BRICK_ID).getState().project.design
+    const car0 = base.copies.find((c) => c.brickId === CAR_BRICK_ID)!
+    const col = Math.floor(car0.x / 16) + 10
+    // A band of flowers across the straight, six cells wide: the Car drives through it.
+    const tiles = { ...base.tiles!, data: base.tiles!.data.map((row) => row.slice(0, col) + 'LLLLLL' + row.slice(col + 6)) }
+    const rt = play({ ...base, tiles, copies: base.copies.filter((c) => !c.brickId.startsWith('brick_racer')) })
+    const car = rt.world.targets.find((t) => t.brickId === CAR_BRICK_ID && !t.isClone) as Target
+    rt.pressKey('up arrow')
+    const top = Number(car.variables.car_top)
+    let onFlowers = 0
+    for (let k = 0; k < 300 && car.x < (col + 6) * 16; k++) {
+      rt.step()
+      if (car.x > col * 16 + 8 && car.x < (col + 6) * 16 - 8) {
+        onFlowers++
+        expect(car.variables.car_cap).toBeCloseTo(top * 0.45, 9)
+      }
+    }
+    expect(onFlowers).toBeGreaterThan(3)
+    expect(car.x).toBeGreaterThan((col + 6) * 16)
   })
 })
