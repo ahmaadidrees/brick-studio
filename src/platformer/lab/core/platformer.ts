@@ -272,7 +272,8 @@ function sweepY(world: World, index: SolidIndex, mover: Target, dy: number, P: P
     if (dy < 0 && old.bottom >= s.box.top && now.bottom < s.box.top) cand = { edge: s.box.top, overlap, order: s.order, bump: { side: 'top', other: s.target } }
     // A one-way platform only stops a body falling onto its top, from above.
     else if (dy > 0 && !s.oneWay && old.top <= s.box.bottom && now.top > s.box.bottom) cand = { edge: s.box.bottom, overlap, order: s.order, bump: { side: 'bottom', other: s.target } }
-    if (cand && beats(cand, stop, dy < 0)) stop = cand
+    // Moving up, the lowest bottom face is met first; moving down, the highest top (as the floor below).
+    if (cand && beats(cand, stop, dy > 0)) stop = cand
   }
   if (dy < 0 && P.walls.bottom && now.bottom < world.bounds.bottom) {
     const cand: Stop = { edge: world.bounds.bottom, overlap: Infinity, order: -1, bump: { side: 'top', other: null } }
