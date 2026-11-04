@@ -103,6 +103,7 @@ function hashThreads(h: Hasher, threads: SerializedThread[]): void {
   h.num(threads.length)
   for (const t of threads) {
     h.num(t.id); h.str(t.targetId); h.str(t.scriptId ?? ''); h.str(t.status); h.value(t.done); h.num(t.warpOpCount)
+    if (t.about) { h.str('about'); h.value(t.about) }
     h.num(t.stack.length)
     for (const f of t.stack) {
       h.num(f.pc); h.num(f.statements.length); h.str(f.proccode ?? ''); h.value(f.params ?? null); h.value(f.warp ?? false)

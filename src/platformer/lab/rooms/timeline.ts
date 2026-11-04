@@ -89,9 +89,9 @@ export class HackableTimeline<E> {
 
   private watch(runtime: Runtime): void {
     this.unwatch()
-    this.unwatch = runtime.onBroadcast((message, from) => {
+    this.unwatch = runtime.onBroadcast((message, from, about) => {
       if (this.replaying) return
-      for (const l of [...this.heard]) l(message, from)
+      for (const l of [...this.heard]) l(message, from, about)
     })
   }
 

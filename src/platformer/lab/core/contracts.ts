@@ -368,6 +368,12 @@ export interface PlayerSlot {
   name: string
   /** Keys this player holds, Scratch names (like World.keysDown). */
   keys: string[]
+  /**
+   * The tick this player finished the round (their Hero reached the Goal: a "stop all" about them, runtime.ts
+   * `finishPlayers`). Their Hero and its clones stop and sit out the rest of the round; the round ends when every player
+   * has finished. Missing: still playing.
+   */
+  finished?: number
 }
 
 /** A bump kept in the world: the side, and the solid's target id (null for a level wall or the floor). */
@@ -482,6 +488,8 @@ export interface SerializedThread {
   stack: ExecutionFrame[]
   warpOpCount: number
   isStackClick: boolean
+  /** Rooms: the players this script is about (ThreadHandle.about). Missing: no one in particular. */
+  about?: readonly number[]
 }
 
 export interface World {
@@ -539,6 +547,13 @@ export interface ThreadHandle {
   readonly id: number
   readonly target: Target
   readonly done: boolean
+  /**
+   * Rooms: the players this script is about, set when it touches or bumps a player's Hero, or passed on by the broadcast
+   * that started it. Its broadcasts reach only these players' Heroes (bricks that are no one's hear everything), "y
+   * position of Hero" reads the first one's Hero, and "stop all" finishes only them. A script on a player's own Hero is
+   * about that player unless it says otherwise. Never set outside a room.
+   */
+  about?: readonly number[]
 }
 
 /** Things the host shows or plays. The core never touches audio or the DOM. */
@@ -560,7 +575,7 @@ export interface RuntimeApi {
    * Start every matching hat. Restart/ignore rules for already-running scripts follow H02–H06. `only` skips targets
    * (rooms: a player's key starts hats only on their own Hero and on bricks that are no one's).
    */
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[]
+  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean; about?: readonly number[] }): ThreadHandle[]
   /** Starts event_whenbroadcastreceived scripts for `message` (case-insensitive match, like Scratch). */
   broadcast(message: string): ThreadHandle[]
   stopAll(): void

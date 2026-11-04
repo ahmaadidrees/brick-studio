@@ -43,7 +43,7 @@ export class TestRoom implements StudioRoom {
 
   private watch() {
     this.unwatch()
-    this.unwatch = this.game.onBroadcast((m, from) => { for (const l of [...this.heard]) l(m, from) })
+    this.unwatch = this.game.onBroadcast((m, from, about) => { for (const l of [...this.heard]) l(m, from, about) })
   }
 
   /** The host's Play again: a new game, starting at its own tick. */

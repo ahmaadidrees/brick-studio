@@ -1,9 +1,10 @@
-import { Hammer, RotateCcw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Eye, Hammer, RotateCcw } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { FinishNotices } from '../../../rooms/FinishNotices'
 import { Button } from '../../../../../ui'
 import type { Runtime } from '../../../core/runtime'
 import { useStudio, type StudioStore } from '../../store'
-import { formatRaceTime, ordinal, readRaceHud, type RaceHudState } from './raceHudState'
+import { formatRaceTime, ordinal, readRaceHud, roomFinishers, type RaceHudState } from './raceHudState'
 import './raceScreens.css'
 
 /** How often the HUD reads the race (ten times a second is plenty for a lap counter and a countdown). */
@@ -16,7 +17,7 @@ const same = (a: RaceHudState | null, b: RaceHudState): boolean => !!a && JSON.s
 export const RACE_GO = 'go'
 
 /** The race as the HUD sees it now, read again every RACE_HUD_MS. */
-function useRaceHud(runtime: Runtime | null, store: StudioStore): RaceHudState | null {
+function useRaceHud(runtime: Runtime | null, store: StudioStore, goRef?: { current: number | null }): RaceHudState | null {
   const [hud, setHud] = useState<RaceHudState | null>(null)
   useEffect(() => {
     if (!runtime) {
@@ -35,6 +36,7 @@ function useRaceHud(runtime: Runtime | null, store: StudioStore): RaceHudState |
     }
     const read = () => {
       samePlay()
+      if (goRef) goRef.current = startTick
       const next = readRaceHud(runtime.world, design, startTick, room?.me ?? 0)
       setHud((prev) => (same(prev, next) ? prev : next))
     }
@@ -59,16 +61,24 @@ function useRaceHud(runtime: Runtime | null, store: StudioStore): RaceHudState |
  */
 export function RaceHud({ store }: { store: StudioStore }) {
   const runtime = useStudio(store, (s) => s.runtime)
-  const hud = useRaceHud(runtime, store)
+  const room = useStudio(store, (s) => s.room)
+  const go = useRef<number | null>(null)
+  const hud = useRaceHud(runtime, store, go)
   const [hint, setHint] = useState(true)
+  const [watching, setWatching] = useState(false)
+  // Room rules (M2): everyone else's finish, "Sam finished, 41.3s".
+  const readFinishers = useCallback(() => (runtime && room ? roomFinishers(runtime.world, go.current, room.me) : []), [runtime, room])
   useEffect(() => {
     setHint(true)
+    setWatching(false)
     if (!runtime) return
     const t = setTimeout(() => setHint(false), HINT_MS)
     return () => clearTimeout(t)
   }, [runtime])
 
   if (!runtime || !hud) return null
+  // In a room only the host starts the next race; the others can watch the rest finish.
+  const guest = !!room && !room.host
   const showPlace = hud.place > 0 && hud.racers > 1 && !hud.noLaps
   const status = hud.noLaps ? 'Free drive' : hud.finished ? 'Finished' : `Lap ${hud.lap}/${hud.laps}`
 
@@ -108,7 +118,9 @@ export function RaceHud({ store }: { store: StudioStore }) {
         </div>
       )}
 
-      {hud.finished && (
+      {room && <FinishNotices read={readFinishers} format={formatRaceTime} play={room.playStart} />}
+
+      {hud.finished && !watching && (
         <div className="p2d-overlay race-results">
           <div className="p2d-card p2d-clear" role="dialog" aria-label="Race results">
             <p className="p2d-kicker">{hud.laps === 1 ? '1 lap done' : `${hud.laps} laps done`}</p>
@@ -136,12 +148,22 @@ export function RaceHud({ store }: { store: StudioStore }) {
                 ))}
               </ol>
             )}
-            <Button variant="primary" fullWidth icon={<RotateCcw size={18} />} autoFocus onClick={() => store.play()}>
-              Race again
-            </Button>
-            <Button fullWidth icon={<Hammer size={18} />} onClick={() => store.stop()}>
-              Keep building
-            </Button>
+            {guest && <p className="p2d-note hk-finish-round" role="status">The host starts the next race.</p>}
+            {!guest && (
+              <Button variant="primary" fullWidth icon={<RotateCcw size={18} />} autoFocus onClick={() => (room ? store.restartPreview() : store.play())}>
+                Race again
+              </Button>
+            )}
+            {room && hud.standings.some((s) => !s.done) && (
+              <Button fullWidth icon={<Eye size={18} />} autoFocus={guest} onClick={() => setWatching(true)}>
+                Watch the others
+              </Button>
+            )}
+            {!guest && (
+              <Button fullWidth icon={<Hammer size={18} />} onClick={() => store.stop()}>
+                Keep building
+              </Button>
+            )}
           </div>
         </div>
       )}

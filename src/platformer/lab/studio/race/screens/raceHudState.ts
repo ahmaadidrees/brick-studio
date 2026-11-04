@@ -164,3 +164,22 @@ export function readRaceHud(world: World, design: LevelDesign, startTick: number
 
   return { countdown, lap: Math.min(done + 1, laps), laps, place, racers: racers.length, finished, noLaps, standings, time, bestLap, live }
 }
+
+/**
+ * Room rules (docs/qa/hackable-rooms M2): every other player whose Car has crossed the line for the last time, with
+ * their time from "go" (null when this screen did not see "go"). Read from the shared race, so every screen agrees.
+ */
+export function roomFinishers(world: World, startTick: number | null, me: number): { num: number; name: string; ticks: number | null }[] {
+  if (!me || !world.players?.length) return []
+  const lapsSetting = Number(world.stage.variables[RACE_GLOBALS.lapsToWin])
+  const laps = Number.isFinite(lapsSetting) && lapsSetting >= 1 ? Math.floor(lapsSetting) : DEFAULT_LAPS
+  const out: { num: number; name: string; ticks: number | null }[] = []
+  for (const p of world.players) {
+    if (p.num === me) continue
+    const car = world.targets.find((t) => t.player === p.num && !t.isClone)
+    const line = car ? raceLapState(car)?.lapTicks[laps - 1] : undefined
+    if (line === undefined) continue
+    out.push({ num: p.num, name: p.name, ticks: startTick !== null && startTick <= line ? line - startTick : null })
+  }
+  return out
+}

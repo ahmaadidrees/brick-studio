@@ -197,8 +197,8 @@ export class RoomSession {
     // A keyframe is the same play carried on (a resync, coming back), unless the events after it start it again.
     this.startedAt = base.world ? this.playStart : base.tick
     this.timeline = new HackableTimeline<RoomEv>(runtime, applyRoomEvent, { history: 300, snapshotEvery: 4 })
-    this.timeline.onBroadcast((message, from) => {
-      for (const l of [...this.heard]) l(message, from)
+    this.timeline.onBroadcast((message, from, about) => {
+      for (const l of [...this.heard]) l(message, from, about)
     })
     this.hashedTo = this.keyframedTo = Math.floor(base.tick / HASH_EVERY) * HASH_EVERY
     for (const e of events) this.timeline.addRemote(record(e))

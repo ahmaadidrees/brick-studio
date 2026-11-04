@@ -1,6 +1,7 @@
-import { Hammer, RotateCcw } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { Eye, Hammer, RotateCcw } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '../../../../ui'
+import { FinishNotices, type Finisher } from '../../rooms/FinishNotices'
 import { useStudio, type StudioStore } from '../store'
 import { aboutMyHero, bestTime, checkLevelForPlay, COURSE_CLEAR, formatPlayTime, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, powerKeys, powerKeysHint, readCoins, recordClear, saysOuch } from './playRules'
 
@@ -15,7 +16,9 @@ const HURT_MS = 1600
  *
  * In a room the game goes on across the host's Play again (one clock for the room, rooms/session.ts `playStart`):
  * the time counts from the play's start, and a new play forgets the last one's finish. Each screen shows its own
- * Hero's "Try again" and "You made it!" only (playRules.ts aboutMyHero).
+ * Hero's "Try again" and "You made it!" only (playRules.ts aboutMyHero). Each player finishes on their own
+ * (PlayerSlot.finished): the others see "Sam finished, 0:42", and the round ends when everyone has finished or the host
+ * starts again.
  */
 export function PlayFeedback({ store }: { store: StudioStore }) {
   const runtime = useStudio(store, (s) => s.runtime)
@@ -24,12 +27,19 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
   const [won, setWon] = useState<{ coins: number | null; time: number; best: number | null; newBest: boolean } | null>(null)
   const [coins, setCoins] = useState<number | null>(null)
   const [time, setTime] = useState(0)
+  const [everyone, setEveryone] = useState(false)
+  const [watching, setWatching] = useState(false)
   const hurtTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Where this play's clock starts (room plays carry on across Play again). */
+  const startRef = useRef(0)
+  const room = useStudio(store, (s) => s.room)
 
   useEffect(() => {
     setHint(true)
     setHurt(0)
     setWon(null)
+    setEveryone(false)
+    setWatching(false)
     if (!runtime) return
     const design = store.getState().project.design
     const room = store.getState().room
@@ -45,30 +55,41 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
       play = room.playStart
       // Joined part way: count from now, the nearest we know.
       startTick = play ?? runtime.world.tick
+      startRef.current = startTick
       clearedAt = null
       if (!again) return
       setWon(null)
       setHurt(0)
+      setEveryone(false)
+      setWatching(false)
+    }
+    const clear = (at: number) => {
+      if (clearedAt !== null) return
+      clearedAt = at
+      const time = clearedAt - startTick
+      const newBest = recordClear(design, time)
+      setTime(time)
+      setWon({ coins: readCoins(runtime, design), time, best: bestTime(design), newBest })
     }
     samePlay()
     const hintTimer = setTimeout(() => setHint(false), HINT_MS)
     const coinTimer = setInterval(() => {
       samePlay()
+      // In a room the game says when we finished (the Goal finished our player), whatever our Goal says.
+      const players = room ? runtime.world.players : undefined
+      const mine = players?.find((p) => p.num === room!.me)
+      if (mine?.finished !== undefined) clear(mine.finished)
+      setEveryone(!!players?.length && players.every((p) => p.finished !== undefined))
       setCoins(readCoins(runtime, design))
       setTime((clearedAt ?? runtime.world.tick) - startTick)
     }, 100)
     const hurtMessage = saysOuch(design) ? HERO_OUCH : HERO_HURT
-    const off = runtime.onBroadcast((message, from) => {
+    const off = runtime.onBroadcast((message, from, about) => {
       samePlay()
       const m = message.trim().toLowerCase()
-      if ((m === COURSE_CLEAR || m === hurtMessage) && !aboutMyHero(runtime.world, from, room?.me ?? 0)) return
+      if ((m === COURSE_CLEAR || m === hurtMessage) && !aboutMyHero(runtime.world, from, room?.me ?? 0, about)) return
       if (m === COURSE_CLEAR) {
-        if (clearedAt !== null) return
-        clearedAt = runtime.world.tick
-        const time = clearedAt - startTick
-        const newBest = recordClear(design, time)
-        setTime(time)
-        setWon({ coins: readCoins(runtime, design), time, best: bestTime(design), newBest })
+        clear(runtime.world.tick)
       } else if (m === hurtMessage) {
         setHurt((n) => n + 1)
         if (hurtTimer.current) clearTimeout(hurtTimer.current)
@@ -83,9 +104,20 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
     }
   }, [runtime, store])
 
+  const readFinishers = useCallback((): Finisher[] => {
+    const me = room?.me ?? 0
+    const players = runtime?.world.players
+    if (!me || !players) return []
+    return players
+      .filter((p) => p.num !== me && p.finished !== undefined)
+      .map((p) => ({ num: p.num, name: p.name, ticks: p.finished! - startRef.current }))
+  }, [runtime, room])
+
   if (!runtime) return null
   const design = store.getState().project.design
   const noGoal = !checkLevelForPlay(design).goal
+  // In a room only the host starts everyone again; the others wait for them (or watch the rest finish).
+  const guest = !!room && !room.host
 
   return (
     <>
@@ -112,7 +144,8 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
           Ouch! Back to the start. Try again!
         </div>
       )}
-      {won && (
+      {room && <FinishNotices read={readFinishers} format={formatPlayTime} play={room.playStart} />}
+      {won && !watching && (
         <div className="p2d-overlay">
           <div className="p2d-card p2d-clear" role="dialog" aria-label="You made it">
             <p className="p2d-kicker">Goal reached</p>
@@ -131,12 +164,26 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
                 <span>Coins</span> {won.coins}
               </p>
             )}
-            <Button variant="primary" fullWidth icon={<RotateCcw size={18} />} autoFocus onClick={() => store.play()}>
-              Play again
-            </Button>
-            <Button fullWidth icon={<Hammer size={18} />} onClick={() => store.stop()}>
-              Keep building
-            </Button>
+            {room && (
+              <p className="p2d-note hk-finish-round" role="status">
+                {everyone ? 'Everyone has finished.' : 'Others are still playing.'} {guest ? 'The host starts the next round.' : 'Play again starts everyone again.'}
+              </p>
+            )}
+            {!guest && (
+              <Button variant="primary" fullWidth icon={<RotateCcw size={18} />} autoFocus onClick={() => (room ? store.restartPreview() : store.play())}>
+                Play again
+              </Button>
+            )}
+            {room && !everyone && (
+              <Button fullWidth icon={<Eye size={18} />} autoFocus={guest} onClick={() => setWatching(true)}>
+                Watch the others
+              </Button>
+            )}
+            {!guest && (
+              <Button fullWidth icon={<Hammer size={18} />} onClick={() => store.stop()}>
+                Keep building
+              </Button>
+            )}
           </div>
         </div>
       )}
