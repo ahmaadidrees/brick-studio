@@ -11,6 +11,9 @@
 /* Board 4a: the next-step line. Above the paint strip while painting. */
 .cl-blank-next { position: absolute; z-index: 12; left: 50%; bottom: 14px; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 28px); padding: 8px 8px 8px 16px; box-sizing: border-box; transform: translateX(-50%); color: #fff; background: #263c51; border-radius: 999px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 18px rgba(31, 35, 64, .2); }
 .cl-blank-next span { min-width: 0; }
+/* The line sits over the stage's bottom row: taps go through it to the stage, all but its × button's. */
+.cl-blank-next { pointer-events: none; }
+.cl-blank-next button { pointer-events: auto; }
 .cl-blank-next button { flex: none; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 999px; color: #fff; background: rgba(255, 255, 255, .16); cursor: pointer; }
 .cl-blank-next button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .cl-slot-stage:has(.cl-strip) .cl-blank-next { bottom: 76px; }
