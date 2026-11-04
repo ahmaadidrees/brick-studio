@@ -37,6 +37,8 @@ export interface Draw3 {
   /** A player's Hero in a room (tints it). */
   player?: number
   bubble?: string
+  /** Standing on something (the Hero's drawn height eases over steps only then). */
+  grounded?: boolean
 }
 
 export interface Hit3 {

@@ -37,9 +37,15 @@ const JUMP_GROUND_IGNORE = 0.08
 const RELIABLE_LANDING_AIR_TIME = 0.05
 const GROUND_STICK = -0.35
 const MOVE_EPSILON = 1e-5
-/** Rapier's autostep and snap distances in the classic (CHARACTER_AUTOSTEP_HEIGHT, CHARACTER_GROUND_SNAP). */
+/** The classic's autostep (CHARACTER_AUTOSTEP_HEIGHT). */
 export const AUTOSTEP = 0.22
-const SNAP = 0.13
+/**
+ * Snap to ground: a grounded Hero that walks off a ledge up to this high stays on the ground. A whole plate (0.18)
+ * plus one substep of the ground stick (0.35 / 60): the classic's round capsule rolls down a plate edge, a slope and
+ * stairs without leaving the ground, and the box needs this to do the same (docs/qa/hackable-3d/feel/FEEL.md, fix A).
+ * Brick-high ledges (0.54) still fall, as in the classic.
+ */
+const SNAP = 0.2
 /** The classic capsule (radius 0.18, half height 0.18) as a box. */
 export const HERO_SIZE = { w: 0.36, h: 0.72, d: 0.36 }
 /** Falling this far below the plate puts the Hero back where it started. */
@@ -467,7 +473,7 @@ function stepBody(world: World3, space: Space, t: Target3, b: Body3, hits: Hit[]
     // A character keeps its fall speed for one substep: its controller turns a reliable landing into the ground stick.
     if (!c || dy > 0) b.vy = 0
   } else if (c && wasGrounded && !jumped && b.vy <= 0) {
-    // Snap to ground: walking off a plate-high ledge keeps the Hero on the ground, as Rapier's snap did.
+    // Snap to ground: walking off a plate-high ledge (or down a slope or stair) keeps the Hero on the ground.
     const fromY = t.y
     const snap = sweep(space, t, b, 'y', -SNAP)
     if (snap) { b.onGround = true; local.push(snap) } else t.y = fromY

@@ -7,6 +7,20 @@ Committed locally only. It has not been pushed or deployed. No engine file was c
 vitest start-up). Run it with `FEEL_JSON=1 npx vitest run src/platformer/lab/kit3d/feel3d.test.ts` to rewrite
 `feel.json`, or with `FEEL_LOG=1` to print the numbers without their traces.
 
+**Update, same day (D1 integration, `claude/hackable-3d-d1-18eb14`):** fixes **A** and **B** below were applied, and
+the Hero now also runs on **Shift**. With A (`SNAP` 0.13 → 0.2), the three "going down" differences are gone, measured
+by this same test (`feel.json` was rewritten after the change):
+
+| Scenario | Hackable before A | Hackable after A | Classic |
+|---|---|---|---|
+| 4a walk off a 1-plate ledge: time off the ground | 0.167 s | **0 s** | 0 s |
+| 5 down a slope: airborne spells / seconds | 2 / 0.367 s | **0 / 0 s** | 0 / 0 s |
+| 5 down a stair: airborne spells / seconds | 3 / 0.500 s | **0 / 0 s** | 0 / 0 s |
+
+B (the drawn Hero's height eases over steps of up to 0.22, render only, in `studio/three/Stage3D.tsx` `easeSteps`) has
+no number here: it changes nothing in the game. C (ledge assist while falling) was not applied: the barely-short
+4-stud jump still differs. The sections below are the measurements as first taken, before A.
+
 **Raw numbers:** `feel.json`, in this folder. Every scenario has both characters' metrics and 30 Hz traces. Trace rows
 are `[t, x, y, z, grounded]`.
 

@@ -12,22 +12,22 @@
       ],
       "totals": {
         "bounces": 2,
-        "coins": 4,
-        "landings": 95
+        "coins": 3,
+        "landings": 94
       },
       "d1": {
-        "riderTicks": 0,
+        "riderTicks": 45,
         "sentHome": 1,
         "doorOpened": true,
-        "coinCollected": false
+        "coinCollected": true
       },
       "runs": [
         {
           "engine": "Node v22.23.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.072,
-          "finalHash": "e8b49ad314ca1d8d",
+          "stepMsPerTick": 0.046,
+          "finalHash": "a5fd68718f4aa4db",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -49,9 +49,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -63,9 +63,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -97,8 +97,8 @@
           "engine": "Node v22.23.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.036,
-          "finalHash": "e8b49ad314ca1d8d",
+          "stepMsPerTick": 0.026,
+          "finalHash": "a5fd68718f4aa4db",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -120,9 +120,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -134,9 +134,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -168,8 +168,8 @@
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.037,
-          "finalHash": "e8b49ad314ca1d8d",
+          "stepMsPerTick": 0.027,
+          "finalHash": "a5fd68718f4aa4db",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -191,9 +191,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -205,9 +205,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -239,8 +239,8 @@
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.038,
-          "finalHash": "e8b49ad314ca1d8d",
+          "stepMsPerTick": 0.03,
+          "finalHash": "a5fd68718f4aa4db",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -262,9 +262,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -276,9 +276,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -309,7 +309,7 @@
       ],
       "rejoin": {
         "at": 907,
-        "snapshotBytes": 19096,
+        "snapshotBytes": 17190,
         "matches": true,
         "firstMismatchTick": null
       }
@@ -321,22 +321,22 @@
       ],
       "totals": {
         "bounces": 2,
-        "coins": 4,
+        "coins": 3,
         "landings": 100
       },
       "d1": {
-        "riderTicks": 0,
+        "riderTicks": 45,
         "sentHome": 1,
         "doorOpened": true,
-        "coinCollected": false
+        "coinCollected": true
       },
       "runs": [
         {
           "engine": "Node v22.23.2",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.985,
-          "finalHash": "07baa1fc3a46d8a7",
+          "stepMsPerTick": 0.457,
+          "finalHash": "76f2a2ac0e8e89bd",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -358,9 +358,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -372,9 +372,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -406,8 +406,8 @@
           "engine": "Node v22.23.2 again",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 1.356,
-          "finalHash": "07baa1fc3a46d8a7",
+          "stepMsPerTick": 0.397,
+          "finalHash": "76f2a2ac0e8e89bd",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -429,9 +429,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -443,9 +443,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -477,8 +477,8 @@
           "engine": "Chrome 156.0.8078.80",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.327,
-          "finalHash": "07baa1fc3a46d8a7",
+          "stepMsPerTick": 0.243,
+          "finalHash": "76f2a2ac0e8e89bd",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -500,9 +500,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -514,9 +514,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -548,8 +548,8 @@
           "engine": "WebKit 26.5",
           "matches": true,
           "firstMismatchTick": null,
-          "stepMsPerTick": 0.34,
-          "finalHash": "07baa1fc3a46d8a7",
+          "stepMsPerTick": 0.217,
+          "finalHash": "76f2a2ac0e8e89bd",
           "final": {
             "coins": 0,
             "bounces": 0,
@@ -571,9 +571,9 @@
                 "visible": true
               },
               "d1_brick3d_mover": {
-                "x": 2.025333333333333,
-                "y": 0.124,
-                "z": 0.62,
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
                 "direction": 90,
                 "visible": true
               },
@@ -585,9 +585,9 @@
                 "visible": true
               },
               "d1_brick3d_coin": {
-                "x": 0.9299999999999999,
+                "x": 0,
                 "y": 0.31,
-                "z": 3.7199999999999998,
+                "z": 1.55,
                 "direction": 90,
                 "visible": true
               },
@@ -618,7 +618,7 @@
       ],
       "rejoin": {
         "at": 907,
-        "snapshotBytes": 322541,
+        "snapshotBytes": 320635,
         "matches": true,
         "firstMismatchTick": null
       }
@@ -630,168 +630,168 @@
       "bricks": 500,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 1.107,
-      "tickAvgMs": 0.049,
-      "tickP95Ms": 0.122,
-      "copyAvgMs": 0.117,
-      "rewind10Ms": 0.795,
-      "fingerprintMs": 0.082,
-      "jsonMs": 0.142,
-      "jsonBytes": 17103
+      "playMs": 0.978,
+      "tickAvgMs": 0.035,
+      "tickP95Ms": 0.067,
+      "copyAvgMs": 0.077,
+      "rewind10Ms": 0.66,
+      "fingerprintMs": 0.065,
+      "jsonMs": 0.112,
+      "jsonBytes": 15195
     },
     {
       "engine": "Node v22.23.2",
       "bricks": 2000,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 1.652,
-      "tickAvgMs": 0.049,
-      "tickP95Ms": 0.098,
-      "copyAvgMs": 0.106,
-      "rewind10Ms": 0.5,
-      "fingerprintMs": 0.083,
-      "jsonMs": 0.141,
-      "jsonBytes": 17112
+      "playMs": 1.606,
+      "tickAvgMs": 0.03,
+      "tickP95Ms": 0.052,
+      "copyAvgMs": 0.069,
+      "rewind10Ms": 0.413,
+      "fingerprintMs": 0.074,
+      "jsonMs": 0.105,
+      "jsonBytes": 15198
     },
     {
       "engine": "Node v22.23.2",
       "bricks": 500,
       "mode": "targets",
       "targets": 511,
-      "playMs": 2.936,
-      "tickAvgMs": 0.569,
-      "tickP95Ms": 0.983,
-      "copyAvgMs": 2.796,
-      "rewind10Ms": 8.799,
-      "fingerprintMs": 2.959,
-      "jsonMs": 2.384,
-      "jsonBytes": 320437
+      "playMs": 2.305,
+      "tickAvgMs": 0.368,
+      "tickP95Ms": 0.822,
+      "copyAvgMs": 2.132,
+      "rewind10Ms": 6.053,
+      "fingerprintMs": 2.344,
+      "jsonMs": 1.678,
+      "jsonBytes": 318529
     },
     {
       "engine": "Node v22.23.2",
       "bricks": 2000,
       "mode": "targets",
       "targets": 2011,
-      "playMs": 10.902,
-      "tickAvgMs": 2.271,
-      "tickP95Ms": 3.494,
-      "copyAvgMs": 9.87,
-      "rewind10Ms": 33.012,
-      "fingerprintMs": 10.922,
-      "jsonMs": 6.342,
-      "jsonBytes": 1239059
+      "playMs": 7.438,
+      "tickAvgMs": 1.634,
+      "tickP95Ms": 2.613,
+      "copyAvgMs": 8.453,
+      "rewind10Ms": 28.939,
+      "fingerprintMs": 9.379,
+      "jsonMs": 6.895,
+      "jsonBytes": 1237143
     },
     {
       "engine": "Chrome",
       "bricks": 500,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 5.6,
-      "tickAvgMs": 0.051,
+      "playMs": 6.7,
+      "tickAvgMs": 0.053,
       "tickP95Ms": 0.2,
-      "copyAvgMs": 0.085,
-      "rewind10Ms": 0.814,
-      "fingerprintMs": 0.079,
+      "copyAvgMs": 0.076,
+      "rewind10Ms": 0.714,
+      "fingerprintMs": 0.092,
       "jsonMs": 0.2,
-      "jsonBytes": 17103
+      "jsonBytes": 15195
     },
     {
       "engine": "Chrome",
       "bricks": 2000,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 2.4,
-      "tickAvgMs": 0.026,
+      "playMs": 2.3,
+      "tickAvgMs": 0.02,
       "tickP95Ms": 0.1,
-      "copyAvgMs": 0.066,
-      "rewind10Ms": 0.329,
-      "fingerprintMs": 0.066,
+      "copyAvgMs": 0.065,
+      "rewind10Ms": 0.386,
+      "fingerprintMs": 0.079,
       "jsonMs": 0.1,
-      "jsonBytes": 17112
+      "jsonBytes": 15198
     },
     {
       "engine": "Chrome",
       "bricks": 500,
       "mode": "targets",
       "targets": 511,
-      "playMs": 2.8,
-      "tickAvgMs": 0.199,
-      "tickP95Ms": 0.3,
-      "copyAvgMs": 1.662,
-      "rewind10Ms": 3.686,
-      "fingerprintMs": 2.138,
-      "jsonMs": 1.6,
-      "jsonBytes": 320437
+      "playMs": 2.9,
+      "tickAvgMs": 0.245,
+      "tickP95Ms": 0.4,
+      "copyAvgMs": 1.984,
+      "rewind10Ms": 4.271,
+      "fingerprintMs": 2.548,
+      "jsonMs": 1.8,
+      "jsonBytes": 318529
     },
     {
       "engine": "Chrome",
       "bricks": 2000,
       "mode": "targets",
       "targets": 2011,
-      "playMs": 4.7,
-      "tickAvgMs": 0.769,
-      "tickP95Ms": 1.2,
-      "copyAvgMs": 7.395,
-      "rewind10Ms": 14.571,
-      "fingerprintMs": 9.042,
-      "jsonMs": 5.4,
-      "jsonBytes": 1239059
+      "playMs": 5.6,
+      "tickAvgMs": 0.751,
+      "tickP95Ms": 1.1,
+      "copyAvgMs": 7.739,
+      "rewind10Ms": 15.186,
+      "fingerprintMs": 9.882,
+      "jsonMs": 6.1,
+      "jsonBytes": 1237143
     },
     {
       "engine": "Chrome at 6× CPU slowdown",
       "bricks": 500,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 30.8,
-      "tickAvgMs": 0.266,
-      "tickP95Ms": 1.2,
-      "copyAvgMs": 0.459,
-      "rewind10Ms": 4.1,
-      "fingerprintMs": 0.464,
-      "jsonMs": 1,
-      "jsonBytes": 17103
+      "playMs": 29.1,
+      "tickAvgMs": 0.346,
+      "tickP95Ms": 1.3,
+      "copyAvgMs": 0.626,
+      "rewind10Ms": 4.671,
+      "fingerprintMs": 0.471,
+      "jsonMs": 1.2,
+      "jsonBytes": 15195
     },
     {
       "engine": "Chrome at 6× CPU slowdown",
       "bricks": 2000,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 9.5,
-      "tickAvgMs": 0.132,
-      "tickP95Ms": 0.8,
-      "copyAvgMs": 0.376,
-      "rewind10Ms": 3.029,
-      "fingerprintMs": 0.437,
-      "jsonMs": 0.2,
-      "jsonBytes": 17112
+      "playMs": 10.7,
+      "tickAvgMs": 0.202,
+      "tickP95Ms": 1.2,
+      "copyAvgMs": 0.57,
+      "rewind10Ms": 2.4,
+      "fingerprintMs": 0.449,
+      "jsonMs": 0.7,
+      "jsonBytes": 15198
     },
     {
       "engine": "Chrome at 6× CPU slowdown",
       "bricks": 500,
       "mode": "targets",
       "targets": 511,
-      "playMs": 19,
-      "tickAvgMs": 1.906,
-      "tickP95Ms": 3.2,
-      "copyAvgMs": 11.335,
-      "rewind10Ms": 28,
-      "fingerprintMs": 13.852,
-      "jsonMs": 10.1,
-      "jsonBytes": 320437
+      "playMs": 27.3,
+      "tickAvgMs": 1.704,
+      "tickP95Ms": 2.9,
+      "copyAvgMs": 11.535,
+      "rewind10Ms": 26.8,
+      "fingerprintMs": 14.24,
+      "jsonMs": 11.5,
+      "jsonBytes": 318529
     },
     {
       "engine": "Chrome at 6× CPU slowdown",
       "bricks": 2000,
       "mode": "targets",
       "targets": 2011,
-      "playMs": 29.7,
-      "tickAvgMs": 5.15,
-      "tickP95Ms": 6.5,
-      "copyAvgMs": 42.597,
-      "rewind10Ms": 92.643,
-      "fingerprintMs": 53.077,
-      "jsonMs": 42.7,
-      "jsonBytes": 1239059
+      "playMs": 34.8,
+      "tickAvgMs": 5.637,
+      "tickP95Ms": 8.6,
+      "copyAvgMs": 48.85,
+      "rewind10Ms": 103.7,
+      "fingerprintMs": 61.155,
+      "jsonMs": 35.7,
+      "jsonBytes": 1237143
     },
     {
       "engine": "WebKit",
@@ -799,41 +799,41 @@
       "mode": "scenery",
       "targets": 11,
       "playMs": 5,
-      "tickAvgMs": 0.05,
+      "tickAvgMs": 0.067,
       "tickP95Ms": 1,
-      "copyAvgMs": 0.081,
-      "rewind10Ms": 1,
-      "fingerprintMs": 0.057,
+      "copyAvgMs": 0.162,
+      "rewind10Ms": 0.571,
+      "fingerprintMs": 0.067,
       "jsonMs": 1,
-      "jsonBytes": 17103
+      "jsonBytes": 15195
     },
     {
       "engine": "WebKit",
       "bricks": 2000,
       "mode": "scenery",
       "targets": 11,
-      "playMs": 2,
-      "tickAvgMs": 0.023,
+      "playMs": 3,
+      "tickAvgMs": 0.027,
       "tickP95Ms": 0,
-      "copyAvgMs": 0.149,
-      "rewind10Ms": 0,
-      "fingerprintMs": 0.043,
-      "jsonMs": 0,
-      "jsonBytes": 17112
+      "copyAvgMs": 0.108,
+      "rewind10Ms": 0.429,
+      "fingerprintMs": 0.057,
+      "jsonMs": 1,
+      "jsonBytes": 15198
     },
     {
       "engine": "WebKit",
       "bricks": 500,
       "mode": "targets",
       "targets": 511,
-      "playMs": 2,
-      "tickAvgMs": 0.254,
+      "playMs": 3,
+      "tickAvgMs": 0.301,
       "tickP95Ms": 1,
-      "copyAvgMs": 2.243,
-      "rewind10Ms": 4.857,
-      "fingerprintMs": 1.054,
-      "jsonMs": 2,
-      "jsonBytes": 320437
+      "copyAvgMs": 2.986,
+      "rewind10Ms": 6.571,
+      "fingerprintMs": 1.465,
+      "jsonMs": 1,
+      "jsonBytes": 318529
     },
     {
       "engine": "WebKit",
@@ -841,13 +841,13 @@
       "mode": "targets",
       "targets": 2011,
       "playMs": 4,
-      "tickAvgMs": 0.555,
+      "tickAvgMs": 0.649,
       "tickP95Ms": 1,
-      "copyAvgMs": 8.959,
-      "rewind10Ms": 14.857,
-      "fingerprintMs": 4.037,
+      "copyAvgMs": 11.311,
+      "rewind10Ms": 18.429,
+      "fingerprintMs": 5.137,
       "jsonMs": 5,
-      "jsonBytes": 1239059
+      "jsonBytes": 1237143
     }
   ]
 }

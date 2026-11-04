@@ -37,6 +37,28 @@ function poseOf(t: Target3): Pose {
 }
 
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k
+
+/** How long the drawn Hero takes to follow a step up or down (seconds): a plate pop becomes a short glide. */
+const STEP_EASE = 0.07
+const STEP_MAX = 0.22
+
+/**
+ * Drawing only (docs/qa/hackable-3d/feel/FEEL.md, fix B): a grounded Hero's drawn height eases over a step of up to
+ * a plate or so (slopes are plate-high steps), instead of popping. The game itself is untouched.
+ */
+function easeSteps(list: Draw3[], shown: Map<string, number>, dt: number): void {
+  const k = 1 - Math.exp(-Math.max(0, dt) / STEP_EASE)
+  const seen = new Set<string>()
+  for (const t of list) {
+    if (t.model !== 'hero') continue
+    seen.add(t.id)
+    const was = shown.get(t.id)
+    const y = was !== undefined && t.grounded && Math.abs(t.y - was) <= STEP_MAX ? lerp(was, t.y, k) : t.y
+    shown.set(t.id, y)
+    t.y = y
+  }
+  for (const id of shown.keys()) if (!seen.has(id)) shown.delete(id)
+}
 /** Shortest way round between two angles. */
 const lerpAngle = (a: number, b: number, k: number) => a + ((((b - a + 180) % 360) + 360) % 360 - 180) * k
 
@@ -69,7 +91,7 @@ function drawTargets(world: World3, prev: Map<string, Pose>, alpha: number): Dra
       x: lerp(was[0], now[0], alpha), y: lerp(was[1], now[1], alpha), z: lerp(was[2], now[2], alpha),
       direction: lerpAngle(was[3], now[3], alpha), facing: lerpAngle(was[4], now[4], alpha),
       visible: t.visible, w: t.body3.w, h: t.body3.h, d: t.body3.d, color: look.color, model: hero ? 'hero' : look.model,
-      player: t.player, bubble: t.bubble?.text,
+      player: t.player, bubble: t.bubble?.text, grounded: t.body3.onGround,
     })
   }
   return out
@@ -234,7 +256,11 @@ export function Stage3D({ store, tools, codeView = false, onOpenCode }: { store:
     const onVis = () => (document.hidden ? accumulator.pause() : accumulator.resume())
     document.addEventListener('visibilitychange', onVis)
     let lastBubbles = ''
+    let lastFrame = 0
+    const shownY = new Map<string, number>()
     const frame = (now: number) => {
+      const dt = lastFrame ? (now - lastFrame) / 1000 : 0
+      lastFrame = now
       const s = store.getState()
       const d = s.project.design as LevelDesign3
       const rt = s.runtime
@@ -259,6 +285,7 @@ export function Stage3D({ store, tools, codeView = false, onOpenCode }: { store:
           }
         } else accumulator.reset()
         list = drawTargets(world, prev.current, alpha)
+        easeSteps(list, shownY, dt)
         const hero = followed(world, s.room?.me)
         heroId = hero?.id ?? null
         if (playing && hero) {
