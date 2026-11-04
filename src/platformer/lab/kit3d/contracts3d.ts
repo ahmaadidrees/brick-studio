@@ -1,15 +1,22 @@
 /**
- * Hackable 3D spike (docs/qa/hackable-3d/SPIKE.md): the shapes a 3D game adds to the Hackable core's contracts.
+ * Hackable 3D (docs/qa/hackable-3d/SPIKE.md, D1.md): the shapes a 3D game adds to the Hackable core's contracts.
  *
- * SPIKE ONLY. Nothing here changes core/contracts.ts: a 3D target is an ordinary Target with a `z` and a `body3`, a 3D
- * design is an ordinary LevelDesign with `kit: '3d'` and a list of plain build bricks (`scenery3d`). Because the core's
- * copy, JSON and fingerprint walk every field of a target, the extra fields ride along in rewinds, keyframes and
- * fingerprints with no change to core/snapshot.ts. D1 would move these fields into contracts.ts properly.
+ * Nothing here changes core/contracts.ts: a 3D target is an ordinary Target with a `z` and a `body3`, a 3D design is an
+ * ordinary LevelDesign with `kit: '3d'` and a list of plain build bricks (`scenery3d`). Because the core's copy, JSON and
+ * fingerprint walk every field of a target, the extra fields ride along in rewinds, keyframes and fingerprints with no
+ * change to core/snapshot.ts. Keeping them as intersections here keeps the shared contracts file untouched while other
+ * kits land in parallel.
  *
- * Units: the classic 3D builder's world units (src/brick/parts.ts): one stud = 0.62, one plate = 0.18, y up, the build
- * plate's top at y = 0 and its centre at x = z = 0. Speeds are units per second (the classic character's numbers:
- * walk 3.5, run 5.4, jump 5.25, gravity 16). Everything is + − × ÷ and sqrt, plus core/detmath.ts.
+ * Units inside the engine: the classic 3D builder's world units (packages/brick-core/src/parts.ts): one stud = 0.62,
+ * one plate = 0.18, y up, the build plate's top at y = 0 and its centre at x = z = 0. Speeds are units per second (the
+ * classic character's numbers: walk 3.5, run 5.4, jump 5.25, gravity 16). Everything is + − × ÷ and sqrt, plus
+ * core/detmath.ts.
+ *
+ * Units on blocks (owner decision 2026-11-04): STUDS. Every distance a kid types or reads ("go to x: y: z:", "change z
+ * by", "set x speed to", "x position", "distance to") is in studs, 1 stud = 1 brick width, and speeds are studs per
+ * second. blocks3d.ts converts at the block's edge, so the engine and the classic character keep their exact numbers.
  */
+import type { CustomPartDefinition } from '../../../../packages/brick-core/src/types'
 import type { BrickDef, CopyPlacement, LevelDesign, PlayerSlot, Target, World } from '../core/contracts'
 
 export const STUD = 0.62
@@ -32,14 +39,22 @@ export interface SceneryBrick {
   color: string
 }
 
+/** The simple models a code brick can be drawn as (render3d.ts). */
+export type Model3 = 'hero' | 'coin' | 'pad' | 'box' | 'flag' | 'button' | 'bar'
+export const MODELS3: readonly Model3[] = ['hero', 'coin', 'pad', 'box', 'flag', 'button', 'bar']
+
 /** A brick's 3D box: footprint and height in world units, centred on (x, z), standing on y. */
 export interface Shape3 {
   w: number
   h: number
   d: number
   /** What the drawing uses: a classic part and colour, or a simple model. */
-  look?: { partId?: string; color: string; model?: 'hero' | 'coin' | 'pad' }
+  look?: { partId?: string; color: string; model?: Model3 }
 }
+
+/** Studs to world units and back. Reporters round to a millionth so a kid reads 3, not 3.0000000000000004. */
+export const studsToWorld = (studs: number): number => studs * STUD
+export const worldToStuds = (units: number): number => Math.round((units / STUD) * 1e6) / 1e6
 
 /** A coded brick's 3D brick definition: an ordinary BrickDef plus its box. */
 export type BrickDef3 = BrickDef & { shape3d?: Shape3 }
@@ -73,6 +88,11 @@ export interface Body3 {
   onGround: boolean
   /** Driven by the character controller from its player's keys and the Hero's sliders. */
   character?: Character3
+  /**
+   * Where the physics step last left this body (world units). A solid that scripts moved since ("change y by",
+   * "go to") carries whoever was standing on it from here, just as a solid moved by its speed does.
+   */
+  last?: [number, number, number]
 }
 
 export type Target3 = Target & { z: number; body3?: Body3 }
@@ -107,10 +127,29 @@ export type LevelDesign3 = LevelDesign & {
   /** The build: plain bricks with no code. The project (shared, never copied); collision is indexed once per list. */
   scenery3d: SceneryBrick[]
   /**
+   * The classic builder's custom parts this build uses (a copied classic build keeps its own). Every browser builds
+   * the same boxes from the design itself, never from this browser's global part registry.
+   */
+  customParts3d?: CustomPartDefinition[]
+  /**
+   * The build plate's size in studs, as the classic builder's (64, 96 or 128; missing is 64). The middle of the plate
+   * is always x = z = 0.
+   */
+  plate3d?: 64 | 96 | 128
+  /** Look settings carried over from a classic build (drawing only; nothing in the game reads them). */
+  look3d?: { environmentId?: string }
+  /**
    * SPIKE: also make every scenery brick a solid target (the 2D way: every grid cell is a target), to measure what
    * that costs against the scenery index.
    */
   sceneryAsTargets?: boolean
 }
+
+export const PLATE_SIZES3D: readonly number[] = [64, 96, 128]
+/** A design's plate size in studs. */
+export const plateOf = (design: Pick<LevelDesign3, 'plate3d'> | undefined): number => (design?.plate3d && PLATE_SIZES3D.includes(design.plate3d) ? design.plate3d : GRID)
+
+/** The most build bricks a 3D project holds: the classic builder's own limit (BRICK_STUDIO_MAX_BRICKS). */
+export const MAX_SCENERY3D = 2_000
 
 export const isTarget3 = (t: Target): t is Target3 => typeof (t as Target3).z === 'number'

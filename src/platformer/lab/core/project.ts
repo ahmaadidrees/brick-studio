@@ -42,6 +42,7 @@ import type {
 import { seedState } from './rng'
 import { wrapDirection } from './motion'
 import { isCostumeSource, isSoundSource, MAX_ASSET_CHARS } from './contentRules'
+import { validateDesign3d } from '../kit3d/validate3d'
 
 export const DESIGN_LIMITS = {
   maxBricks: 400,
@@ -200,6 +201,8 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
   const gridChars = new Set<string>()
   if (bricks) bricks.forEach((brick, i) => checkGrid(brick, `bricks[${i}]`, gridChars, push))
   if (design.tiles !== undefined) checkTiles(design.tiles, gridChars, push)
+  // Hackable 3D: the build, custom parts, every copy's z and each brick's box (kit3d/validate3d.ts).
+  if (design.kit === '3d') validateDesign3d(design, push)
 
   return problems
 }

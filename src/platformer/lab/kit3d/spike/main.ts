@@ -16,7 +16,8 @@ import { worldFingerprint } from '../../core/snapshot'
 import type { Runtime } from '../../core/runtime'
 import { HackableTimeline } from '../../rooms/timeline'
 import type { LevelDesign3, Target3, World3 } from '../contracts3d'
-import { addPlayer3d, createRuntime3d, heroSpawn, HERO3D, lookPlayer3d } from '../engine3d'
+import { addPlayer3d, heroSpawn, HERO3D, lookPlayer3d } from '../engine3d'
+import { createRuntime3d } from '../run3d'
 import { sampleDesign3d } from '../sample3d'
 
 type Ev = { kind: 'down' | 'up'; key: string } | { kind: 'look'; yaw: number } | { kind: 'join'; name: string }

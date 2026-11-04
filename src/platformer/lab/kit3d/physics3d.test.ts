@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { worldFingerprint, worldFromJson, worldToJson, copyWorld } from '../core/snapshot'
 import type { Runtime } from '../core/runtime'
 import { STUD, type LevelDesign3, type Target3, type World3 } from './contracts3d'
-import { addPlayer3d, createRuntime3d, heroSpawn, HERO3D, lookPlayer3d } from './engine3d'
+import { addPlayer3d, heroSpawn, HERO3D, lookPlayer3d } from './engine3d'
+import { createRuntime3d } from './run3d'
 import { sampleDesign3d } from './sample3d'
 import { AUTOSTEP } from './physics3d'
 import { CHARACTER_FIXED_STEP, bufferCharacterJump, createCharacterMotionState, createCharacterStepResult, stepCharacterMotion } from '../../../brick/characterController'
@@ -20,7 +21,7 @@ function start(design: LevelDesign3 = sampleDesign3d({ bricks: 50 })): Runtime {
 }
 const run = (r: Runtime, ticks: number) => { for (let i = 0; i < ticks; i++) r.step() }
 
-describe('Hackable 3D spike: the character', () => {
+describe('Hackable 3D: the character', () => {
   it('stands on the build plate', () => {
     const r = start()
     run(r, 20)
@@ -94,7 +95,7 @@ describe('Hackable 3D spike: the character', () => {
     let top = 0
     for (let i = 0; i < 60; i++) { r.step(); top = Math.max(top, heroOf(r).y) }
     expect(stageVar(r, 'g_bounces')).toBeGreaterThanOrEqual(1)
-    expect(top).toBeGreaterThan(2) // 9² / 2·16 ≈ 2.5 above the pad
+    expect(top).toBeGreaterThan(2) // 15 studs/s = 9.3 units/s: 9.3² / 2·16 ≈ 2.7 above the pad
   })
 
   it('a Coin counts a touch and jumps somewhere random', () => {

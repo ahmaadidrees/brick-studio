@@ -1,5 +1,5 @@
 /**
- * Hackable 3D spike (docs/qa/hackable-3d/SPIKE.md): deterministic 3D physics inside the Hackable core.
+ * Hackable 3D (docs/qa/hackable-3d/SPIKE.md, D1.md): deterministic 3D physics inside the Hackable core.
  *
  * The 2D Platformer's rules (core/platformer.ts), with a third axis:
  * - every solid is an axis-aligned box on the stud grid; movement is swept one axis at a time (x, z, then y), and a
@@ -15,14 +15,16 @@
  * No Math.sin/cos/atan2/exp/hypot anywhere: ECMAScript lets engines approximate those, and lockstep needs every
  * browser to agree to the last bit.
  */
-import type { PrimitiveCtx, PrimitiveTable, RuntimeApi, Target } from '../core/contracts'
+import type { RuntimeApi, Target } from '../core/contracts'
 import { atan2Deg, exp, sinCosDeg } from '../core/detmath'
 import { toNumber } from '../core/values'
-import { BRICK_PART_MAP } from '../../../../packages/brick-core/src/parts'
 import {
-  GRID, PLATE, STUD, SUB_DT, SUBSTEPS, isTarget3,
+  GRID, STUD, SUB_DT, SUBSTEPS, isTarget3, plateOf,
   type Body3, type BrickDef3, type Bump3, type Character3, type LevelDesign3, type SceneryBrick, type Side3, type Target3, type World3,
 } from './contracts3d'
+import { partsOf, sceneryBoxes, type Box, type PartMap } from './parts3d'
+
+export { sceneryBoxes }
 
 // ------------------------------------------------------------------------------------------------ the classic character's numbers
 
@@ -54,87 +56,30 @@ const EPS = 1e-9
 
 // ------------------------------------------------------------------------------------------------ boxes
 
-interface Box { x0: number; y0: number; z0: number; x1: number; y1: number; z1: number }
+/**
+ * A quarter-turned brick's footprint swaps its width and depth. "turn" by other amounts turns the drawing (and
+ * "touching"), not the solid box: boxes stay on the stud grid (D1.md, deviations).
+ */
+export function quarterOdd(direction: number): boolean {
+  return (((Math.round((90 - direction) / 90) % 2) + 2) % 2) === 1
+}
 
 /** A target's box: footprint centred on (x, z), standing on y. */
-function boxOf(t: Target3, b: Body3): Box {
-  const hw = b.w / 2
-  const hd = b.d / 2
+export function boxOf(t: Target3, b: Body3): Box {
+  const odd = !b.character && quarterOdd(t.direction)
+  const hw = (odd ? b.d : b.w) / 2
+  const hd = (odd ? b.w : b.d) / 2
   return { x0: t.x - hw, x1: t.x + hw, y0: t.y, y1: t.y + b.h, z0: t.z - hd, z1: t.z + hd }
 }
 
 const open = (a0: number, a1: number, b0: number, b1: number): boolean => a0 < b1 - EPS && a1 > b0 + EPS
 const overlaps = (a: Box, b: Box): boolean => open(a.x0, a.x1, b.x0, b.x1) && open(a.y0, a.y1, b.y0, b.y1) && open(a.z0, a.z1, b.z0, b.z1)
 
-/** Quarter turns as exact integers: [cos, sin] (packages/brick-core rotateLocalPoint, without Math.cos). */
-const QUARTER: readonly [number, number][] = [[1, 0], [0, 1], [-1, 0], [0, -1]]
-
-/** A part-local box (x across the width, z along the depth, origin at the footprint centre, y up from its bottom). */
-type Local = [cx: number, cy: number, cz: number, w: number, h: number, d: number]
-
-/**
- * A classic part's collision as boxes, in part-local units. Exact stud and plate multiples (no insets), so neighbours
- * meet face to face. Slopes become plate-high steps the Hero climbs by autostep; round parts and cones their footprint.
- */
-function partBoxes(partId: string): Local[] {
-  const part = BRICK_PART_MAP[partId]
-  if (!part) return []
-  const W = part.width * STUD
-  const D = part.depth * STUD
-  const H = part.height * PLATE
-  switch (part.kind) {
-    case 'corner':
-      return [[-(W - STUD) / 2, 0, 0, STUD, H, D], [0, 0, -(D - STUD) / 2, W, H, STUD]]
-    case 'door': {
-      const m = 0.16
-      return [[0, 0, -(D - m) / 2, W, H, m], [0, 0, (D - m) / 2, W, H, m], [0, H - m, 0, W, m, D]]
-    }
-    case 'arch': {
-      const leg = 0.62
-      const beam = 0.34
-      return [[0, 0, -(D - leg) / 2, W, H, leg], [0, 0, (D - leg) / 2, W, H, leg], [0, H - beam, 0, W, beam, D]]
-    }
-    case 'stair': {
-      const out: Local[] = []
-      for (let s = 0; s < part.depth; s++) out.push([0, 0, (s - (part.depth - 1) / 2) * STUD, W, ((s + 1) * H) / part.depth, STUD])
-      return out
-    }
-    case 'slope': {
-      // High at +z (the classic hull): one step per plate of height.
-      const steps = part.height
-      const out: Local[] = []
-      for (let s = 0; s < steps; s++) out.push([0, 0, -D / 2 + ((s + 0.5) * D) / steps, W, (s + 1) * PLATE, D / steps])
-      return out
-    }
-    default:
-      return [[0, 0, 0, W, H, D]]
-  }
-}
-
-/** World boxes of one build brick. */
-export function sceneryBoxes(brick: SceneryBrick): Box[] {
-  const part = BRICK_PART_MAP[brick.partId]
-  if (!part) return []
-  const odd = brick.rotation % 2 === 1
-  const sw = odd ? part.depth : part.width
-  const sd = odd ? part.width : part.depth
-  // Centre of the footprint: brickWorldPosition, with the plate's half width taken off in studs first (exact).
-  const ox = (2 * brick.x + sw - GRID) * (STUD / 2)
-  const oz = (2 * brick.z + sd - GRID) * (STUD / 2)
-  const oy = brick.y * PLATE
-  const [c, s] = QUARTER[brick.rotation & 3]
-  return partBoxes(brick.partId).map(([cx, cy, cz, w, h, d]) => {
-    const x = cx * c + cz * s
-    const z = -cx * s + cz * c
-    const hw = (odd ? d : w) / 2
-    const hd = (odd ? w : d) / 2
-    return { x0: ox + x - hw, x1: ox + x + hw, y0: oy + cy, y1: oy + cy + h, z0: oz + z - hd, z1: oz + z + hd }
-  })
-}
-
 /** The build plate: a slab whose top is y = 0. Off its edge you fall. */
-const HALF_PLATE = (GRID / 2) * STUD
-const PLATE_BOX: Box = { x0: -HALF_PLATE, x1: HALF_PLATE, y0: -1, y1: 0, z0: -HALF_PLATE, z1: HALF_PLATE }
+function plateBox(plate: number): Box {
+  const half = (plate / 2) * STUD
+  return { x0: -half, x1: half, y0: -1, y1: 0, z0: -half, z1: half }
+}
 
 // ------------------------------------------------------------------------------------------------ indexes
 
@@ -197,17 +142,16 @@ class GridIndex {
  * The scenery's index, built the first time a build is played and kept for as long as that build (the array) lives.
  * It is derived from the project alone, so every browser builds the same one; an edit to the build replaces the array.
  */
-const sceneryIndexes = new WeakMap<SceneryBrick[], GridIndex>()
+const sceneryIndexes = new WeakMap<SceneryBrick[], { parts: PartMap; plate: number; index: GridIndex }>()
 
-export function sceneryIndex(scenery: SceneryBrick[]): GridIndex {
-  let index = sceneryIndexes.get(scenery)
-  if (!index) {
-    index = new GridIndex()
-    index.add({ box: PLATE_BOX, target: null, order: -1, seen: 0 })
-    let order = 0
-    for (const brick of scenery) for (const box of sceneryBoxes(brick)) index.add({ box, target: null, order: order++, seen: 0 })
-    sceneryIndexes.set(scenery, index)
-  }
+export function sceneryIndex(scenery: SceneryBrick[], parts: PartMap = partsOf(undefined), plate: number = GRID): GridIndex {
+  const cached = sceneryIndexes.get(scenery)
+  if (cached && cached.parts === parts && cached.plate === plate) return cached.index
+  const index = new GridIndex()
+  index.add({ box: plateBox(plate), target: null, order: -1, seen: 0 })
+  let order = 0
+  for (const brick of scenery) for (const box of sceneryBoxes(brick, parts, plate)) index.add({ box, target: null, order: order++, seen: 0 })
+  sceneryIndexes.set(scenery, { parts, plate, index })
   return index
 }
 
@@ -234,12 +178,15 @@ class TargetSolids {
     } else this.list = fixed
   }
 
-  query(r: Box, out: Solid[], skip: Target3): void {
+  /** `riders`: leave out Heroes and falling bodies (a platform moving under its own speed carries them, never stops). */
+  query(r: Box, out: Solid[], skip: Target3, riders: boolean): void {
     if (this.grid) this.grid.query(r, out, skip)
     for (const s of this.list) if (s.target !== skip && s.box.y1 > r.y0 - EPS && s.box.y0 < r.y1 + EPS) out.push(s)
     for (const s of this.moving) {
       if (s.target === skip) continue
-      s.box = boxOf(s.target!, s.target!.body3!)
+      const b = s.target!.body3!
+      if (!riders && (b.character || b.gravity)) continue
+      s.box = boxOf(s.target!, b)
       out.push(s)
     }
   }
@@ -255,7 +202,8 @@ function near(space: Space, r: Box, mover: Target3): Solid[] {
   const out = space.scratch
   out.length = 0
   space.scenery.query(r, out, null)
-  space.targets.query(r, out, mover)
+  const b = mover.body3
+  space.targets.query(r, out, mover, !b || !!b.character || b.gravity)
   return out
 }
 
@@ -440,18 +388,57 @@ function characterIntent(world: World3, t: Target3, b: Body3, c: Character3, obs
 
 // ------------------------------------------------------------------------------------------------ the physics step
 
-interface Spawn { x: number; y: number; z: number }
+export interface Spawn { x: number; y: number; z: number }
 
-/** Where a Hero goes back to when it falls off the plate: its placement in the project (players: theirs). */
-function spawnOf(world: World3, t: Target3): Spawn {
+/** Where a body goes back to (falling off the plate, "go back to my start"): its placement in the project. */
+export function spawnOf(world: World3, t: Target3): Spawn {
   const design = world.design as LevelDesign3 | undefined
   const placement = design?.copies.find((c) => c.id === t.copyId) ?? design?.copies.find((c) => c.brickId === t.brickId)
   return placement ? { x: placement.x, y: placement.y, z: placement.z } : { x: 0, y: 1, z: 0 }
 }
 
+/** Put a body back at its start, standing still. */
+export function sendHome(world: World3, t: Target3): void {
+  const at = spawnOf(world, t)
+  t.x = at.x; t.y = at.y; t.z = at.z
+  const b = t.body3
+  if (!b) return
+  b.vy = 0; b.vx = 0; b.vz = 0
+  if (b.character) { b.character.velocityX = 0; b.character.velocityZ = 0 }
+}
+
 function moves(t: Target3): boolean {
   const b = t.body3
   return !!b && t.visible && (!!b.character || b.gravity || b.vx !== 0 || b.vy !== 0 || b.vz !== 0)
+}
+
+/** A platform: moves by its own speed (or by its scripts), with no gravity and no character. It carries riders. */
+const isPlatform = (b: Body3): boolean => b.solid && !b.character && !b.gravity
+
+/** Does `rider` stand on top of `box` (its feet on the box's top, overlapping its footprint, not going up)? */
+function standsOn(rider: Target3, box: Box): boolean {
+  const b = rider.body3!
+  if (b.vy > 0) return false
+  const r = boxOf(rider, b)
+  return Math.abs(r.y0 - box.y1) <= 1e-6 && open(r.x0, r.x1, box.x0, box.x1) && open(r.z0, r.z1, box.z0, box.z1)
+}
+
+/** Move a rider with the platform under it: x, z, then y, stopping at walls like any move. */
+function carry(space: Space, rider: Target3, dx: number, dy: number, dz: number): void {
+  const b = rider.body3!
+  if (dx !== 0) sweep(space, rider, b, 'x', dx)
+  if (dz !== 0) sweep(space, rider, b, 'z', dz)
+  if (dy !== 0) sweep(space, rider, b, 'y', dy)
+}
+
+/** Riders on `platform` before it moves from `before`, carried by however far it moved. */
+function carryRiders(space: Space, riders: readonly Target3[], platform: Target3, before: Box): void {
+  const after = boxOf(platform, platform.body3!)
+  const dx = after.x0 - before.x0
+  const dy = after.y0 - before.y0
+  const dz = after.z0 - before.z0
+  if (dx === 0 && dy === 0 && dz === 0) return
+  for (const r of riders) if (r !== platform && r.visible && standsOn(r, before)) carry(space, r, dx, dy, dz)
 }
 
 /** One substep for one body. Returns its hits on coded bricks. */
@@ -485,46 +472,86 @@ function stepBody(world: World3, space: Space, t: Target3, b: Body3, hits: Hit[]
     if (snap) { b.onGround = true; local.push(snap) } else t.y = fromY
   }
   for (const h of local) if (h.solid.target) hits.push(h)
-  if (t.y < FALL_LIMIT) {
-    const at = spawnOf(world, t)
-    t.x = at.x; t.y = at.y; t.z = at.z
-    b.vy = 0; b.vx = 0; b.vz = 0
-    if (c) { c.velocityX = 0; c.velocityZ = 0 }
-  }
+  if (t.y < FALL_LIMIT) sendHome(world, t)
 }
 
 const OPPOSITE: Record<Side3, Side3> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left', front: 'back', back: 'front' }
 
 /**
- * The 3D physics step (afterTick, after the scripts): every moving body in world order, two 60 Hz substeps each, then
- * bump hats on both sides (the mover hears the side of the brick it hit, the brick the side of the mover, as in 2D),
- * then landing and leaving hats.
+ * The 3D physics step (afterTick, after the scripts).
+ *
+ * 1. Solids the scripts moved this tick ("change y by", "go to") carry whoever stood on them where they were.
+ * 2. Two 60 Hz substeps. In each: platforms (solids moving by their own speed, no gravity) move first and carry their
+ *    riders; then every other moving body (Heroes, falling bricks) in world order.
+ * 3. Bump hats on both sides (the mover hears the side of the brick it hit, the brick the side of the mover, as in
+ *    2D), then landing and leaving hats.
+ *
+ * Platforms pass through Heroes rather than being stopped by them (a moving solid in the classic is kinematic too);
+ * Heroes are solid to each other and to everything else.
  */
 export function physicsStep3d(runtime: RuntimeApi): void {
   const world = runtime.world as World3
   const design = world.design as LevelDesign3 | undefined
-  const movers: Target3[] = []
-  for (const t of world.targets) if (isTarget3(t) && moves(t)) movers.push(t)
+  const platforms: Target3[] = []
+  const bodies: Target3[] = []
+  const riders: Target3[] = []
+  const shifted: Target3[] = []
+  for (const t of world.targets) {
+    if (!isTarget3(t) || !t.body3) continue
+    const b = t.body3
+    if (moves(t)) (isPlatform(b) ? platforms : bodies).push(t)
+    if (t.visible && (b.character || b.gravity)) riders.push(t)
+    if (b.solid && b.last && t.visible && (b.last[0] !== t.x || b.last[1] !== t.y || b.last[2] !== t.z)) shifted.push(t)
+  }
   const bumps: Bump3[] = []
   const seen = new Set<string>()
   const ground: { t: Target3; was: boolean }[] = []
-  if (movers.length > 0) {
-    const space: Space = { scenery: sceneryIndex(design?.sceneryAsTargets ? EMPTY : design?.scenery3d ?? EMPTY), targets: new TargetSolids(world), scratch: [] }
-    for (const t of movers) {
+  const hitsOf = new Map<Target3, Hit[]>()
+  if (platforms.length + bodies.length + shifted.length > 0) {
+    const space: Space = { scenery: sceneryIndex(design?.sceneryAsTargets ? EMPTY : design?.scenery3d ?? EMPTY, partsOf(design), plateOf(design)), targets: new TargetSolids(world), scratch: [] }
+    // 1. Moved by scripts: carry from where the physics step last left them.
+    for (const t of shifted) {
       const b = t.body3!
-      ground.push({ t, was: b.onGround })
-      const hits: Hit[] = []
-      const fromX = t.x, fromY = t.y, fromZ = t.z
-      for (let i = 0; i < SUBSTEPS; i++) stepBody(world, space, t, b, hits)
-      for (const h of hits) {
+      const now = { x: t.x, y: t.y, z: t.z }
+      t.x = b.last![0]; t.y = b.last![1]; t.z = b.last![2]
+      const before = boxOf(t, b)
+      t.x = now.x; t.y = now.y; t.z = now.z
+      carryRiders(space, riders, t, before)
+    }
+    const all = [...platforms, ...bodies]
+    for (const t of all) {
+      ground.push({ t, was: t.body3!.onGround })
+      hitsOf.set(t, [])
+    }
+    const from = new Map(all.map((t) => [t, [t.x, t.y, t.z] as const]))
+    // 2. Substeps: platforms (carrying riders), then everything else.
+    for (let i = 0; i < SUBSTEPS; i++) {
+      for (const t of platforms) {
+        const before = boxOf(t, t.body3!)
+        stepBody(world, space, t, t.body3!, hitsOf.get(t)!)
+        carryRiders(space, riders, t, before)
+      }
+      for (const t of bodies) stepBody(world, space, t, t.body3!, hitsOf.get(t)!)
+    }
+    for (const t of all) {
+      for (const h of hitsOf.get(t)!) {
         const other = h.solid.target!
         const k = `${t.id}|${h.side}|${other.id}`
         if (seen.has(k)) continue
         seen.add(k)
         bumps.push({ moverId: t.id, otherId: other.id, side: h.side })
       }
-      if (t.x !== fromX || t.y !== fromY || t.z !== fromZ) runtime.requestRedraw()
+      const [x, y, z] = from.get(t)!
+      if (t.x !== x || t.y !== y || t.z !== z) runtime.requestRedraw()
     }
+    if (shifted.length > 0) runtime.requestRedraw()
+  }
+  // Remember where every solid is, so a script's move next tick carries its riders too.
+  for (const t of world.targets) {
+    const b = isTarget3(t) ? t.body3 : undefined
+    if (!b) continue
+    if (b.solid) b.last = [t.x, t.y, t.z]
+    else if (b.last) delete b.last
   }
   if (bumps.length > 0) world.bumps3d = bumps
   else delete world.bumps3d
@@ -552,112 +579,44 @@ function startBumpHats(runtime: RuntimeApi, target: Target, side: Side3, other: 
   for (const SIDE of ['_any_', side]) for (const BRICK of bricks) runtime.startHats('platformer_whenbump', { target, fields: { SIDE, BRICK } })
 }
 
-// ------------------------------------------------------------------------------------------------ the 3D blocks
+// ------------------------------------------------------------------------------------------------ for the blocks
 
-/** A 3D target's body, made on first use like the Platformer's. */
-function body3Of(t: Target): Body3 | null {
-  if (t.isStage || !isTarget3(t)) return null
-  if (!t.body3) t.body3 = { w: 1, h: 1, d: 1, solid: false, gravity: false, vx: 0, vy: 0, vz: 0, onGround: false }
-  return t.body3
-}
-
-const axis3 = (ctx: PrimitiveCtx): Axis => (ctx.field('AXIS') === 'y' ? 'y' : ctx.field('AXIS') === 'z' ? 'z' : 'x')
-
-/** Speeds a script gives a character go where its controller reads them; an upward one launches it off the ground. */
-function setVelocity(b: Body3, axis: Axis, v: number): void {
-  const c = b.character
-  if (axis === 'y') {
-    b.vy = v
-    if (c && v > 0) { c.grounded = false; c.coyote = 0; c.groundIgnore = JUMP_GROUND_IGNORE; c.airborne = 0; b.onGround = false }
-  } else if (c) {
-    if (axis === 'x') c.velocityX = v
-    else c.velocityZ = v
-  } else if (axis === 'x') b.vx = v
-  else b.vz = v
-}
-
-function speed(ctx: PrimitiveCtx, relative: boolean): void {
-  const t = ctx.target
-  const b = body3Of(t)
-  const n = toNumber(ctx.arg('SPEED'))
-  if (!b || !Number.isFinite(n)) return
-  const axis = axis3(ctx)
-  const now = axis === 'y' ? b.vy : b.character ? (axis === 'x' ? b.character.velocityX : b.character.velocityZ) : axis === 'x' ? b.vx : b.vz
-  setVelocity(b, axis, relative ? now + n : n)
-  if (t.visible) ctx.runtime.requestRedraw()
-}
-
-function boxOfTarget(t: Target): Box | null {
-  return isTarget3(t) && t.body3 ? boxOf(t, t.body3) : null
-}
+export const JUMP_IGNORE = JUMP_GROUND_IGNORE
+export { MAX_FALL }
 
 /**
- * The 3D kit's blocks. The Platformer's opcodes keep their meaning with a z added ("set [z] speed to"), so a kid who
- * knows the Platformer category already knows most of the 3D one; the rest are new.
+ * A target's footprint as a rectangle turned by its direction, plus its height: what "touching" compares. Turning a
+ * brick (a Spinner) turns this, even though a solid box stays on the grid.
  */
-export const kit3dPrimitives: PrimitiveTable = {
-  platformer_setspeed: (ctx) => speed(ctx, false),
-  platformer_changespeed: (ctx) => speed(ctx, true),
-  platformer_speed(ctx) {
-    const b = isTarget3(ctx.target) ? ctx.target.body3 : undefined
-    if (!b) return 0
-    const axis = axis3(ctx)
-    if (axis === 'y') return b.vy
-    if (b.character) return axis === 'x' ? b.character.velocityX : b.character.velocityZ
-    return axis === 'x' ? b.vx : b.vz
-  },
-  platformer_setgravity(ctx) {
-    const b = body3Of(ctx.target)
-    if (b) b.gravity = ctx.field('GRAVITY') !== 'off'
-  },
-  platformer_setsolid(ctx) {
-    const b = body3Of(ctx.target)
-    if (b) b.solid = ctx.field('SOLID') !== 'off'
-  },
-  platformer_onground: (ctx) => (isTarget3(ctx.target) && ctx.target.body3?.onGround) ?? false,
-  /** go to x: () y: () z: () */
-  kit3d_gotoxyz(ctx) {
-    const t = ctx.target
-    if (!isTarget3(t) || t.isStage) return
-    const x = toNumber(ctx.arg('X'))
-    const y = toNumber(ctx.arg('Y'))
-    const z = toNumber(ctx.arg('Z'))
-    if (Number.isFinite(x)) t.x = x
-    if (Number.isFinite(y)) t.y = y
-    if (Number.isFinite(z)) t.z = z
-    if (t.visible) ctx.runtime.requestRedraw()
-  },
-  kit3d_changez(ctx) {
-    const t = ctx.target
-    const n = toNumber(ctx.arg('DZ'))
-    if (!isTarget3(t) || t.isStage || !Number.isFinite(n)) return
-    t.z += n
-    if (t.visible) ctx.runtime.requestRedraw()
-  },
-  kit3d_zposition: (ctx) => (isTarget3(ctx.target) ? ctx.target.z : 0),
-  /** launch who landed on me up at (speed): every body that hit this brick's top in the last physics step. */
-  kit3d_launchlanders(ctx) {
-    const n = toNumber(ctx.arg('SPEED'))
-    const world = ctx.runtime.world as World3
-    if (!Number.isFinite(n) || !world.bumps3d) return
-    for (const bump of world.bumps3d) {
-      if (bump.otherId !== ctx.target.id || bump.side !== 'top') continue
-      const mover = world.targets.find((t) => t.id === bump.moverId)
-      if (mover?.body3) setVelocity(mover.body3, 'y', n)
-    }
-  },
-  /** touching (brick)?: boxes that overlap or meet (3D replaces 2D's pixel touching). */
-  sensing_touchingobject(ctx) {
-    const me = boxOfTarget(ctx.target)
-    const arg = ctx.arg('TOUCHINGOBJECTMENU')
-    const name = arg !== '' ? String(arg) : ctx.field('TOUCHINGOBJECTMENU')
-    if (!me || !name) return false
-    const world = ctx.runtime.world
-    for (const t of world.targets) {
-      if (t === ctx.target || !t.visible || world.bricks[t.brickId]?.name !== name) continue
-      const o = boxOfTarget(t)
-      if (o && me.x0 <= o.x1 && me.x1 >= o.x0 && me.y0 <= o.y1 && me.y1 >= o.y0 && me.z0 <= o.z1 && me.z1 >= o.z0) return true
-    }
-    return false
-  },
+export interface Footprint { cx: number; cz: number; hw: number; hd: number; s: number; c: number; y0: number; y1: number }
+
+export function footprintOf(t: Target3, b: Body3): Footprint {
+  // Drawing turns a brick by 90 − direction degrees about y (three.js: counter-clockwise seen from above).
+  const [s, c] = b.character ? [0, 1] : sinCosDeg(90 - t.direction)
+  return { cx: t.x, cz: t.z, hw: b.w / 2, hd: b.d / 2, s, c, y0: t.y, y1: t.y + b.h }
+}
+
+/** The corners of a turned footprint (local (±hw, ±hd) turned like a three.js rotation.y). */
+function corners(f: Footprint): [number, number][] {
+  const out: [number, number][] = []
+  for (const [lx, lz] of [[-f.hw, -f.hd], [f.hw, -f.hd], [f.hw, f.hd], [-f.hw, f.hd]] as const) {
+    out.push([f.cx + lx * f.c + lz * f.s, f.cz - lx * f.s + lz * f.c])
+  }
+  return out
+}
+
+/** Do two turned footprints touch (meet or overlap), with their heights overlapping? Separating axes, + − × only. */
+export function footprintsTouch(a: Footprint, b: Footprint): boolean {
+  if (a.y0 > b.y1 + EPS || b.y0 > a.y1 + EPS) return false
+  const ca = corners(a)
+  const cb = corners(b)
+  // Each footprint's two edge directions: (c, −s) along its width, (s, c) along its depth.
+  const axes: [number, number][] = [[a.c, -a.s], [a.s, a.c], [b.c, -b.s], [b.s, b.c]]
+  for (const [ax, az] of axes) {
+    let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity
+    for (const [x, z] of ca) { const p = x * ax + z * az; if (p < a0) a0 = p; if (p > a1) a1 = p }
+    for (const [x, z] of cb) { const p = x * ax + z * az; if (p < b0) b0 = p; if (p > b1) b1 = p }
+    if (a0 > b1 + EPS || b0 > a1 + EPS) return false
+  }
+  return true
 }

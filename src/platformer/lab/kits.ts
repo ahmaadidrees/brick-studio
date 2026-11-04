@@ -22,7 +22,7 @@ export interface KitInfo {
 export const KITS: Readonly<Record<KitId, KitInfo>> = {
   platformer: { id: 'platformer', name: 'Hackable Platformer', route: '/2d/hackable', ready: true },
   race: { id: 'race', name: 'Hackable Racing', route: '/2d/hackable-race', ready: true },
-  '3d': { id: '3d', name: 'Hackable 3D', route: '/3d/hackable', ready: false },
+  '3d': { id: '3d', name: 'Hackable 3D', route: '/3d/hackable', ready: true },
 }
 
 export const kitOf = (design: Pick<LevelDesign, 'kit'>): KitInfo => KITS[designKit(design)]

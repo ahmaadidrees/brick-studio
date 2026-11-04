@@ -1,5 +1,5 @@
 /**
- * Hackable 3D spike (docs/qa/hackable-3d/SPIKE.md): a sample 3D project. A build of `n` plain classic bricks (a
+ * Hackable 3D (docs/qa/hackable-3d/SPIKE.md): the lockstep and benchmark sample project (block numbers in studs). A build of `n` plain classic bricks (a
  * plate-step ramp up to a deck, then a seeded scatter of stacked parts), the Hero with the classic character's
  * sliders, a coded Bounce pad and two coded Coins. Plain data, the same on every engine.
  */
@@ -32,7 +32,7 @@ function hero(): BrickDef3 {
   }
 }
 
-/** Bounce pad: solid; when a Hero lands on it, launch them up and count it. The 9 is what the lockstep test edits. */
+/** Bounce pad: solid; when a Hero lands on it, launch them up (15 studs a second) and count it. The 15 is what the lockstep test edits. */
 function bouncePad(): BrickDef3 {
   return {
     id: 'brick_pad3d', name: 'Bounce pad', costumes: [], sounds: [],
@@ -40,7 +40,7 @@ function bouncePad(): BrickDef3 {
     program: program([
       script('pad_start', 'event_whenflagclicked', {}, st('platformer_setsolid', { SOLID: 'on' })),
       script('pad_bump', 'platformer_whenbump', { SIDE: 'bottom', BRICK: 'Hero' },
-        st('kit3d_launchlanders', {}, { SPEED: lit(9) }),
+        st('kit3d_launchlanders', {}, { SPEED: lit(15) }),
         st('data_changevariableby', { VARIABLE: 'g_bounces' }, { VALUE: lit(1) })),
     ]),
   }
@@ -57,7 +57,7 @@ function coin(): BrickDef3 {
         st('motion_turnright', {}, { DEGREES: lit(6) }),
         st('control_if', {}, { CONDITION: rep('sensing_touchingobject', { TOUCHINGOBJECTMENU: 'Hero' }) }, [[
           st('data_changevariableby', { VARIABLE: 'g_coins' }, { VALUE: lit(1) }),
-          st('kit3d_gotoxyz', {}, { X: random(-6, 6), Y: lit(0.3), Z: random(-6, 6) }),
+          st('kit3d_gotoxyz', {}, { X: random(-10, 10), Y: lit(0.5), Z: random(-10, 10) }),
         ]]),
       ]])),
     ]),

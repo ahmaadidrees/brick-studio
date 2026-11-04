@@ -8,7 +8,8 @@ import type { Stmt, World } from '../../../src/platformer/lab/core/contracts'
 import { copyWorld, worldFingerprint, worldFromJson, worldToJson } from '../../../src/platformer/lab/core/snapshot'
 import type { Runtime } from '../../../src/platformer/lab/core/runtime'
 import type { LevelDesign3, World3 } from '../../../src/platformer/lab/kit3d/contracts3d'
-import { addPlayer3d, createRuntime3d, heroSpawn, HERO3D, lookPlayer3d, removePlayer3d } from '../../../src/platformer/lab/kit3d/engine3d'
+import { addPlayer3d, heroSpawn, HERO3D, lookPlayer3d, removePlayer3d } from '../../../src/platformer/lab/kit3d/engine3d'
+import { createRuntime3d } from '../../../src/platformer/lab/kit3d/run3d'
 import { sampleDesign3d } from '../../../src/platformer/lab/kit3d/sample3d'
 
 export type Event3 =
@@ -17,7 +18,7 @@ export type Event3 =
   | { tick: number; kind: 'join'; player: number; name: string }
   | { tick: number; kind: 'leave'; player: number }
   | { tick: number; kind: 'flag' }
-  /** The Bounce pad's launch 9 → 12 (a Hacker's code edit, live). */
+  /** The Bounce pad's launch 15 → 20 studs a second (a Hacker's code edit, live). */
   | { tick: number; kind: 'edit-program' }
   /** A Builder drops a 2 × 4 brick in front of the start (the build replaced, live). */
   | { tick: number; kind: 'edit-level' }
@@ -74,11 +75,11 @@ function editProgram(world: World, design: LevelDesign3): string | null {
   const script = pad?.program.scripts.find((s) => find(s.body))
   if (!pad || !script) return null
   const program = structuredClone(pad.program)
-  find(program.scripts.find((s) => s.id === script.id)!.body)!.inputs.SPEED = { kind: 'lit', value: 12 }
+  find(program.scripts.find((s) => s.id === script.id)!.body)!.inputs.SPEED = { kind: 'lit', value: 20 }
   const edited = { ...pad, program }
   world.bricks = { ...world.bricks, brick_pad3d: edited }
   design.bricks = design.bricks.map((b) => (b.id === 'brick_pad3d' ? { ...b, program: structuredClone(program) } : b))
-  return 'Bounce pad: launch 9 → 12'
+  return 'Bounce pad: launch 15 → 20'
 }
 
 function editLevel(world: World, design: LevelDesign3): string {
