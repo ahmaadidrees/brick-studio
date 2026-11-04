@@ -8,11 +8,13 @@
  * - Change a brick's code, costumes or sounds, or the Stage's: **code**. A brick whose code changes restarts its
  *   running scripts with the new code (owner decision, 2026-11-04); every other brick keeps running.
  * - Add a new brick to the level: building (it changes nothing that is already there).
+ * - Start from nothing's game settings (`game`): which brick is the player is code (it changes what the keys move);
+ *   the backdrop is building (it changes only the look of the empty stage).
  *
  * Bricks travel as save-file JSON (core/save.ts brickToWire). A brick's blocks (its Blockly workspace) ride along for
  * the editors; the game never reads them.
  */
-import { type BrickDef, type CopyPlacement, type LevelDesign, type Target, type TileLayer } from '../core/contracts'
+import { BACKDROPS, type Backdrop, type BrickDef, type CopyPlacement, type LevelDesign, type Target, type TileLayer } from '../core/contracts'
 import { bricksOf, cellTarget, targetForCopy } from '../core/project'
 import type { Runtime } from '../core/runtime'
 import { brickFromWire, brickToWire } from '../core/save'
@@ -26,6 +28,11 @@ export type EditOp =
   /** Add a brick, or replace the one with its id (the Stage too). `brick` is brickToWire JSON; `ws` its blocks. */
   | { op: 'brick'; brick: unknown; ws?: unknown; at?: number }
   | { op: 'unbrick'; id: string }
+  /**
+   * Start from nothing (docs/qa/blank-2d): the game's player brick (LevelDesign.player) and backdrop. A key that is
+   * present is set; null removes it. Each is optional, so one edit can change either.
+   */
+  | { op: 'game'; player?: string | null; backdrop?: Backdrop | null }
 
 /** What an edit needs: building (place, paint, tune) or code. */
 export type EditKind = 'build' | 'code'
@@ -53,6 +60,10 @@ export function isEditOps(ops: unknown): ops is EditOp[] {
           && o.cells.every((c) => Array.isArray(c) && c.length === 3 && Number.isInteger(c[0]) && Number.isInteger(c[1]) && typeof c[2] === 'string' && c[2].length === 1)
       case 'brick':
         return isRecord(o.brick) && isId(o.brick.id) && (o.ws === undefined || isRecord(o.ws)) && (o.at === undefined || Number.isInteger(o.at))
+      case 'game':
+        return ('player' in o || 'backdrop' in o)
+          && (o.player === undefined || o.player === null || isId(o.player))
+          && (o.backdrop === undefined || o.backdrop === null || (BACKDROPS as readonly unknown[]).includes(o.backdrop))
       default:
         return false
     }
@@ -73,7 +84,7 @@ function sortKeys(_k: string, v: unknown): unknown {
 
 /** The parts of a design an edit can't change (only the host's whole project can). */
 function outline(design: LevelDesign): unknown {
-  const { bricks: _b, copies: _c, tiles, stage: _s, ...rest } = design
+  const { bricks: _b, copies: _c, tiles, stage: _s, player: _p, backdrop: _d, ...rest } = design
   return { ...rest, tiles: tiles ? { cols: tiles.cols, rows: tiles.rows } : null }
 }
 
@@ -124,6 +135,11 @@ export function diffDesigns(
   })
   const stageId = after.stage.id
   if ((before.stage !== after.stage && !same(before.stage, after.stage)) || (wsChanged(stageId) && blocksMatter(stageId, beforeWs[stageId], afterWs[stageId]))) ops.push(brickOp(after.stage))
+  // Start from nothing's game settings, after the bricks (a new brick can be the player).
+  const game: { player?: string | null; backdrop?: Backdrop | null } = {}
+  if (before.player !== after.player) game.player = after.player ?? null
+  if (before.backdrop !== after.backdrop) game.backdrop = after.backdrop ?? null
+  if ('player' in game || 'backdrop' in game) ops.push({ op: 'game', ...game })
   // Removals of bricks go last, after the copies that used them.
   ops.sort((x, y) => Number(x.op === 'unbrick') - Number(y.op === 'unbrick'))
   return { ops, other }
@@ -145,6 +161,7 @@ const codeChanged = (old: BrickDef, next: BrickDef): boolean => !same(untuned(ol
 /** What one operation needs, against the project as it is now. */
 export function kindOf(design: LevelDesign, op: EditOp): EditKind {
   if (op.op === 'unbrick') return 'code'
+  if (op.op === 'game') return op.player !== undefined && (op.player ?? undefined) !== design.player ? 'code' : 'build'
   if (op.op !== 'brick') return 'build'
   // Blocks are code, even blocks that do the same as before.
   if (op.ws !== undefined) return 'code'
@@ -180,6 +197,8 @@ export function applyEdit(design: LevelDesign, ops: readonly EditOp[], workspace
   let bricks = design.bricks
   let stage = design.stage
   let tiles = design.tiles
+  let player = design.player
+  let backdrop = design.backdrop
   const undo: EditOp[] = []
   const restarted: string[] = []
   const said: string[] = []
@@ -257,6 +276,21 @@ export function applyEdit(design: LevelDesign, ops: readonly EditOp[], workspace
         }
         break
       }
+      case 'game': {
+        const back: { player?: string | null; backdrop?: Backdrop | null } = {}
+        if (op.player !== undefined) {
+          back.player = player ?? null
+          player = op.player ?? undefined
+          said.push(player ? `made ${nameOf(player)} the player` : 'took away the player')
+        }
+        if (op.backdrop !== undefined) {
+          back.backdrop = backdrop ?? null
+          backdrop = op.backdrop ?? undefined
+          said.push(`changed the backdrop`)
+        }
+        undo.push({ op: 'game', ...back })
+        break
+      }
       case 'unbrick': {
         const i = bricks.findIndex((b) => b.id === op.id)
         if (i < 0) break
@@ -269,7 +303,9 @@ export function applyEdit(design: LevelDesign, ops: readonly EditOp[], workspace
     }
   }
   const summary = [...new Set(said)].slice(0, 2).join(', ') || 'changed the level'
-  return { design: { ...design, copies, bricks, stage, ...(tiles ? { tiles } : {}) }, undo: undo.reverse(), restarted, summary }
+  const { player: _p, backdrop: _d, ...rest } = design
+  const next: LevelDesign = { ...rest, copies, bricks, stage, ...(tiles ? { tiles } : {}), ...(player !== undefined ? { player } : {}), ...(backdrop !== undefined ? { backdrop } : {}) }
+  return { design: next, undo: undo.reverse(), restarted, summary }
 }
 
 /** The blocks an edit brings, by brick id (for the editors; the game never reads them). */
@@ -402,6 +438,10 @@ export function applyEditLive(runtime: Runtime, ops: readonly EditOp[], applied:
         break
       }
       case 'unbrick':
+        break
+      case 'game':
+        // The running game reads the player from `world.design` (core/contracts.ts playerBrickIdOf): "the player"
+        // means the new one at once. Friends keep the copies they have; the new player brick spawns next round.
         break
     }
   }
