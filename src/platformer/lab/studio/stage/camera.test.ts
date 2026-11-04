@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BUILD_TOOLS_INSET,
+  clearOfTop,
+  buildCamera,
   clampCamera,
   defaultPlayCameraMode,
   fitCamera,
@@ -296,5 +299,33 @@ describe('buildFitCamera: a tablet that can show the whole level readably still 
     const bounds = { left: 0, right: 960, bottom: 0, top: 360 }
     const vp = { width: 800, height: 640 }
     expect(buildFitCamera(bounds, vp)).toEqual(fitCamera(bounds, vp))
+  })
+})
+
+describe('clearOfTop: Build fitted below the floating view tools (Start from nothing)', () => {
+  // Start from nothing's one screen: 30 x 22 cells of 16 steps.
+  const blank = { left: 0, right: 480, bottom: 0, top: 352 }
+  const corners = (camera: ReturnType<typeof fitCamera>, viewport: { width: number; height: number }) => ({
+    topRight: worldToScreen(camera, viewport, blank.right, blank.top),
+    bottomLeft: worldToScreen(camera, viewport, blank.left, blank.bottom),
+  })
+
+  for (const viewport of [{ width: 1000, height: 600 }, { width: 760, height: 520 }, { width: 390, height: 560 }]) {
+    it(`keeps the whole stage below the tools in a ${viewport.width} x ${viewport.height} stage`, () => {
+      for (const make of [(vp: typeof viewport) => buildCamera(blank, vp), (vp: typeof viewport) => buildFitCamera(blank, vp, 240)]) {
+        const camera = clearOfTop(make, viewport, BUILD_TOOLS_INSET)
+        const { topRight, bottomLeft } = corners(camera, viewport)
+        // The top edge (with its top-right cell) starts below the tools' band, and the bottom edge is still on screen.
+        expect(topRight[1]).toBeGreaterThanOrEqual(BUILD_TOOLS_INSET - 1e-9)
+        expect(bottomLeft[1]).toBeLessThanOrEqual(viewport.height + 1e-9)
+      }
+    })
+  }
+
+  it('an inset of 0 (every kit) is the camera as before', () => {
+    const viewport = { width: 1000, height: 600 }
+    const level = { left: 0, right: 960, bottom: 0, top: 360 }
+    expect(clearOfTop((vp) => buildCamera(level, vp), viewport, 0)).toEqual(buildCamera(level, viewport))
+    expect(clearOfTop((vp) => buildFitCamera(level, vp, 300), viewport, 0)).toEqual(buildFitCamera(level, viewport, 300))
   })
 })
