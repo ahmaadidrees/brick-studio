@@ -16,6 +16,7 @@ import type { MadeBrick } from '../starter'
 export const TIRES_BRICK_ID = 'brick_tires'
 export const BUMPER_BRICK_ID = 'brick_bumper'
 export const TREE_BRICK_ID = 'brick_tree'
+export const STAND_BRICK_ID = 'brick_stand'
 
 interface Spec {
   id: string
@@ -62,6 +63,18 @@ const SPECS: Readonly<Record<string, Spec>> = {
       if (dist(x, y, 7, 7) < 4.6) return 'l'
       if (dist(x, y, 8, 8) < 7.2) return 'd'
       return dist(x, y, 9.5, 10) < 7 ? 's' : grass(x, y)
+    },
+  },
+  [STAND_BRICK_ID]: {
+    id: STAND_BRICK_ID, name: 'Grandstand', char: 'S', solid: true,
+    // Grey seats in two rows with a crowd of coloured heads (the classic stand's six colours).
+    palette: { a: '#8b93a3', b: '#737b8c', '0': '#ef4b3f', '1': '#ffd34d', '2': '#5888DA', '3': '#ffffff', '4': '#2e9d57', '5': '#ff8c1a' },
+    art: (x, y) => {
+      if (y === 7 || y === 8 || y === 15) return 'b'
+      for (let i = 0; i < 6; i++) {
+        if (dist(x, y, 2.5 + (i % 3) * 5.5, 3.5 + (i > 2 ? 8 : 0)) < 1.8) return String(i)
+      }
+      return 'a'
     },
   },
 }
