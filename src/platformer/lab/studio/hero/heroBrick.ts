@@ -128,7 +128,9 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'early_ticks', name: 'early jump time', hint: 'How long before I land a jump press still counts. 30 is one second.', value: 3, from: 'bufferFrames 5: the old Hero counts a press up to 4 frames (2 ticks) before landing; 3 here counts 2 ticks' },
   // Walls
   { id: 'wall_slide', name: 'wall slide speed', hint: 'How fast I slide down a wall.', value: 1.0 * SPEED, from: 'wallSlideMax 1.0 px/frame x 2' },
-  { id: 'wall_shed', name: 'wall grab slowdown', hint: 'How much speed I lose when I grab a wall.', value: 0.75 * SPEED, from: 'least fall speed shed per frame while grabbing a wall, 0.75 px/frame x 2' },
+  // A speed shed every frame is a change per frame, like an acceleration (x 4). Until parity bucket A it was x 2 (1.5), so
+  // the slide settled at 3.5 a tick (105 px/s) instead of the old Hero's 60 px/s (HERO_DEFAULT_CHANGES).
+  { id: 'wall_shed', name: 'wall grab slowdown', hint: 'How much speed I lose when I grab a wall.', value: 0.75 * ACCEL, from: 'least fall speed shed per frame while grabbing a wall, 0.75 px/frame each frame x 4' },
   { id: 'wall_push', name: 'wall jump sideways', hint: 'How hard a wall jump pushes me away from the wall.', value: 2.0 * SPEED, from: 'wallJumpX 2.0 px/frame x 2' },
   { id: 'wall_up', name: 'wall jump up', hint: 'How high a wall jump sends me.', value: 4.0 * SPEED, from: 'wallJumpY 4.0 px/frame x 2' },
   { id: 'wall_lock_ticks', name: 'wall jump no-steer time', hint: 'How long after a wall jump I can\'t steer back to the wall. 30 is one second.', value: 5, from: 'wallJumpLock 9 frames / 2 = 4.5, rounded up' },
@@ -137,6 +139,14 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'hurt_stop', name: 'hurt stop time', hint: 'How long I stand still when I get hurt. 30 is one second.', value: 30 * TICKS, from: 'DEATH_PAUSE 30 frames / 2' },
   { id: 'hurt_back', name: 'time to come back', hint: 'How long after I get hurt I come back at the start. 30 is one second.', value: 150 * TICKS, from: 'DEATH_TICKS 150 frames / 2' },
   { id: 'safe_time', name: 'safe time', hint: 'How long I blink after coming back, when nothing can hurt me. 30 is one second.', value: 120 * TICKS, from: 'RESPAWN_INVULN 120 frames / 2' },
+]
+
+/**
+ * Knob defaults that changed since a Hero was saved. An upgraded Hero whose value is still the old default gets the new
+ * one; a value the kid moved stays (remix.ts upgradeHeroBlocks).
+ */
+export const HERO_DEFAULT_CHANGES: ReadonlyArray<{ id: string; from: number; to: number }> = [
+  { id: 'wall_shed', from: 0.75 * SPEED, to: 0.75 * ACCEL },
 ]
 
 /**

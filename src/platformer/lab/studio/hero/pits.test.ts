@@ -114,6 +114,15 @@ describe('saves from before pits', () => {
     expect(up.design.bricks.find((b) => b.id === 'brick_hero')!.program.variables.find((v) => v.id === 'walk_top')!.value).toBe(5)
     expect(validateDesign(up.design)).toEqual([])
     expect(dropInGap(up.design, 120).at(-1)).toEqual({ x: HERO_START.x, y: HERO_START.y })
+    // The wall grab slowdown was still the old default (1.5): it takes the corrected one (3, parity bucket A step 9).
+    expect(up.design.bricks.find((b) => b.id === 'brick_hero')!.program.variables.find((v) => v.id === 'wall_shed')!.value).toBe(3)
+  })
+
+  it('a wall grab slowdown the kid set stays', () => {
+    const old = savedBeforePits()
+    old.design.bricks.find((b) => b.id === 'brick_hero')!.program.variables.find((v) => v.id === 'wall_shed')!.value = 2
+    const up = upgradeUntouchedHero(old)
+    expect(up.design.bricks.find((b) => b.id === 'brick_hero')!.program.variables.find((v) => v.id === 'wall_shed')!.value).toBe(2)
   })
 
   it('a Hero the kid changed keeps its blocks and its level keeps the floor', () => {

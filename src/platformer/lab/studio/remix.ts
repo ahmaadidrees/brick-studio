@@ -4,7 +4,7 @@ import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/c
 import { createStarterProject } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
 import { boostCostume, boostCostumeR1 } from './race/raceTrack'
-import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
+import { HERO_DEFAULT_CHANGES, HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
 
 type Original = { brick: BrickDef; workspace: unknown }
@@ -373,7 +373,9 @@ function upgradeHeroBlocks(project: StudioProject): StudioProject {
   // A brick that reads a Hero variable by its old name ("p speed of Hero") keeps it working: the Hero keeps old names.
   const keepOld = readsByName(project, hero.program.variables.filter((v) => HERO_OLD_VARIABLE_NAMES[v.id] === v.name).map((v) => v.name))
   const named = <T extends { id: string; name: string }>(v: T): T => (keepOld && HERO_OLD_VARIABLE_NAMES[v.id] ? { ...v, name: HERO_OLD_VARIABLE_NAMES[v.id] } : v)
-  const variables = fresh.brick.program.variables.map((v) => named(tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+  // A value still at a default that has since changed (the wall grab slowdown, parity bucket A) takes the new default.
+  const stale = (id: string) => HERO_DEFAULT_CHANGES.some((c) => c.id === id && tuned.get(id) === c.from)
+  const variables = fresh.brick.program.variables.map((v) => named(tuned.has(v.id) && !stale(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
   // Today's blocks may play a sound the old Hero didn't have ("Ouch"): add it, keeping every sound the kid added.
   const sounds = [...hero.sounds, ...fresh.brick.sounds.filter((s) => !hero.sounds.some((h) => h.name === s.name))]
   const upgraded: BrickDef = { ...hero, sounds, program: { ...fresh.brick.program, variables } }

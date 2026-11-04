@@ -28,7 +28,7 @@ import feelScriptsHero from '../__fixtures__/hero-before-feel-scripts.json'
 import step6bSave from '../__fixtures__/step6b-save.json?raw'
 import startRespawnHero from './__fixtures__/hero-before-start-respawn.json'
 import plainNamesHero from './__fixtures__/hero-before-plain-names.json'
-import { HERO_BRICK_ID, HERO_KNOBS, HERO_OLD_VARIABLE_NAMES, heroVariables } from './heroBrick'
+import { HERO_BRICK_ID, HERO_DEFAULT_CHANGES, HERO_KNOBS, HERO_OLD_VARIABLE_NAMES, heroVariables } from './heroBrick'
 
 beforeAll(() => registerToolboxPlugins())
 afterEach(cleanup)
@@ -142,7 +142,8 @@ describe('an untouched Hero saved with the old names', () => {
     const fresh = createStarterProject()
     expect(names(heroOf(up).program.variables)).toEqual(names(heroOf(fresh).program.variables))
     expect(names((up.workspaces[HERO_BRICK_ID] as Ws).variables)).toEqual(names((fresh.workspaces[HERO_BRICK_ID] as Ws).variables))
-    const valueOf = (project: StudioProject) => Object.fromEntries(heroOf(project).program.variables.map((v) => [v.id, v.value]))
+    // Every value is kept, but a default corrected since (the wall grab slowdown, HERO_DEFAULT_CHANGES).
+    const valueOf = (project: StudioProject) => Object.fromEntries(heroOf(project).program.variables.filter((v) => !HERO_DEFAULT_CHANGES.some((c) => c.id === v.id)).map((v) => [v.id, v.value]))
     expect(valueOf(up)).toMatchObject(valueOf(old))
     expect(heroOf(up).program.variables.find((v) => v.id === 'p_top')!.value).toBe(9)
     expect(heroOf(up).program.scripts).toEqual(heroOf(fresh).program.scripts)
