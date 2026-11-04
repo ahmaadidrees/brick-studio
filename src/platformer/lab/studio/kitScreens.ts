@@ -155,7 +155,7 @@ const COPY_3D: KitCopy = {
   get projectName() { return PROJECT_NAME_3D },
   player: 'Hero',
   noPlayer: 'Place the Hero first: it is under Code bricks in the Bricks drawer.',
-  controlsHint: 'Arrows or WASD move, Space jumps, X runs, drag to look around',
+  controlsHint: 'Arrows or WASD move, Space jumps, Shift or X runs, drag to look around',
   followLabel: 'Follow the Hero',
   tipsKey: 'brickgineers.hackable3d.tips',
   tips: {
@@ -165,7 +165,7 @@ const COPY_3D: KitCopy = {
     codeSmall: 'On a bigger screen, open a code brick’s code.',
     play: 'Press Play to try your world.',
   },
-  helpPlay: 'Press Play to try your world. The arrow keys (or WASD) move, Space jumps, and X runs. Drag the world to turn the camera; the Hero walks the way the camera looks. Press Build to go back.',
+  helpPlay: 'Press Play to try your world. The arrow keys (or WASD) move, Space jumps, and Shift or X runs. Drag the world to turn the camera; the Hero walks the way the camera looks. Press Build to go back.',
 }
 
 /** A design's screens. */

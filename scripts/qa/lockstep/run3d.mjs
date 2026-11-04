@@ -107,9 +107,10 @@ for (const mode of [{ name: `room, ${BRICKS} bricks as scenery`, sceneryAsTarget
     const b = L.runScenario3d('dump', { ...opts, rejoinAt: REJOIN_AT, dumpAt: [rejoinAt] })
     rejoinExplain = explain(a.dumps[rejoinAt], b.dumps[rejoinAt])
   }
-  summary.scenarios[mode.name] = { applied: ref.applied, totals: ref.totals, runs: rows, rejoin: { at: REJOIN_AT, snapshotBytes: rejoinRun.snapshotBytes, matches: rejoinAt < 0, firstMismatchTick: rejoinAt < 0 ? null : rejoinAt, explain: rejoinExplain } }
+  summary.scenarios[mode.name] = { applied: ref.applied, totals: ref.totals, d1: ref.d1, runs: rows, rejoin: { at: REJOIN_AT, snapshotBytes: rejoinRun.snapshotBytes, matches: rejoinAt < 0, firstMismatchTick: rejoinAt < 0 ? null : rejoinAt, explain: rejoinExplain } }
   console.log(`\n${mode.name}: ${events.length} events; ${ref.applied.join('; ')}`)
   console.log(`  over the run: ${ref.totals.bounces} bounces, ${ref.totals.coins} coins, ${ref.totals.landings} landings; ${ref.final.heroes.length} hero(es) at the end`)
+  console.log(`  D1 bricks: ${ref.d1.riderTicks} ticks riding the Mover, ${ref.d1.sentHome} sent home, door ${ref.d1.doorOpened ? 'opened' : 'shut'}, coin ${ref.d1.coinCollected ? 'collected' : 'not collected'}`)
   for (const r of rows) console.log(`  ${r.engine.padEnd(30)} ${r.error ? `ERROR ${r.error}` : r.matches ? `same on all ${TICKS} ticks` : `DIFFERS from tick ${r.firstMismatchTick}`}${r.stepMsPerTick != null ? `  ${r.stepMsPerTick} ms/tick` : ''}`)
   console.log(`  late joiner at tick ${REJOIN_AT} (${rejoinRun.snapshotBytes} bytes): ${rejoinAt < 0 ? 'same to the end' : `DIFFERS from tick ${rejoinAt}`}`)
   if (rejoinExplain) console.log(`    kept:     …${rejoinExplain.a}\n    rejoined: …${rejoinExplain.b}`)

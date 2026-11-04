@@ -377,7 +377,8 @@ function characterIntent(world: World3, t: Target3, b: Body3, c: Character3, obs
   const wz = -right * sy - fwd * cy
   const mag = Math.sqrt(wx * wx + wz * wz)
   const scale = mag > 1 ? 1 / mag : 1
-  const max = keys.has('x') ? s.run : s.walk
+  // X runs (the spike's key), and Shift, as in the classic 3D builder.
+  const max = keys.has('x') || keys.has('shift') ? s.run : s.walk
   const hasInput = mag > MOVE_EPSILON
   const k = hasInput ? (c.grounded ? K_GROUND : K_AIR) : K_BRAKE
   c.velocityX = wx * scale * max + (c.velocityX - wx * scale * max) * k

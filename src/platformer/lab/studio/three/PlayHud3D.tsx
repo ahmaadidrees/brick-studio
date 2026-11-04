@@ -57,7 +57,7 @@ export function PlayHud3D({ store }: { store: StudioStore }) {
       </div>
       {hint && !won && (
         <div className="p2d-hint p2d-hint-top play-hint" role="status">
-          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows move · <kbd>Space</kbd> jumps · <kbd>X</kbd> runs · drag to turn the camera
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows move · <kbd>Space</kbd> jumps · <kbd>Shift</kbd> runs · drag to turn the camera
         </div>
       )}
       {won && (

@@ -11,6 +11,31 @@ import type { LevelDesign3, World3 } from '../../../src/platformer/lab/kit3d/con
 import { addPlayer3d, heroSpawn, HERO3D, lookPlayer3d, removePlayer3d } from '../../../src/platformer/lab/kit3d/engine3d'
 import { createRuntime3d } from '../../../src/platformer/lab/kit3d/run3d'
 import { sampleDesign3d } from '../../../src/platformer/lab/kit3d/sample3d'
+import { STUD, type CopyPlacement3 } from '../../../src/platformer/lab/kit3d/contracts3d'
+import { CODE_BRICKS_3D } from '../../../src/platformer/lab/studio/three/bricks3d'
+
+/**
+ * D1: the sample plus one of each of the six code bricks around the start, so the room also runs a Mover carrying
+ * Heroes, a Spinner's turned bar sending them home, a Button raising its Door (carrying whoever stands on it) and a
+ * Goal, alongside the spike's Bounce pad and Coins.
+ */
+export function d1Design(opts: { bricks: number; sceneryAsTargets?: boolean }): LevelDesign3 {
+  const design = sampleDesign3d(opts)
+  const at: Record<string, [number, number, number]> = {
+    brick3d_pad: [-3, 0, 6], brick3d_mover: [0, 0, 2], brick3d_spinner: [-5, 0, 2], brick3d_coin: [0, 0.5, 2.5],
+    brick3d_goal: [-3, 0, -4], brick3d_button: [3, 0, -3], brick3d_door: [3, 0, -5.5],
+  }
+  const copies: CopyPlacement3[] = []
+  for (const entry of CODE_BRICKS_3D) for (const part of entry.parts) {
+    const made = part.make(part.id)
+    design.bricks.push(made.brick)
+    const [x, y, z] = at[part.id]
+    copies.push({ id: `d1_${part.id}`, brickId: part.id, x: x * STUD, y: y * STUD, z: z * STUD })
+  }
+  design.copies.push(...copies)
+  design.stage.program.variables.push({ id: 'coins', name: 'coins', value: 0 })
+  return design
+}
 
 export type Event3 =
   | { tick: number; kind: 'down' | 'up'; key: string; player: number }
@@ -108,19 +133,21 @@ export interface Result3 {
   applied: string[]
   stepMs: number
   snapshotBytes?: number
-  final: { coins: unknown; bounces: unknown; landings: unknown; heroes: { player?: number; x: number; y: number; z: number }[] }
+  final: { coins: unknown; bounces: unknown; landings: unknown; heroes: { player?: number; x: number; y: number; z: number }[]; d1?: Record<string, unknown> }
+  /** D1's code bricks over the run: ticks a Hero stood on the Mover, times a Hero was sent home, the Door opened. */
+  d1: { riderTicks: number; sentHome: number; doorOpened: boolean; coinCollected: boolean }
   /** Across the whole run (restarts reset the game's own counts): bounces, coins and landings the code counted. */
   totals: { bounces: number; coins: number; landings: number }
 }
 
 export function runScenario3d(engine: string, opts: Options3): Result3 {
   // Each run edits its own copy of the project, as each browser would.
-  let design = sampleDesign3d({ bricks: opts.bricks, sceneryAsTargets: opts.sceneryAsTargets })
+  let design = d1Design({ bricks: opts.bricks, sceneryAsTargets: opts.sceneryAsTargets })
   let runtime = createRuntime3d(design)
   runtime.greenFlag()
   const byTick = new Map<number, Event3[]>()
   for (const e of opts.events) byTick.set(e.tick, [...(byTick.get(e.tick) ?? []), e])
-  const result: Result3 = { engine, hashes: [], fingerprints: [], dumps: {}, applied: [], stepMs: 0, final: { coins: 0, bounces: 0, landings: 0, heroes: [] }, totals: { bounces: 0, coins: 0, landings: 0 } }
+  const result: Result3 = { engine, hashes: [], fingerprints: [], dumps: {}, applied: [], stepMs: 0, final: { coins: 0, bounces: 0, landings: 0, heroes: [] }, totals: { bounces: 0, coins: 0, landings: 0 }, d1: { riderTicks: 0, sentHome: 0, doorOpened: false, coinCollected: false } }
   const counts = () => ({ bounces: Number(runtime.world.stage.variables.g_bounces), coins: Number(runtime.world.stage.variables.g_coins), landings: Number(runtime.world.stage.variables.g_landings) })
   const dumpAt = new Set(opts.dumpAt ?? [])
   const clock = typeof performance !== 'undefined' ? () => performance.now() : () => Date.now()
@@ -145,10 +172,22 @@ export function runScenario3d(engine: string, opts: Options3): Result3 {
       else if (e.kind === 'edit-level') result.applied.push(`tick ${tick}: ${editLevel(runtime.world, design)}`)
     }
     const before = counts()
+    const heroesBefore = new Map((runtime.world as World3).targets.filter((t) => t.body3?.character).map((t) => [t.id, [t.x, t.z]]))
     const t0 = clock()
     runtime.step()
     result.stepMs += clock() - t0
     const after = counts()
+    {
+      const w = runtime.world as World3
+      for (const b of w.bumps3d ?? []) if (b.otherId === 'd1_brick3d_mover' && b.side === 'top') result.d1.riderTicks++
+      const spawn = heroSpawn(design)
+      for (const t of w.targets) {
+        const was = heroesBefore.get(t.id)
+        if (was && Math.hypot(t.x - was[0], t.z - was[1]) > 1 && Math.abs(t.z - spawn.z) < 1e-9) result.d1.sentHome++
+      }
+      if ((w.targets.find((t) => t.copyId === 'd1_brick3d_door')?.y ?? 0) > 0.5) result.d1.doorOpened = true
+      if (w.targets.some((t) => t.copyId === 'd1_brick3d_coin' && !t.visible)) result.d1.coinCollected = true
+    }
     for (const k of ['bounces', 'coins', 'landings'] as const) result.totals[k] += Math.max(0, after[k] - before[k])
     const text = worldText(runtime.world)
     result.hashes.push(hash(text))
@@ -160,6 +199,7 @@ export function runScenario3d(engine: string, opts: Options3): Result3 {
   result.final = {
     coins: v('g_coins'), bounces: v('g_bounces'), landings: v('g_landings'),
     heroes: world.targets.filter((t) => t.brickId === HERO3D).map((t) => ({ player: t.player, x: t.x, y: t.y, z: t.z })),
+    d1: Object.fromEntries(world.targets.filter((t) => t.copyId?.startsWith('d1_')).map((t) => [t.copyId!, { x: t.x, y: t.y, z: t.z, direction: t.direction, visible: t.visible }])),
   }
   return result
 }
@@ -237,7 +277,7 @@ export function bench3d(bricks: number, sceneryAsTargets: boolean, ticks = 300):
   const events = timeline3d(ticks).filter((e) => e.kind !== 'flag' && e.kind !== 'edit-level' && e.kind !== 'edit-program')
   const byTick = new Map<number, Event3[]>()
   for (const e of events) byTick.set(e.tick, [...(byTick.get(e.tick) ?? []), e])
-  const design = sampleDesign3d({ bricks, sceneryAsTargets })
+  const design = d1Design({ bricks, sceneryAsTargets })
   const p0 = clock()
   const runtime = createRuntime3d(design)
   runtime.greenFlag()
