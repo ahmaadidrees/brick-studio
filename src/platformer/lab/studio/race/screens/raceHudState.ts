@@ -91,7 +91,7 @@ function lapTimes(lapTicks: readonly number[], start: number): number[] {
  * `startTick` is the tick the race said "go" (RaceHud hears the broadcast), so the clock is the game's own ticks: it
  * never drifts, and every player of a room sees the same times. `me`: our player number in a room (0 outside one).
  */
-export function readRaceHud(world: World, design: LevelDesign, startTick: number | null = null, me = 0): RaceHudState {
+export function readRaceHud(world: World, design: LevelDesign, startTick: number | null = null, me = 0, playerName?: (num: number) => string | undefined): RaceHudState {
   const room = me > 0 && !!world.players?.length
   const car = raceCarOf(world, design, me)
   const starter = world.targets.find((t) => isStarter(world, t))
@@ -109,7 +109,7 @@ export function readRaceHud(world: World, design: LevelDesign, startTick: number
 
   /** A racer's name: its costume's, or for another player's Car in a room, that player's name. */
   const nameOf = (t: Target): string =>
-    (room && t !== car && t.player !== undefined && world.players!.find((p) => p.num === t.player)?.name) || racerName(world, t)
+    (room && t !== car && t.player !== undefined && (playerName?.(t.player) ?? world.players!.find((p) => p.num === t.player)?.name)) || racerName(world, t)
   /** The tick a racer crossed the line for the last time, if it has. */
   const lineTick = (t: Target): number | undefined => raceLapState(t)?.lapTicks[laps - 1]
 
@@ -163,4 +163,23 @@ export function readRaceHud(world: World, design: LevelDesign, startTick: number
   }
 
   return { countdown, lap: Math.min(done + 1, laps), laps, place, racers: racers.length, finished, noLaps, standings, time, bestLap, live }
+}
+
+/**
+ * Room rules (docs/qa/hackable-rooms M2): every other player whose Car has crossed the line for the last time, with
+ * their time from "go" (null when this screen did not see "go"). Read from the shared race, so every screen agrees.
+ */
+export function roomFinishers(world: World, startTick: number | null, me: number, nameOf?: (num: number) => string | undefined): { num: number; name: string; ticks: number | null }[] {
+  if (!me || !world.players?.length) return []
+  const lapsSetting = Number(world.stage.variables[RACE_GLOBALS.lapsToWin])
+  const laps = Number.isFinite(lapsSetting) && lapsSetting >= 1 ? Math.floor(lapsSetting) : DEFAULT_LAPS
+  const out: { num: number; name: string; ticks: number | null }[] = []
+  for (const p of world.players) {
+    if (p.num === me) continue
+    const car = world.targets.find((t) => t.player === p.num && !t.isClone)
+    const line = car ? raceLapState(car)?.lapTicks[laps - 1] : undefined
+    if (line === undefined) continue
+    out.push({ num: p.num, name: nameOf?.(p.num) ?? p.name, ticks: startTick !== null && startTick <= line ? line - startTick : null })
+  }
+  return out
 }

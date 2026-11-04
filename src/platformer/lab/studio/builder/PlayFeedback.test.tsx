@@ -305,4 +305,30 @@ describe('in a room, each screen shows its own Hero\'s feedback', () => {
     })
     expect(screen.getByRole('dialog', { name: 'You made it' })).toBeTruthy()
   })
+
+  it('each player finishes on their own: the others see "Sam finished, 0:42"; a classmate waits for the host', async () => {
+    const { project, game, onGoal } = room()
+    const store = new StudioStore(project)
+    const testRoom = new TestRoom(game, 1)
+    testRoom.host = false
+    store.enterRoom(testRoom)
+    store.play()
+    render(<PlayFeedback store={store} />)
+    onGoal(2)
+    act(() => {
+      for (let i = 0; i < 3; i++) game.step()
+    })
+    // Sam (2) finished in the game; Maya's screen gets the notice, and no card of its own.
+    expect(await screen.findByText(/^Sam finished, 0:0\d\.\d$/)).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'You made it' })).toBeNull()
+    onGoal(1)
+    act(() => {
+      for (let i = 0; i < 3; i++) game.step()
+    })
+    await screen.findByRole('dialog', { name: 'You made it' })
+    expect(await screen.findByText(/Everyone has finished\. The host starts the next round\./)).toBeTruthy()
+    // Only the host restarts a room.
+    expect(screen.queryByRole('button', { name: 'Play again' })).toBeNull()
+    expect(game.world.everyTick).toBe(false)
+  })
 })

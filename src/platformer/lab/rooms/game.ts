@@ -13,6 +13,7 @@ import { bricksOf } from '../core/project'
 import { parse } from '../core/save'
 import { worldFromJson } from '../core/snapshot'
 import { isPlayerBrick } from '../studio/kitScreens'
+import { applyEdit, applyEditLive, type Applied } from './edits'
 import type { Base, RoomEv } from './protocol'
 
 /** A project's text read once, however many times its event is played again. */
@@ -91,6 +92,30 @@ function editLive(runtime: Runtime, design: LevelDesign): void {
   world.design = design
 }
 
+/** An edit worked out once per project it lands on, however many times a rewind plays it again. */
+const edits = new WeakMap<object, { base: LevelDesign; applied: Applied | null }>()
+
+/**
+ * Someone's edit (M2), live: copies, cells and bricks change in the running game, and a brick whose code changed
+ * restarts its scripts. An edit that can't apply here changes nothing (the room already checked it, so every game
+ * agrees on that too).
+ */
+function editTogether(runtime: Runtime, ev: Extract<RoomEv, { t: 'edit' }>): void {
+  const base = runtime.world.design
+  if (!base) return
+  let cached = edits.get(ev)
+  if (!cached || cached.base !== base) {
+    let applied: Applied | null = null
+    try {
+      applied = applyEdit(base, ev.ops)
+    } catch {
+      applied = null
+    }
+    edits.set(ev, (cached = { base, applied }))
+  }
+  if (cached.applied) applyEditLive(runtime, ev.ops, cached.applied)
+}
+
 /** Apply one room event before its tick runs. Returns the runtime to carry on with when the game was rebuilt. */
 export function applyRoomEvent(runtime: Runtime, ev: RoomEv, by: number): Runtime | void {
   switch (ev.t) {
@@ -109,5 +134,7 @@ export function applyRoomEvent(runtime: Runtime, ev: RoomEv, by: number): Runtim
     }
     case 'restart':
       return runtime.world.design ? playAgain(runtime, runtime.world.design) : undefined
+    case 'edit':
+      return editTogether(runtime, ev)
   }
 }

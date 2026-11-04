@@ -215,7 +215,10 @@ and I see "used in 12 rooms".
   player's Hero, the host's live edits and Restart.
 - **Ready to ship 2026-11-03** (local, not deployed): see `SHIP.md`. Play together from My projects, the class page
   and the invite sheet; host controls; reconnects; presence for every room kind.
-- **Next:** M2, which needs owner decisions 1 and 3.
+- **Live 2026-11-04** with Parity A and Landing v2 (PR #28).
+- **M2 done 2026-11-04** (local, not deployed): see `M2.md`. Per-player room rules (hurt and finish), then building
+  together: classmates build, code when the host allows, live code edits restart that brick, history and undo, class
+  rooms save write-behind with a recovery copy. Owner decisions 1 and 3 as decided on 2026-11-04.
 
 ## Next step (as first written)
 

@@ -1167,14 +1167,16 @@ export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Pr
   return { ...(worldView(row) as Omit<ClassroomLevelSnapshot, 'document'>), document: level.ok ? level.document : (null as never) };
 }
 /** A stored Hackable project as a HackableRoom consumes it: the save without the editor's workspaces, as text. */
-export type ClassroomHackableSnapshot = { id: string; title: string; revision: number; kit: HackableKit; project: string };
+export type ClassroomHackableSnapshot = { id: string; title: string; revision: number; kit: HackableKit; project: string; workspaces: Record<string, unknown> };
 export async function loadClassroomHackable(env: ClassroomEnv, worldId: string): Promise<ClassroomHackableSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
   if (worldFormat(row) !== 'hackable') fail(409, 'wrong_world_kind', 'This project is not a Hackable game.');
-  const { workspaces: _workspaces, ...save } = hackableDocument(row.document).save as Row;
-  return { id: row.id, title: row.title, revision: row.revision, kit: hackableKit(row), project: JSON.stringify(save) };
+  const { workspaces, ...save } = hackableDocument(row.document).save as Row;
+  // The blocks travel apart from the game (M2: the room hands them to the code editors and saves them back).
+  const blocks = workspaces && typeof workspaces === 'object' && !Array.isArray(workspaces) ? workspaces as Record<string, unknown> : {};
+  return { id: row.id, title: row.title, revision: row.revision, kit: hackableKit(row), project: JSON.stringify(save), workspaces: blocks };
 }
 export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity, format: WorldFormat = 'brick'): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');

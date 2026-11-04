@@ -59,8 +59,11 @@ export interface RuntimeLifecycle {
 
 export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
 
-/** Hears a broadcast: the message, and the sprite whose script said it (missing for the screen's own broadcast). */
-export type BroadcastListener = (message: string, from?: Target) => void
+/**
+ * Hears a broadcast: the message, the sprite whose script said it (missing for the screen's own broadcast), and in a
+ * room the players it is about (ThreadHandle.about; missing: everyone).
+ */
+export type BroadcastListener = (message: string, from?: Target, about?: readonly number[]) => void
 
 /** Blockly ids executed in one tick, grouped by runtime target (painted copy or clone). */
 export type ExecutedBlocks = ReadonlyMap<string, ReadonlySet<string>>
@@ -74,6 +77,7 @@ export class Thread implements ThreadHandle {
   stack: ExecutionFrame[] = []
   warpOpCount = 0
   isStackClick = false
+  about?: readonly number[]
 
   constructor(id: number, target: Target, script?: Script, isStackClick = false) {
     this.id = id
@@ -146,6 +150,7 @@ export class Runtime implements RuntimeApi {
       })),
       warpOpCount: t.warpOpCount,
       isStackClick: t.isStackClick,
+      ...(t.about ? { about: t.about } : {}),
     }))
     this.world.nextThreadId = this._nextThreadId
   }
@@ -181,6 +186,7 @@ export class Runtime implements RuntimeApi {
         stmtMemory: frame.stmtMemory ? { ...frame.stmtMemory } : undefined,
       }))
       thread.warpOpCount = st.warpOpCount
+      if (st.about) thread.about = st.about
       this._threads.push(thread)
     }
     this._nextThreadId = Math.max(this._nextThreadId, maxId + 1)
@@ -370,11 +376,58 @@ export class Runtime implements RuntimeApi {
     this.emitExecutedBlocks()
   }
 
-  broadcast(message: string, from?: Target): ThreadHandle[] {
-    for (const l of [...this.broadcastListeners]) l(message, from)
+  /**
+   * In a room, `about` (the saying script's players, ThreadHandle.about) limits which Heroes hear it: only those
+   * players' Heroes, and every brick that is no one's. The scripts it starts are about the same players.
+   */
+  broadcast(message: string, from?: Target, about?: readonly number[]): ThreadHandle[] {
+    const players = about && this.world.players?.length ? about : undefined
+    for (const l of [...this.broadcastListeners]) l(message, from, players)
     return this.startHats('event_whenbroadcastreceived', {
       fields: { BROADCAST_OPTION: message },
+      ...(players ? { only: (t: Target) => t.player === undefined || players.includes(t.player), about: players } : {}),
     })
+  }
+
+  /**
+   * Rooms: the players a script is about (ThreadHandle.about), or its own Hero's player. Undefined outside a room, or
+   * when it is about no one in particular.
+   */
+  aboutOf(thread: ThreadHandle): readonly number[] | undefined {
+    if (!this.world.players?.length) return undefined
+    return thread.about ?? (thread.target.player !== undefined ? [thread.target.player] : undefined)
+  }
+
+  /** Rooms: the players who have finished this round (PlayerSlot.finished), or null when none has. */
+  finishedPlayers(): ReadonlySet<number> | null {
+    const players = this.world.players
+    if (!players?.length) return null
+    let out: Set<number> | null = null
+    for (const p of players) if (p.finished !== undefined) (out ??= new Set()).add(p.num)
+    return out
+  }
+
+  /**
+   * Rooms: these players finished the round ("stop all" in a script about them, like the Goal's). Each one's Hero and
+   * its clones stop, and sit out the rest of the round: no scripts start on them, and nothing touches them. When every
+   * player has finished, the round is over: a real stop all.
+   */
+  finishPlayers(nums: readonly number[]): void {
+    const players = this.world.players
+    if (!players?.length) return
+    for (const num of nums) {
+      const slot = players.find((p) => p.num === num)
+      if (!slot || slot.finished !== undefined) continue
+      slot.finished = this.world.tick
+      for (const thread of this._threads) {
+        if (thread.target.player === num) {
+          thread.done = true
+          thread.status = 'done'
+        }
+      }
+    }
+    if (players.every((p) => p.finished !== undefined)) this.stopAll()
+    else this.syncThreadsToWorld()
   }
 
   startStack(target: Target, script: Script): ThreadHandle {
@@ -384,9 +437,14 @@ export class Runtime implements RuntimeApi {
     return thread
   }
 
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[] {
+  startHats(
+    opcode: HatOpcode,
+    opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean; about?: readonly number[] },
+  ): ThreadHandle[] {
     const restartExisting = this.shouldRestartExistingThreads(opcode)
-    const started: ThreadHandle[] = []
+    const started: Thread[] = []
+    // Rooms: a finished player's Hero sits out the rest of the round.
+    const out = this.finishedPlayers()
 
     // F13: reverse executableTargets order: [targets.reverse(), stage]
     const targetsToCheck: Target[] = opts?.target
@@ -395,6 +453,7 @@ export class Runtime implements RuntimeApi {
 
     for (const target of targetsToCheck) {
       if (opts?.only && !opts.only(target)) continue
+      if (out && target.player !== undefined && out.has(target.player)) continue
       const brick = this.world.bricks[target.brickId]
       if (!brick) continue
 
@@ -435,6 +494,7 @@ export class Runtime implements RuntimeApi {
       }
     }
 
+    if (opts?.about && this.world.players?.length) for (const thread of started) thread.about = opts.about
     return started
   }
 
@@ -957,8 +1017,16 @@ export class Runtime implements RuntimeApi {
       if (stmt.opcode === 'control_stop') {
         const opt = stmt.fields?.STOP_OPTION ?? 'this script'
         if (opt === 'all') {
-          this.stopAll()
-          return
+          // Rooms: a script about some players (the Goal touching a Hero) finishes only them; this script goes on.
+          const about = this.aboutOf(thread)
+          if (!about) {
+            this.stopAll()
+            return
+          }
+          this.finishPlayers(about)
+          if (thread.done) return
+          frame.pc++
+          continue
         }
         if (opt === 'other scripts in sprite') {
           this.stopTarget(thread.target, thread)
@@ -1050,7 +1118,7 @@ export class Runtime implements RuntimeApi {
         } else if (stmt.fields?.BROADCAST_OPTION) {
           msg = stmt.fields.BROADCAST_OPTION
         }
-        this.broadcast(msg, thread.target)
+        this.broadcast(msg, thread.target, this.aboutOf(thread))
         frame.pc++
         continue
       }
@@ -1070,7 +1138,7 @@ export class Runtime implements RuntimeApi {
           } else if (stmt.fields?.BROADCAST_OPTION) {
             msg = stmt.fields.BROADCAST_OPTION
           }
-          const receivers = this.broadcast(msg, thread.target)
+          const receivers = this.broadcast(msg, thread.target, this.aboutOf(thread))
           if (receivers.length === 0) {
             frame.pc++
             continue

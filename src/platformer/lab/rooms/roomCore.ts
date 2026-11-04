@@ -9,10 +9,14 @@
  * people joining late; every game sends a fingerprint every HASH_EVERY ticks, and anyone who disagrees with the
  * provider's gets a fresh copy.
  */
-import { parse } from '../core/save'
-import { TICK_MS, designKit, type KitId } from '../core/contracts'
+import { designText, parse } from '../core/save'
+import { TICK_MS, designKit, type KitId, type LevelDesign } from '../core/contracts'
+import { applyEdit, kindOfEdit, workspacesIn, type EditKind, type EditOp } from './edits'
 import {
   DEFAULT_SETTINGS,
+  HISTORY_LENGTH,
+  MAX_EDITING_LENGTH,
+  type HistoryItem,
   HACKABLE_PROTOCOL,
   HASH_EVERY,
   MAX_EARLY,
@@ -64,6 +68,18 @@ interface Client {
   lastSync: number
   /** Keys this player holds down in the game, so the room can let them go if the player drops. */
   held: Set<string>
+  /** M2: what they are editing now (presence). */
+  editing?: string
+  /** M2: edits this second, and when the second started. */
+  edits: number
+  editWindow: number
+}
+
+/** M2: one change kept for undo, with what puts it back (never sent: the room works it out itself). */
+interface HistoryEntry extends HistoryItem {
+  /** Who made it: their identity, so only they (or the host) put it back. */
+  key: string
+  undo: EditOp[]
 }
 
 /** A player whose connection dropped: their Hero stays (standing still) until `until`, in case they come back. */
@@ -79,6 +95,8 @@ export interface RoomMeta {
   settings: RoomSettings
   /** Identities the host removed; they cannot come back. */
   banned: string[]
+  /** M2: identities the host let change code (whatever `settings.code` says). */
+  codeFor?: string[]
 }
 
 export interface RoomCoreOptions {
@@ -88,6 +106,8 @@ export interface RoomCoreOptions {
   meta?: Partial<RoomMeta>
   classroom?: boolean
   title?: string
+  /** M2: the project's blocks, by brick id (the game itself never needs them). */
+  workspaces?: Record<string, unknown>
 }
 
 /** A project the room accepts: it reads like any save, and it is the room's game. */
@@ -107,10 +127,17 @@ export function checkProject(text: unknown, kit?: KitId): ProjectCheck {
 const EVENTS_PER_SECOND = 60
 /** The host's project edits: at most one this often. */
 const PROJECT_EVERY_MS = 500
+/** M2: edits (building, code) per player per second. A painting kid sends a few a second. */
+const EDITS_PER_SECOND = 8
+
+/** What someone is editing, as everyone sees it: one short line, no control characters. */
+export function cleanEditing(what: unknown): string | undefined {
+  if (typeof what !== 'string') return undefined
+  const clean = what.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, MAX_EDITING_LENGTH)
+  return clean || undefined
+}
 
 export class HackableRoomCore {
-  /** The project as it is now (designText): what a new session starts from, and what the room keeps. */
-  project: string
   readonly kit: KitId
   readonly classroom: boolean
   title: string
@@ -118,6 +145,18 @@ export class HackableRoomCore {
   metaDirty = false
   /** The project changed since it was last saved. */
   projectDirty = false
+  /** M2: the blocks changed since they were last saved. */
+  workspacesDirty = false
+  /** M2: the project's blocks, by brick id. */
+  workspaces: Record<string, unknown>
+  /** M2: the project as it is now, read. */
+  private design: LevelDesign
+  /** Its text (designText), worked out when someone needs it. */
+  private projectText: string | null
+  /** M2: the project after each edit since the base, so a keyframe gets the project as of its tick. */
+  private projectLog: { tick: number; text: string | (() => string) }[] = []
+  private history: HistoryEntry[] = []
+  private codeFor: Set<string>
   private readonly now: () => number
   private readonly hostKey: string | null
   private settings: RoomSettings
@@ -142,10 +181,13 @@ export class HackableRoomCore {
     project: string,
     opts: RoomCoreOptions = {},
   ) {
-    const check = checkProject(project)
-    if (!check.ok) throw new Error('That project could not be read.')
-    this.project = project
-    this.kit = check.kit
+    const result = typeof project === 'string' && project.length <= MAX_PROJECT_BYTES ? parse(project) : null
+    if (!result?.ok) throw new Error('That project could not be read.')
+    this.design = result.save.design
+    this.projectText = project
+    this.kit = designKit(this.design)
+    this.workspaces = { ...opts.workspaces }
+    this.codeFor = new Set(opts.meta?.codeFor ?? [])
     this.now = opts.now ?? (() => Date.now())
     this.hostKey = opts.hostKey ?? null
     this.classroom = opts.classroom ?? false
@@ -154,8 +196,29 @@ export class HackableRoomCore {
     this.banned = new Set(opts.meta?.banned ?? [])
   }
 
+  /** The project as it is now (designText): what a new session starts from, and what the room keeps. */
+  get project(): string {
+    return (this.projectText ??= designText(this.design))
+  }
+
   meta(): RoomMeta {
-    return { settings: { ...this.settings }, banned: [...this.banned] }
+    return { settings: { ...this.settings }, banned: [...this.banned], codeFor: [...this.codeFor] }
+  }
+
+  /** M2: the project with its blocks, as an account keeps it (persist/hackableSave.ts hackableDocument). */
+  document(): { format: 'brickgineers-hackable'; version: 1; save: Record<string, unknown> } {
+    return { format: 'brickgineers-hackable', version: 1, save: { ...(JSON.parse(this.project) as Record<string, unknown>), workspaces: { ...this.workspaces }, ir: {} } }
+  }
+
+  /** M2: what a player may change: the host everything; everyone else what the host allows. */
+  private rights(c: { host: boolean; key: string }): { build: boolean; code: boolean } {
+    if (c.host) return { build: true, code: true }
+    return { build: this.settings.build, code: this.settings.code || (!!c.key && this.codeFor.has(c.key)) }
+  }
+
+  /** M2: the room's recent changes, as everyone sees them. */
+  historyItems(): HistoryItem[] {
+    return this.history.map(({ key: _k, undo: _u, ...item }) => item)
   }
 
   info(): RoomInfo {
@@ -186,7 +249,7 @@ export class HackableRoomCore {
 
   connect(sock: RoomSocket, trusted?: TrustedIdentity) {
     this.sweep()
-    this.clients.set(sock, { num: 0, name: '', key: '', host: false, joinedAt: 0, hello: false, trusted, windowStart: this.now(), events: 0, lastSync: -Infinity, held: new Set() })
+    this.clients.set(sock, { num: 0, name: '', key: '', host: false, joinedAt: 0, hello: false, trusted, windowStart: this.now(), events: 0, lastSync: -Infinity, held: new Set(), edits: 0, editWindow: this.now() })
   }
 
   /**
@@ -202,6 +265,7 @@ export class HackableRoomCore {
       // Nobody left: the next person to arrive starts a fresh game from the project.
       this.base = null
       this.events = []
+      this.projectLog = []
       this.hashes.clear()
       this.away.clear()
       return
@@ -240,7 +304,7 @@ export class HackableRoomCore {
       return this.fail(sock, 'bad_json', 'Could not read message')
     }
     if (!msg || typeof msg !== 'object') return
-    const big = msg.type === 'keyframe' || (msg.type === 'ev' && msg.ev?.t === 'project')
+    const big = msg.type === 'keyframe' || (msg.type === 'ev' && (msg.ev?.t === 'project' || msg.ev?.t === 'edit'))
     if (!big && raw.length > MAX_MESSAGE_BYTES) return this.fail(sock, 'too_big', 'Message too large')
     if (msg.type === 'hello') return this.hello(sock, c, msg)
     if (!c.hello) return this.fail(sock, 'no_hello', 'Say hello first')
@@ -271,8 +335,27 @@ export class HackableRoomCore {
       case 'settings':
         if (!c.host) return
         if (typeof msg.closed === 'boolean') this.settings.closed = msg.closed
+        if (typeof msg.build === 'boolean') this.settings.build = msg.build
+        if (typeof msg.code === 'boolean') this.settings.code = msg.code
         this.metaDirty = true
-        return this.broadcastSettings()
+        this.broadcastSettings()
+        // What everyone may do changed.
+        return this.broadcast({ type: 'players', players: this.players() })
+      case 'grant':
+        if (c.host) this.grant(msg.num, msg.code)
+        return
+      case 'presence': {
+        if (++c.events > EVENTS_PER_SECOND) return
+        const what = cleanEditing(msg.what)
+        if (what === c.editing) return
+        c.editing = what
+        return this.broadcast({ type: 'players', players: this.players() })
+      }
+      case 'workspace':
+        if (++c.events > EVENTS_PER_SECOND || typeof msg.id !== 'string' || msg.id.length > 64) return
+        return this.send(sock, { type: 'workspace', id: msg.id, ws: Object.hasOwn(this.workspaces, msg.id) ? this.workspaces[msg.id] : null })
+      case 'undo':
+        return this.undo(sock, c, msg.seq)
       case 'kick':
         if (c.host) this.kick(msg.num)
         return
@@ -320,8 +403,8 @@ export class HackableRoomCore {
     const provider = this.provider()
     const here: PlayerInfo[] = [...this.clients.values()]
       .filter((c) => c.hello)
-      .map((c) => ({ num: c.num, name: c.name, provider: c === provider, host: c.host }))
-    const away: PlayerInfo[] = [...this.away.values()].map((a) => ({ num: a.num, name: a.name, provider: false, host: a.host, away: true }))
+      .map((c) => ({ num: c.num, name: c.name, provider: c === provider, host: c.host, ...this.rights(c), ...(c.editing ? { editing: c.editing } : {}) }))
+    const away: PlayerInfo[] = [...this.away.values()].map((a) => ({ num: a.num, name: a.name, provider: false, host: a.host, away: true, ...this.rights(a) }))
     return [...here, ...away].sort((a, b) => a.num - b.num)
   }
 
@@ -354,6 +437,7 @@ export class HackableRoomCore {
       this.epoch = this.now()
       this.base = { tick: 0, project: this.project }
       this.events = []
+      this.projectLog = []
       this.seq = 0
       this.projectTick = 0
       this.hashes.clear()
@@ -373,6 +457,7 @@ export class HackableRoomCore {
       players: this.players(),
       settings: { ...this.settings },
       classroom: this.classroom,
+      history: this.historyItems(),
     })
     if (join) this.broadcast({ type: 'ev', e: join }, sock)
     this.broadcast({ type: 'players', players: this.players() }, sock)
@@ -402,20 +487,33 @@ export class HackableRoomCore {
     if (typeof msg.cid !== 'string' || msg.cid.length > 48 || !Number.isInteger(msg.tick)) return
     if (!isPlayerEv(msg.ev)) return this.reject(sock, msg.cid, 'invalid')
     const ev = msg.ev
-    const edit = ev.t === 'project' || ev.t === 'restart'
-    if (edit && !c.host) return this.reject(sock, msg.cid, 'host_only')
+    const edit = ev.t === 'project' || ev.t === 'restart' || ev.t === 'edit'
+    if ((ev.t === 'project' || ev.t === 'restart') && !c.host) return this.reject(sock, msg.cid, 'host_only')
+    let project: LevelDesign | null = null
+    let together: { applied: ReturnType<typeof applyEdit>; text: string; kind: EditKind } | null = null
     if (ev.t === 'project') {
       if (this.now() - this.lastProjectAt < PROJECT_EVERY_MS) return this.reject(sock, msg.cid, 'busy')
-      const check = checkProject(ev.text, this.kit)
-      if (!check.ok) return this.reject(sock, msg.cid, check.reason)
+      if (typeof ev.text !== 'string' || ev.text.length > MAX_PROJECT_BYTES) return this.reject(sock, msg.cid, 'too_big')
+      const result = parse(ev.text)
+      if (!result.ok || designKit(result.save.design) !== this.kit) return this.reject(sock, msg.cid, 'invalid')
+      project = result.save.design
       this.lastProjectAt = this.now()
+    }
+    if (ev.t === 'edit') {
+      const verdict = this.checkEdit(c, ev.ops)
+      if (!verdict.ok) return this.reject(sock, msg.cid, verdict.reason)
+      together = verdict
     }
     const st = this.serverTick()
     const lo = Math.max(st - MAX_LATE, (this.base?.tick ?? 0) + 1)
     let tick = Math.min(Math.max(msg.tick, lo), st + MAX_EARLY)
     if (edit) tick = this.projectTick = Math.max(tick, this.projectTick)
     // Only what the room checked goes on, never the message as sent.
-    const clean: RoomEv = ev.t === 'key' ? { t: 'key', key: ev.key, down: ev.down } : ev.t === 'project' ? { t: 'project', text: ev.text, restart: ev.restart } : { t: 'restart' }
+    const clean: RoomEv =
+      ev.t === 'key' ? { t: 'key', key: ev.key, down: ev.down }
+        : ev.t === 'project' ? { t: 'project', text: ev.text, restart: ev.restart }
+          : ev.t === 'edit' ? { t: 'edit', ops: ev.ops }
+            : { t: 'restart' }
     const e: StampedEvent = { tick, seq: ++this.seq, by: c.num, cid: msg.cid, ev: clean }
     this.events.push(e)
     this.stats.events++
@@ -423,11 +521,103 @@ export class HackableRoomCore {
       if (clean.down) c.held.add(clean.key)
       else c.held.delete(clean.key)
     }
-    if (clean.t === 'project') {
-      this.project = clean.text
-      this.projectDirty = true
+    if (clean.t === 'project' && project) {
+      this.setProject(project, clean.text, tick)
+      // The whole project changed: earlier changes can no longer be put back one by one.
+      if (this.history.length) {
+        this.history = []
+        this.broadcast({ type: 'history', history: [] })
+      }
     }
     this.broadcast({ type: 'ev', e })
+    if (clean.t === 'edit' && together) {
+      this.setProject(together.applied.design, together.text, tick)
+      this.keepWorkspaces(clean.ops)
+      this.history.push({ seq: e.seq, by: c.num, name: c.name, key: c.key, summary: together.applied.summary, kind: together.kind, undo: together.applied.undo })
+      if (this.history.length > HISTORY_LENGTH) this.history.splice(0, this.history.length - HISTORY_LENGTH)
+      this.broadcast({ type: 'history', history: this.historyItems() })
+    }
+  }
+
+  /**
+   * M2: may this player make this edit, and what does the project look like after it? The edit has to be one their
+   * role allows (building, or code), apply cleanly, and leave a project that reads like any save.
+   */
+  private checkEdit(c: Client, ops: EditOp[]): { ok: true; applied: ReturnType<typeof applyEdit>; text: string; kind: EditKind } | { ok: false; reason: RejectReason } {
+    const rights = this.rights(c)
+    if (!rights.build && !rights.code) return { ok: false, reason: 'not_allowed' }
+    const now = this.now()
+    if (now - c.editWindow >= 1000) {
+      c.editWindow = now
+      c.edits = 0
+    }
+    if (++c.edits > EDITS_PER_SECOND) return { ok: false, reason: 'busy' }
+    let kind: EditKind
+    let applied: ReturnType<typeof applyEdit>
+    try {
+      kind = kindOfEdit(this.design, ops)
+      if (!rights[kind]) return { ok: false, reason: 'not_allowed' }
+      applied = applyEdit(this.design, ops, this.workspaces)
+    } catch {
+      return { ok: false, reason: 'invalid' }
+    }
+    const text = designText(applied.design)
+    const check = checkProject(text, this.kit)
+    if (!check.ok) return { ok: false, reason: check.reason }
+    return { ok: true, applied, text, kind }
+  }
+
+  /** The project is now `design` (its text `text`), from `tick` on. */
+  private setProject(design: LevelDesign, text: string, tick: number) {
+    this.design = design
+    this.projectText = text
+    this.projectDirty = true
+    if (this.base) this.projectLog.push({ tick, text })
+  }
+
+  private keepWorkspaces(ops: readonly EditOp[]) {
+    const ws = workspacesIn(ops)
+    for (const op of ops) if (op.op === 'unbrick') delete this.workspaces[op.id]
+    if (!Object.keys(ws).length && !ops.some((o) => o.op === 'unbrick')) return
+    Object.assign(this.workspaces, ws)
+    this.workspacesDirty = true
+  }
+
+  /**
+   * M2: put back an earlier change: the author their own, the host anyone's. It goes to everyone as the room's own
+   * edit (`undoOf`), a moment ahead like a join.
+   */
+  private undo(sock: RoomSocket, c: Client, seq: unknown) {
+    const item = this.history.find((h) => h.seq === seq && !h.undone)
+    if (!item) return
+    if (!c.host && (!c.key || item.key !== c.key)) return this.send(sock, { type: 'notice', message: 'Only the host can put back someone else’s change.' })
+    let applied: ReturnType<typeof applyEdit>
+    try {
+      applied = applyEdit(this.design, item.undo, this.workspaces)
+    } catch {
+      return this.send(sock, { type: 'notice', message: 'That change can’t be put back any more.' })
+    }
+    const text = designText(applied.design)
+    if (!checkProject(text, this.kit).ok) return this.send(sock, { type: 'notice', message: 'That change can’t be put back any more.' })
+    const tick = (this.projectTick = Math.max(this.serverTick() + ROOM_LEAD, (this.base?.tick ?? 0) + 1, this.projectTick))
+    const e: StampedEvent = { tick, seq: ++this.seq, by: c.num, cid: `room:${this.seq}`, ev: { t: 'edit', ops: item.undo, undoOf: item.seq } }
+    if (this.base) this.events.push(e)
+    this.setProject(applied.design, text, tick)
+    this.keepWorkspaces(item.undo)
+    item.undone = true
+    this.broadcast({ type: 'ev', e })
+    this.broadcast({ type: 'history', history: this.historyItems() })
+  }
+
+  /** M2: let one player (connected or reconnecting) change code, or not. */
+  private grant(num: unknown, code: unknown) {
+    if (typeof code !== 'boolean') return
+    const who = [...this.clients.values()].find((c) => c.hello && c.num === num) ?? this.away.get(num as number)
+    if (!who?.key || who.host) return
+    if (code) this.codeFor.add(who.key)
+    else this.codeFor.delete(who.key)
+    this.metaDirty = true
+    this.broadcast({ type: 'players', players: this.players() })
   }
 
   private kick(num: number) {
@@ -501,19 +691,14 @@ export class HackableRoomCore {
     }
     this.base = { tick: msg.tick, project: this.projectAt(msg.tick), world: msg.world }
     this.events = this.events.filter((e) => e.tick >= msg.tick)
+    this.projectLog = this.projectLog.filter((p) => p.tick >= msg.tick)
     this.stats.keyframes++
   }
 
-  /** The project as `tick` is about to run: the base's, or the latest project event before it. */
+  /** The project as `tick` is about to run: the base's, or the project after the latest change before it. */
   private projectAt(tick: number): string {
     let project = this.base!.project
-    let at = -1
-    for (const e of this.events) {
-      if (e.ev.t === 'project' && e.tick < tick && e.tick >= at) {
-        project = e.ev.text
-        at = e.tick
-      }
-    }
+    for (const p of this.projectLog) if (p.tick < tick) project = typeof p.text === 'string' ? p.text : p.text()
     return project
   }
 

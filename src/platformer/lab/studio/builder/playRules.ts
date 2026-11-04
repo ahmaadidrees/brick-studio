@@ -28,8 +28,11 @@ export function saysOuch(design: LevelDesign): boolean {
  * said it, so it is ours when ours is one of them; when no Hero touches it (a kid's own broadcast), it is everyone's.
  * Outside a room (`me` 0) everything is ours. It only reads the world.
  */
-export function aboutMyHero(world: World, from: Target | undefined, me: number): boolean {
-  if (!me || !from || !world.players?.length) return true
+export function aboutMyHero(world: World, from: Target | undefined, me: number, about?: readonly number[]): boolean {
+  if (!me || !world.players?.length) return true
+  // The game knows who a broadcast is about (ThreadHandle.about): the players whose Heroes it touched or bumped.
+  if (about) return about.includes(me)
+  if (!from) return true
   if (from.player !== undefined) return from.player === me
   const touching = world.targets.filter((t) => t.player !== undefined && !t.isClone && t !== from && targetsTouch(world, t, from))
   return touching.length === 0 || touching.some((t) => t.player === me)

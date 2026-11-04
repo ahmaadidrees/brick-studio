@@ -292,7 +292,7 @@ async function ensureHackableRoom(env: Env, worldId: string) {
   const world = await loadClassroomHackable(env, worldId),
     roomId = worldId.replaceAll("-", "");
   const stub = env.HACKABLE_ROOMS.get(env.HACKABLE_ROOMS.idFromName(roomId));
-  const init: HackableInit = { kind: "classroom", roomId, classroomWorldId: worldId, title: world.title, project: world.project, dbRevision: world.revision };
+  const init: HackableInit = { kind: "classroom", roomId, classroomWorldId: worldId, title: world.title, project: world.project, dbRevision: world.revision, workspaces: world.workspaces };
   const r = await stub.fetch("https://hackable.internal/init", {
     method: "POST",
     headers: { "content-type": "application/json", "x-hackable-init": "1" },
@@ -314,12 +314,15 @@ async function handleHackableRequest(request: Request, env: Env, url: URL): Prom
     if (request.method !== "POST") return json({ code: "method_not_allowed" }, 405);
     const limited = await consumeCreation(env, worldCreationLimiterKey(request.headers.get("cf-connecting-ip")).replace("world-create:", "hackable-create:"));
     if (limited) return limited;
-    const input = await readClassroomBody(request, MAX_PROJECT_BYTES + 4096);
+    // The project, and (M2) its blocks for the code editors: each up to MAX_PROJECT_BYTES.
+    const input = await readClassroomBody(request, 2 * MAX_PROJECT_BYTES + 4096);
+    const workspaces = input.workspaces && typeof input.workspaces === "object" && !Array.isArray(input.workspaces) && JSON.stringify(input.workspaces).length <= MAX_PROJECT_BYTES
+      ? input.workspaces as Record<string, unknown> : undefined;
     const check = checkProject(input.project);
     if (!check.ok) return json({ error: check.reason === "too_big" ? "project_too_big" : "invalid_project", message: check.reason === "too_big" ? "This project is too big to play live yet." : "That project could not be read." }, check.reason === "too_big" ? 413 : 400);
     const roomId = newWorldId(), ownerToken = newOwnerToken();
     const stub = env.HACKABLE_ROOMS.get(env.HACKABLE_ROOMS.idFromName(roomId));
-    const init: HackableInit = { kind: "guest", roomId, title: typeof input.title === "string" ? input.title : "", project: input.project as string, ownerTokenVerifier: await ownerTokenVerifier(ownerToken) };
+    const init: HackableInit = { kind: "guest", roomId, title: typeof input.title === "string" ? input.title : "", project: input.project as string, ownerTokenVerifier: await ownerTokenVerifier(ownerToken), ...(workspaces ? { workspaces } : {}) };
     const created = await stub.fetch("https://hackable.internal/init", {
       method: "POST",
       headers: { "content-type": "application/json", "x-hackable-init": "1" },
@@ -340,6 +343,19 @@ async function handleHackableRequest(request: Request, env: Env, url: URL): Prom
     return hackableConnect(stub, request, { kind: "guest", ownerToken });
   }
   // A class project's room: a signed-in ticket for this project, then the socket.
+  // M2: versions of a class project its room saved over (owner and teacher only). Never creates a room.
+  const recoveryRoute = url.pathname.match(/^\/classroom\/worlds\/([^/]+)\/hackable-recovery(?:\/([^/]+))?$/);
+  if (recoveryRoute) {
+    if (request.method !== "GET") return json({ code: "method_not_allowed" }, 405);
+    const id = canonicalWorldId(recoveryRoute[1]);
+    if (!id) throw new ClassroomHttpError(404, "not_found", "World not found.");
+    const access = await authorizeClassroomWorld(request, env, id);
+    if (!access.isOwner && !access.isTeacher) return json({ error: "access_required" }, 403);
+    const stub = env.HACKABLE_ROOMS.get(env.HACKABLE_ROOMS.idFromName(id.replaceAll("-", "")));
+    return stub.fetch(`https://hackable.internal/internal/recovery${recoveryRoute[2] ? `/${recoveryRoute[2]}` : ""}`, {
+      headers: { "x-hackable-access": JSON.stringify({ kind: "classroom", access } satisfies HackableConnectGrant) },
+    });
+  }
   const ticketRoute = url.pathname.match(/^\/classroom\/worlds\/([^/]+)\/hackable-ticket$/);
   if (ticketRoute) {
     if (request.method !== "POST") return json({ code: "method_not_allowed" }, 405);
@@ -393,7 +409,8 @@ export async function handleReleaseRequest(
         ),
         origin,
       );
-    if (url.pathname.startsWith("/hackable/") || url.pathname.endsWith("/hackable-ticket")) {
+    if (url.pathname.startsWith("/hackable/") || url.pathname.endsWith("/hackable-ticket")
+        || /^\/classroom\/worlds\/[^/]+\/hackable-recovery(?:\/[^/]+)?$/.test(url.pathname)) {
       const handled = await handleHackableRequest(request, env, url);
       if (handled) return outgoing(handled, origin);
     }

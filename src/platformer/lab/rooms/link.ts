@@ -12,6 +12,7 @@ import {
   HACKABLE_PROTOCOL,
   type Base,
   type ClientMsg,
+  type HistoryItem,
   type PlayerEv,
   type PlayerInfo,
   type RoomSettings,
@@ -32,6 +33,8 @@ export interface Welcome {
   classroom: boolean
   /** A reconnect after a dropped connection, not the first join. */
   reconnect: boolean
+  /** M2: the room's recent changes. */
+  history: HistoryItem[]
 }
 
 export interface LinkHandlers {
@@ -43,6 +46,10 @@ export interface LinkHandlers {
   settings(s: RoomSettings, banned: number): void
   notice(message: string): void
   status(s: LinkStatus, detail?: string): void
+  /** M2: the room's recent changes changed. */
+  history?(items: HistoryItem[]): void
+  /** M2: a brick's blocks, as asked for. */
+  workspace?(id: string, ws: unknown): void
 }
 
 /** The socket a link opens; tests pass an in-process one. */
@@ -241,7 +248,7 @@ export class HackableRoomLink {
         }, 100)
         const reconnect = this.joinedOnce
         this.joinedOnce = true
-        this.h.welcome({ you: msg.you, host: msg.host, title: msg.title, base: msg.base, events: msg.events, players: msg.players, settings: msg.settings, classroom: msg.classroom, reconnect })
+        this.h.welcome({ you: msg.you, host: msg.host, title: msg.title, base: msg.base, events: msg.events, players: msg.players, settings: msg.settings, classroom: msg.classroom, reconnect, history: msg.history ?? [] })
         return
       }
       case 'ev':
@@ -271,6 +278,12 @@ export class HackableRoomLink {
         return
       case 'notice':
         this.h.notice(msg.message)
+        return
+      case 'history':
+        this.h.history?.(msg.history)
+        return
+      case 'workspace':
+        this.h.workspace?.(msg.id, msg.ws)
         return
       case 'resync':
         this.lastSeq = msg.events.reduce((m, e) => Math.max(m, e.seq), this.lastSeq)
@@ -328,6 +341,31 @@ export class HackableRoomLink {
   // Host controls (the room ignores them from anyone else).
   setClosed(closed: boolean) {
     this.send({ type: 'settings', closed })
+  }
+
+  /** M2 (host): everyone may build, or change code. */
+  setRoles(roles: { build?: boolean; code?: boolean }) {
+    this.send({ type: 'settings', ...roles })
+  }
+
+  /** M2 (host): let one player change code, or not. */
+  grant(num: number, code: boolean) {
+    this.send({ type: 'grant', num, code })
+  }
+
+  /** M2: what we are editing now. */
+  presence(what: string | null) {
+    this.send({ type: 'presence', what })
+  }
+
+  /** M2: ask for a brick's blocks. */
+  askWorkspace(id: string) {
+    this.send({ type: 'workspace', id })
+  }
+
+  /** M2: put back a change. */
+  undo(seq: number) {
+    this.send({ type: 'undo', seq })
   }
 
   kick(num: number) {

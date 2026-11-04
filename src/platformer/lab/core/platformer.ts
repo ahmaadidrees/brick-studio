@@ -460,11 +460,17 @@ export const selfMovePrimitives: PrimitiveTable = {
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }
 
 /** Both sides hear about a bump: the mover (side of the thing it hit) and the thing it hit (side of the mover). */
+/**
+ * In a room, a bump with a player's Hero is about that player (ThreadHandle.about): a Spike bumped by Sam's Hero hurts
+ * only Sam's.
+ */
 function startBumpHats(runtime: RuntimeApi, mover: Target, bump: Bump, goneBrickId?: string): void {
   const otherName = bump.other ? brickNameOf(runtime, bump.other) : goneBrickId ? nameOfBrick(runtime, goneBrickId) : '_edge_'
-  startHatsFor(runtime, mover, bump.side, otherName)
-  if (bump.other) startHatsFor(runtime, bump.other, OPPOSITE[bump.side], brickNameOf(runtime, mover))
+  startHatsFor(runtime, mover, bump.side, otherName, aboutPlayer(bump.other))
+  if (bump.other) startHatsFor(runtime, bump.other, OPPOSITE[bump.side], brickNameOf(runtime, mover), aboutPlayer(mover))
 }
+
+const aboutPlayer = (t: Target | null): readonly number[] | undefined => (t?.player !== undefined ? [t.player] : undefined)
 
 function brickNameOf(runtime: RuntimeApi, t: Target): string | undefined {
   return nameOfBrick(runtime, t.brickId)
@@ -476,10 +482,10 @@ function nameOfBrick(runtime: RuntimeApi, brickId: string): string | undefined {
 }
 
 /** The runtime matches hat fields by equality, so start the hats once per (side or any) x (brick, edge or any). */
-function startHatsFor(runtime: RuntimeApi, target: Target, side: Side, brick: string | undefined): void {
+function startHatsFor(runtime: RuntimeApi, target: Target, side: Side, brick: string | undefined, about?: readonly number[]): void {
   const bricks = ['_any_']
   if (brick !== undefined && brick !== '_any_') bricks.push(brick)
   for (const SIDE of ['_any_', side]) {
-    for (const BRICK of bricks) runtime.startHats('platformer_whenbump', { target, fields: { SIDE, BRICK } })
+    for (const BRICK of bricks) runtime.startHats('platformer_whenbump', { target, fields: { SIDE, BRICK }, ...(about ? { about } : {}) })
   }
 }
