@@ -213,6 +213,8 @@ and I see "used in 12 rooms".
 - **M0 done 2026-11-03:** see `M0.md`.
 - **M1 done 2026-11-03** (local, not deployed): see `M1.md`. Play together from the studio, link and class rooms, every
   player's Hero, the host's live edits and Restart.
+- **Ready to ship 2026-11-03** (local, not deployed): see `SHIP.md`. Play together from My projects, the class page
+  and the invite sheet; host controls; reconnects; presence for every room kind.
 - **Next:** M2, which needs owner decisions 1 and 3.
 
 ## Next step (as first written)

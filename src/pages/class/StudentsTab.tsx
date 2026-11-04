@@ -26,7 +26,9 @@ type Props = {
 function ShareChip({ world }: { world: ClassPageWorld }) {
   const count = world.visibility === 'members' ? world.members?.length ?? 0 : null
   return <>
-    <span className={`class-chip class-chip-${world.canEdit ? 'edit' : 'view'}`}>{world.canEdit ? 'Build together' : 'Look only'}</span>
+    {world.format === 'hackable'
+      ? <span className="class-chip class-chip-edit">Play together</span>
+      : <span className={`class-chip class-chip-${world.canEdit ? 'edit' : 'view'}`}>{world.canEdit ? 'Build together' : 'Look only'}</span>}
     {count !== null && <span className="class-chip class-chip-group">{count} {count === 1 ? 'classmate' : 'classmates'}</span>}
   </>
 }

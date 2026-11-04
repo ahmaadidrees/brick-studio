@@ -133,8 +133,8 @@ function RoomPlay({ url, name, invite }: { url: string | (() => Promise<string>)
   return (
     <div className="hk-room-page">
       <AppHeader variant="page" title={title} />
-      {/* The host here (the owner or the teacher) can't edit, but can start everyone again. */}
-      <RoomBar session={session} invite={invite} onLeave={leave} onRestart={() => session.restart()} />
+      {/* The host here (the owner or the teacher) can't edit; the stage's Restart starts everyone again. */}
+      <RoomBar session={session} invite={invite} onLeave={leave} />
       <div className="hk-room-stage p2d-game p2d-studio cl-shell" data-screen="play">
         {store ? <RoomStage store={store} /> : <Notice title={offline ? 'Couldn’t join the room' : 'Joining the room…'} body={offline ? view.detail : undefined} busy={!offline} />}
       </div>

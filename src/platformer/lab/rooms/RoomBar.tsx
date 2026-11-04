@@ -1,17 +1,17 @@
 /**
  * The line under the header while a studio plays in a Hackable room (docs/qa/hackable-rooms M1): who is here, the
  * link to send, and Leave. The host's changes go to everyone (said once, here, where the host can edit); what the room
- * says comes up here too. The host also gets the room's controls: Restart where the page has no other, removing a
- * player, and closing the room to newcomers.
+ * says comes up here too. The host also gets the room's controls: removing a player and closing the room to newcomers
+ * (Restart is on the stage, for the host only).
  */
-import { Check, Copy, DoorClosed, DoorOpen, LogOut, RotateCcw, Settings2, UserMinus, Users, WifiOff } from 'lucide-react'
+import { Check, Copy, DoorClosed, DoorOpen, LogOut, Settings2, UserMinus, Users, WifiOff } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Button, Menu, MenuItem, MenuSeparator } from '../../../ui'
 import { MAX_PLAYERS, type PlayerInfo } from './protocol'
 import type { RoomSession } from './session'
 import './rooms.css'
 
-export function RoomBar({ session, invite, onLeave, leaveLabel = 'Leave', editing = false, onRestart }: {
+export function RoomBar({ session, invite, onLeave, leaveLabel = 'Leave', editing = false }: {
   session: RoomSession
   /** The page people join from (a path on this site), or null when there is none to give (a class room's guests). */
   invite: string | null
@@ -19,8 +19,6 @@ export function RoomBar({ session, invite, onLeave, leaveLabel = 'Leave', editin
   leaveLabel?: string
   /** The host edits the project on this screen (the studio), so their changes go to everyone. */
   editing?: boolean
-  /** A Restart button for the host, where the page has none of its own (the join page). */
-  onRestart?: () => void
 }) {
   const view = useSyncExternalStore((fn) => session.subscribe(fn), () => session.view)
   const [copied, setCopied] = useState(false)
@@ -47,7 +45,8 @@ export function RoomBar({ session, invite, onLeave, leaveLabel = 'Leave', editin
   const waiting = view.status === 'connecting' || view.status === 'reconnecting'
   const live = !offline && !waiting
   const hosting = view.host && live
-  const hint = editing ? 'Your changes go to everyone. Restart starts everyone again.' : onRestart ? 'Restart starts everyone again.' : ''
+  // Where the host can't edit (the join page), only Restart is theirs.
+  const hint = editing ? 'Your changes go to everyone. Restart starts everyone again.' : 'Restart starts everyone again.'
   return (
     <div className="hk-room-bar" role="region" aria-label="Playing together">
       <span className="hk-room-who">
@@ -70,7 +69,7 @@ export function RoomBar({ session, invite, onLeave, leaveLabel = 'Leave', editin
       </span>
       {view.notice
         ? <span className="hk-room-notice" role="status">{view.notice}</span>
-        : hosting && hint && <span className="hk-room-hint">{hint}</span>}
+        : hosting && <span className="hk-room-hint">{hint}</span>}
       {link && (
         <span className="hk-room-invite">
           <input className="hk-room-link" readOnly value={link} aria-label="Link to join" onFocus={(e) => e.currentTarget.select()} />
@@ -79,7 +78,6 @@ export function RoomBar({ session, invite, onLeave, leaveLabel = 'Leave', editin
           </Button>
         </span>
       )}
-      {hosting && onRestart && <Button size="sm" variant="secondary" icon={<RotateCcw size={16} />} onClick={onRestart}>Restart</Button>}
       {hosting && <HostControls session={session} players={view.players} me={view.me} closed={view.settings.closed} banned={view.banned} classroom={view.classroom} />}
       <Button size="sm" variant="quiet" icon={<LogOut size={16} />} onClick={onLeave}>{leaveLabel}</Button>
     </div>
@@ -106,7 +104,7 @@ function HostControls({ session, players, me, closed, banned, classroom }: {
     <Menu
       label="Room controls"
       align="end"
-      width={300}
+      width={320}
       header={<span className="hk-room-menu-head">{players.length} of {MAX_PLAYERS} players</span>}
       trigger={(props) => <Button {...props} size="sm" variant="secondary" icon={<Settings2 size={16} />}>Room</Button>}
     >
@@ -115,8 +113,8 @@ function HostControls({ session, players, me, closed, banned, classroom }: {
       ))}
       {removable.length > 0 && <MenuSeparator />}
       {closed
-        ? <MenuItem icon={<DoorOpen size={18} />} label="Let new players join" description="The room is closed: only people already in it can come back." onSelect={() => session.setClosed(false)} />
-        : <MenuItem icon={<DoorClosed size={18} />} label="Close to new players" description="People already in the room can still come back." onSelect={() => session.setClosed(true)} />}
+        ? <MenuItem icon={<DoorOpen size={18} />} label="Let new players join" description="Closed now: only players already in can rejoin." onSelect={() => session.setClosed(false)} />
+        : <MenuItem icon={<DoorClosed size={18} />} label="Close to new players" description="Players already in can still rejoin." onSelect={() => session.setClosed(true)} />}
       {banned > 0 && <MenuItem icon={<Users size={18} />} label={`Let removed players back in (${banned})`} onSelect={() => session.letRemovedBack()} />}
     </Menu>
   )
