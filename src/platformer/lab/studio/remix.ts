@@ -325,7 +325,9 @@ function upgradeHeroBlocks(project: StudioProject): StudioProject {
   const keepOld = readsByName(project, hero.program.variables.filter((v) => HERO_OLD_VARIABLE_NAMES[v.id] === v.name).map((v) => v.name))
   const named = <T extends { id: string; name: string }>(v: T): T => (keepOld && HERO_OLD_VARIABLE_NAMES[v.id] ? { ...v, name: HERO_OLD_VARIABLE_NAMES[v.id] } : v)
   const variables = fresh.brick.program.variables.map((v) => named(tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
-  const upgraded: BrickDef = { ...hero, program: { ...fresh.brick.program, variables } }
+  // Today's blocks may play a sound the old Hero didn't have ("Ouch"): add it, keeping every sound the kid added.
+  const sounds = [...hero.sounds, ...fresh.brick.sounds.filter((s) => !hero.sounds.some((h) => h.name === s.name))]
+  const upgraded: BrickDef = { ...hero, sounds, program: { ...fresh.brick.program, variables } }
   const workspace = keepOld ? renameWorkspaceVariables(fresh.workspace, named) : fresh.workspace
   return {
     design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? upgraded : b)) },

@@ -123,8 +123,9 @@ describe('the plain names', () => {
     const current = createStarterProject()
     const fresh = names(heroOf(current).program.variables)
     const old = names((plainNamesHero as unknown as { program: { variables: Array<{ id: string; name: string }> } }).program.variables)
-    expect(Object.keys(old)).toEqual(Object.keys(fresh))
-    for (const id of Object.keys(fresh)) expect(old[id], id).toBe(HERO_OLD_VARIABLE_NAMES[id] ?? fresh[id])
+    // Today's Hero has every variable it had (and, since parity A, a few for getting hurt).
+    expect(Object.keys(fresh).filter((id) => id in old)).toEqual(Object.keys(old))
+    for (const id of Object.keys(old)) expect(old[id], id).toBe(HERO_OLD_VARIABLE_NAMES[id] ?? fresh[id])
     expect(Object.keys(HERO_OLD_VARIABLE_NAMES).every((id) => HERO_OLD_VARIABLE_NAMES[id] !== fresh[id])).toBe(true)
     const print = '88bce6fb'
     expect(EARLIER_HERO_FINGERPRINTS).toContain(print)
@@ -141,7 +142,8 @@ describe('an untouched Hero saved with the old names', () => {
     const fresh = createStarterProject()
     expect(names(heroOf(up).program.variables)).toEqual(names(heroOf(fresh).program.variables))
     expect(names((up.workspaces[HERO_BRICK_ID] as Ws).variables)).toEqual(names((fresh.workspaces[HERO_BRICK_ID] as Ws).variables))
-    expect(heroOf(up).program.variables.map((v) => v.value)).toEqual(heroOf(old).program.variables.map((v) => v.value))
+    const valueOf = (project: StudioProject) => Object.fromEntries(heroOf(project).program.variables.map((v) => [v.id, v.value]))
+    expect(valueOf(up)).toMatchObject(valueOf(old))
     expect(heroOf(up).program.variables.find((v) => v.id === 'p_top')!.value).toBe(9)
     expect(heroOf(up).program.scripts).toEqual(heroOf(fresh).program.scripts)
     expect(heroOf(up).program.procedures).toEqual(heroOf(fresh).program.procedures)

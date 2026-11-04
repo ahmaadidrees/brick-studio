@@ -49,7 +49,7 @@ describe('pits', () => {
   })
 
   it('falling into the gap drops the Hero out of the level, and it comes back where it started', () => {
-    const path = dropInGap(createStarterProject().design, 40)
+    const path = dropInGap(createStarterProject().design, 120)
     // The Hero notices on the tick it drops below PIT_Y, so the lowest it is seen is just under the level's bottom.
     const fell = path.findIndex((p) => p.y < 0)
     expect(fell).toBeGreaterThan(0)
@@ -113,7 +113,7 @@ describe('saves from before pits', () => {
     expect(up.design.pits).toBe(true)
     expect(up.design.bricks.find((b) => b.id === 'brick_hero')!.program.variables.find((v) => v.id === 'walk_top')!.value).toBe(5)
     expect(validateDesign(up.design)).toEqual([])
-    expect(dropInGap(up.design, 40).at(-1)).toEqual({ x: HERO_START.x, y: HERO_START.y })
+    expect(dropInGap(up.design, 120).at(-1)).toEqual({ x: HERO_START.x, y: HERO_START.y })
   })
 
   it('a Hero the kid changed keeps its blocks and its level keeps the floor', () => {

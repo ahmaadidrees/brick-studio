@@ -22,7 +22,8 @@
  *
  * The y axis points up in Code Lab and down in the old engine, so a jump is a positive y speed here.
  */
-import type { BrickDef, VariableDecl } from '../../core/contracts'
+import type { BrickDef, Sound, VariableDecl } from '../../core/contracts'
+import { getSoundLibrary } from '../assets/soundLibrary'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { costumeFromImage, imageFromRows } from '../pixels'
 import { labelData, readLabel } from '../code/layers'
@@ -132,6 +133,11 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'wall_up', name: 'wall jump up', hint: 'How high a wall jump sends me.', value: 4.0 * SPEED, from: 'wallJumpY 4.0 px/frame x 2' },
   { id: 'wall_lock_ticks', name: 'wall jump no-steer time', hint: 'How long after a wall jump I can\'t steer back to the wall. 30 is one second.', value: 5, from: 'wallJumpLock 9 frames / 2 = 4.5, rounded up' },
   { id: 'wall_late_ticks', name: 'wall late jump time', hint: 'How long after I leave a wall I can still wall jump. 30 is one second.', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
+  // Getting hurt (parity bucket A, 2026-11-03): the old Hero's death and respawn, player.ts
+  { id: 'hurt_stop', name: 'hurt stop time', hint: 'How long I stand still when I get hurt. 30 is one second.', value: 30 * TICKS, from: 'DEATH_PAUSE 30 frames / 2' },
+  { id: 'hurt_hop_power', name: 'hurt hop', hint: 'How high I hop when I get hurt.', value: 4.5 * SPEED, from: 'the death hop, 4.5 px/frame x 2' },
+  { id: 'hurt_back', name: 'time to come back', hint: 'How long after I get hurt I come back at the start. 30 is one second.', value: 150 * TICKS, from: 'DEATH_TICKS 150 frames / 2' },
+  { id: 'safe_time', name: 'safe time', hint: 'How long I blink after coming back, when nothing can hurt me. 30 is one second.', value: 120 * TICKS, from: 'RESPAWN_INVULN 120 frames / 2' },
 ]
 
 /**
@@ -152,6 +158,7 @@ export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobId
   },
   { id: 'falling', label: 'Falling', knobIds: ['max_fall'] },
   { id: 'walls', label: 'Walls', knobIds: ['wall_slide', 'wall_shed', 'wall_push', 'wall_up', 'wall_lock_ticks', 'wall_late_ticks'] },
+  { id: 'hurt', label: 'Getting hurt', knobIds: ['hurt_stop', 'hurt_hop_power', 'hurt_back', 'safe_time'] },
 ]
 
 /** How many tuning numbers are tucked under "More sliders". */
@@ -166,6 +173,17 @@ export const HERO_START = { x: 60, y: 24 } as const
 
 /** Below this y the Hero has fallen into a pit (its box top is a tile below the bottom of the level, which is y 0). */
 export const PIT_Y = -24
+
+/** The sound the Hero plays when it gets hurt, and what it says (the Play screen's "Ouch!" listens for it). */
+export const HERO_OUCH_SOUND = 'Ouch'
+export const HERO_OUCH = 'ouch'
+
+let ouchSound: Sound | undefined
+/** The sound library's "hit", named Ouch. */
+export function createHeroOuchSound(): Sound {
+  ouchSound ??= { ...getSoundLibrary().find((s) => s.name === 'hit')!, name: HERO_OUCH_SOUND }
+  return { ...ouchSound }
+}
 
 /** The Hero's own working memory. Not knobs: they change every tick. */
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
@@ -198,6 +216,9 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'gravity_now', name: 'gravity now' },
   { id: 'start_x', name: 'start x' }, // where I start this level (where I first stand): getting hurt sends me back here
   { id: 'start_y', name: 'start y' },
+  { id: 'hurt_time', name: 'hurt time' }, // 0 while I'm fine; counts up from 1 while I'm hurt
+  { id: 'hop', name: 'hurt hop now' }, // my up speed in the hurt hop
+  { id: 'safe', name: 'safe time left' }, // counts down after I come back; nothing hurts me (but pits) until 0
 ]
 
 /**
@@ -585,7 +606,9 @@ export function createHeroWorkspace(): WorkspaceJson {
 
   // The plumbing, open: what the Platformer would do for me, as blocks. Peek or go inside "move and collide" to read
   // it; change a block to make it your own (bounce off walls, slide on ice, remember a wall for a wall jump).
-  tick('basics', 'Move: walls and floors stop me (go inside to see how)', [call('move and collide')])
+  const moveAndCollide = call('move and collide')
+  // While I'm hurt (parity bucket A) the "Getting hurt" script moves me instead.
+  tick('basics', 'Move: walls and floors stop me (go inside to see how)', [later(() => when(eq(v('hurt_time'), 0), [moveAndCollide]))])
   const hit = (): Conn => ({ block: blk('platformer_hitsomething') })
   const moveUntilHit = (axis: 'x' | 'y', by: Conn): Json => blk('platformer_moveuntilhit', { fields: { AXIS: axis }, inputs: { DISTANCE: by } })
   const plumbing = blk('procedures_definition', {
@@ -619,15 +642,52 @@ export function createHeroWorkspace(): WorkspaceJson {
   receive('boing', 'When a Spring says boing: fly up', [setY(14)])
   // A stomped Walker: a small bounce.
   receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
-  // Hurt (by a Walker, Spikes or Lava): back to where I started this level, standing still.
-  receive('hero hurt', 'When I get hurt: go back to where I started', [goTo(v('start_x'), v('start_y')), setX(0), setY(0)])
-  // Pits (parity bucket A, 2026-11-03): a Platformer level has no floor (LevelDesign.pits), so dropping off the bottom
-  // is falling into a pit. The old Hero died once its top was a tile below the level; the box top is 6 above my y.
-  later(() =>
+  // Hurt (by a Walker, Spikes or Lava). Since parity bucket A (2026-11-03) it is the old Hero's: I stop with an "Ouch",
+  // hop up and fade away, come back where I started this level, and blink for a while, safe. "Getting hurt" below does
+  // it; this only starts it, unless I'm hurt already or still safe. (Going back to the start keeps its old blocks.)
+  const backToStart = [goTo(v('start_x'), v('start_y')), setX(0), setY(0)]
+  const startHurt = (): Json => set('hurt_time', 1)
+  receive('hero hurt', 'When I get hurt: start getting hurt, unless I am safe', later(() => [when(and(eq(v('hurt_time'), 0), eq(v('safe'), 0)), [startHurt()])]))
+  later(() => {
+    const yPosition = (): Conn => ({ block: blk('motion_yposition') })
+    const effect = (type: 'looks_seteffectto' | 'looks_changeeffectby', value: number): Json =>
+      blk(type, { fields: { EFFECT: 'ghost' }, inputs: { [type === 'looks_seteffectto' ? 'VALUE' : 'CHANGE']: as(value) } })
+    // Pits: a Platformer level has no floor (LevelDesign.pits), so dropping off the bottom is falling into a pit. The
+    // old Hero died once its top was a tile below the level (my box top is 6 above my y). Even safe time doesn't help.
     tick('basics', 'Fall into a pit: when I drop below the bottom of the level, I get hurt', [
-      when(lt({ block: blk('motion_yposition') }, PIT_Y), [goTo(v('start_x'), v('start_y')), setX(0), setY(0)]),
-    ]),
-  )
+      when(and(lt(yPosition(), PIT_Y), eq(v('hurt_time'), 0)), [startHurt()]),
+    ])
+    tick('basics', 'Getting hurt: stop with an Ouch, hop up and fade away, then come back where I started', [
+      when(gt(v('hurt_time'), 0), [
+        when(eq(v('hurt_time'), 1), [
+          blk('sound_play', { fields: { SOUND_MENU: HERO_OUCH_SOUND } }),
+          blk('event_broadcast', { inputs: { BROADCAST_INPUT: { shadow: { type: 'text', id: idSource.next(), fields: { TEXT: HERO_OUCH } } } } }),
+          set('hop', v('hurt_hop_power')),
+          effect('looks_seteffectto', 0),
+        ]),
+        change('hurt_time', 1),
+        when(gt(v('hurt_time'), v('hurt_stop')), [
+          // In a pit I'm already out of sight below the level: moving would only pull me back to its edge.
+          when(not(lt(yPosition(), 0)), [blk('motion_changeyby', { inputs: { DY: v('hop') } })]),
+          change('hop', -1),
+          effect('looks_changeeffectby', 6),
+        ]),
+        when(gt(v('hurt_time'), v('hurt_back')), [
+          set('hurt_time', 0),
+          blk('looks_cleargraphiceffects'),
+          ...backToStart,
+          set('meter', 0),
+          set('safe', v('safe_time')),
+        ]),
+      ]),
+    ])
+    tick('basics', 'Safe time: after I come back I blink, and nothing can hurt me', [
+      when(gt(v('safe'), 0), [
+        change('safe', -1),
+        either(gt({ block: blk('operator_mod', { inputs: { NUM1: v('safe'), NUM2: as(4) } }) }, 1), [effect('looks_seteffectto', 70)], [effect('looks_seteffectto', 0)]),
+      ]),
+    ])
+  })
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
   receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(keys('space', 'x', 'k'), [setY(11)], [setY(6.5)])])
@@ -649,7 +709,7 @@ export function createHeroBrick(): { brick: BrickDef; workspace: WorkspaceJson; 
   const variables = heroVariables()
   const { program, diagnostics } = compileWorkspace(workspace, { variables })
   return {
-    brick: { id: HERO_BRICK_ID, name: 'Hero', costumes: [createHeroCostume()], sounds: [], program, limit: 1 },
+    brick: { id: HERO_BRICK_ID, name: 'Hero', costumes: [createHeroCostume()], sounds: [createHeroOuchSound()], program, limit: 1 },
     workspace,
     diagnostics,
   }

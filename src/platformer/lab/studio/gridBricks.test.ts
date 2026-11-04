@@ -541,7 +541,8 @@ describe('on the starter level, through the engine (cells are targets, bumps arr
     rt.pressKey('right arrow')
     // Walk until the Hero is sent back (x jumps left of where it was); stop walking in that same tick.
     let sentBack = false
-    for (let i = 0; i < 60 && !sentBack; i++) { const before = h.x; run(1); sentBack = h.x < before - 10 }
+    // Getting hurt takes about 2.5 seconds (a stop and a hop) before the Hero is back at the start.
+    for (let i = 0; i < 150 && !sentBack; i++) { const before = h.x; run(1); sentBack = h.x < before - 10 }
     rt.releaseKey('right arrow')
     expect(sentBack).toBe(true)
     expect([h.x, h.y]).toEqual([60, 24])

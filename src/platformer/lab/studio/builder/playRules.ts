@@ -11,6 +11,16 @@ import { powerKeysOf } from '../powers/powers'
 export const COURSE_CLEAR = 'course clear'
 /** Anything that hurts the Hero (spikes, lava, a Walker) says this; the Hero goes back to the start. */
 export const HERO_HURT = 'hero hurt'
+/**
+ * What the Hero says when it really gets hurt (since parity bucket A: not while it blinks, safe, and also in a pit).
+ * A Hero that never says it (one a kid changed before) is heard by HERO_HURT instead.
+ */
+export const HERO_OUCH = 'ouch'
+
+/** Does any brick in the level say "ouch"? Then the Play screen listens for that instead of "hero hurt". */
+export function saysOuch(design: LevelDesign): boolean {
+  return design.bricks.some((b) => JSON.stringify(b.program).includes(`"${HERO_OUCH}"`))
+}
 /** The Stage's score variable (a Coin says "coin collected", the Stage adds one). */
 export const COINS_VARIABLE = 'coins'
 

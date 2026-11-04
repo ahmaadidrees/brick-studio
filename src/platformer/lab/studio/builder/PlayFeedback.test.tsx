@@ -6,7 +6,9 @@ import { createStarterProject, STARTER_GOAL } from '../starter'
 import { builtInPowers } from '../powers/powers'
 import { StudioStore } from '../store'
 import { StudioShell } from '../screen/StudioShell'
-import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins } from './playRules'
+import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins, saysOuch } from './playRules'
+import { HERO_OUCH as HERO_SAYS } from '../hero/heroBrick'
+import beforePits from '../hero/__fixtures__/hero-before-pits.json'
 
 afterEach(cleanup)
 
@@ -43,16 +45,37 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     expect(screen.getByText(/Space, X or K jumps/)).toBeTruthy()
   })
 
-  it('"Try again" when the Hero is hurt (hero hurt broadcast), and it goes away by itself', async () => {
+  it('"Try again" when the Hero says ouch (it really got hurt, not while it blinks safe), and it goes away by itself', async () => {
+    expect(HERO_OUCH).toBe(HERO_SAYS)
     const store = new StudioStore(createStarterProject())
+    expect(saysOuch(store.getState().project.design)).toBe(true)
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByText(/Try again/)).toBeNull()
+    // "hero hurt" alone may be ignored (the Hero blinks, safe): the Hero says ouch when it is hurt.
+    act(() => {
+      store.getState().runtime!.broadcast(HERO_HURT)
+    })
+    expect(screen.queryByText(/Try again/)).toBeNull()
+    act(() => {
+      store.getState().runtime!.broadcast(HERO_OUCH)
+    })
+    expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
+    await waitForElementToBeRemoved(() => screen.queryByText(/Ouch/), { timeout: 3000 })
+  })
+
+  it('a Hero from before that never says ouch: "Try again" on hero hurt, as before', () => {
+    const project = createStarterProject()
+    project.design.bricks.find((b) => b.id === 'brick_hero')!.program = structuredClone(beforePits.program) as never
+    project.workspaces.brick_hero = structuredClone(beforePits.workspace)
+    const store = new StudioStore(project)
+    expect(saysOuch(store.getState().project.design)).toBe(false)
+    render(<StudioShell store={store} />)
+    startPlay(store)
     act(() => {
       store.getState().runtime!.broadcast(HERO_HURT)
     })
     expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
-    await waitForElementToBeRemoved(() => screen.queryByText(/Ouch/), { timeout: 3000 })
   })
 
   it('"You made it!" when the Goal says course clear, with Play again and Keep building', () => {

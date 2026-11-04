@@ -2,7 +2,7 @@ import { Hammer, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../../ui'
 import { useStudio, type StudioStore } from '../store'
-import { checkLevelForPlay, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, powerKeys, powerKeysHint, readCoins } from './playRules'
+import { checkLevelForPlay, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, powerKeys, powerKeysHint, readCoins, saysOuch } from './playRules'
 
 const HINT_MS = 7000
 const HURT_MS = 1600
@@ -29,11 +29,12 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
     setCoins(readCoins(runtime, design))
     const hintTimer = setTimeout(() => setHint(false), HINT_MS)
     const coinTimer = setInterval(() => setCoins(readCoins(runtime, design)), 100)
+    const hurtMessage = saysOuch(design) ? HERO_OUCH : HERO_HURT
     const off = runtime.onBroadcast((message) => {
       const m = message.trim().toLowerCase()
       if (m === COURSE_CLEAR) {
         setWon({ coins: readCoins(runtime, design) })
-      } else if (m === HERO_HURT) {
+      } else if (m === hurtMessage) {
         setHurt((n) => n + 1)
         if (hurtTimer.current) clearTimeout(hurtTimer.current)
         hurtTimer.current = setTimeout(() => setHurt(0), HURT_MS)

@@ -219,7 +219,7 @@ describe('Starter level (starter.ts)', () => {
         { SIDE: 'right', BRICK: '_any_' },
       ])
       // its basics and feel scripts are all still there, and only the plumbing is a My Block to go inside
-      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(20)
+      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(22)
       expect(hero.program.procedures.map((x) => x.proccode)).toEqual(['move and collide'])
     })
 
@@ -338,12 +338,13 @@ describe('Starter level (starter.ts)', () => {
     run(20)
     const h = of('copy_hero')
     h.x = 736; h.y = 100
-    run(20 + 60)
+    // Getting hurt takes 75 ticks: a stop, the hop, then back at the start.
+    run(20 + 60 + 80)
     expect([h.x, h.y]).toEqual([60, 24])
     void rt
   })
 
-  it('lava (Lava brick: forever, if touching Hero -> broadcast hero hurt): the Hero set into lava is back at the start 20 ticks later (lava is not solid)', () => {
+  it('lava (Lava brick: forever, if touching Hero -> broadcast hero hurt): the Hero set into lava is back at the start once getting hurt is done (lava is not solid)', () => {
     const rt = play((() => {
       const p = createStarterProject()
       const rows = p.design.tiles!.data.slice()
@@ -353,7 +354,7 @@ describe('Starter level (starter.ts)', () => {
     for (let i = 0; i < 20; i++) rt.step()
     const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
     h.x = 168; h.y = 88
-    for (let i = 0; i < 20; i++) rt.step()
+    for (let i = 0; i < 20 + 80; i++) rt.step()
     expect([h.x, h.y]).toEqual([60, 24])
   })
 
@@ -525,7 +526,7 @@ describe('Starter level (starter.ts)', () => {
       run(20)
       const h = of('copy_hero'), w = of('copy_walker_slow')
       h.x = w.x + 6; h.y = w.y
-      run(4)
+      run(4 + 80)
       expect([h.x, h.y, w.visible]).toEqual([60, 24, true])
     }
   })
