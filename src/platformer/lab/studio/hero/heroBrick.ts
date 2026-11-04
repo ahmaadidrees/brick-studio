@@ -135,7 +135,6 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'wall_late_ticks', name: 'wall late jump time', hint: 'How long after I leave a wall I can still wall jump. 30 is one second.', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
   // Getting hurt (parity bucket A, 2026-11-03): the old Hero's death and respawn, player.ts
   { id: 'hurt_stop', name: 'hurt stop time', hint: 'How long I stand still when I get hurt. 30 is one second.', value: 30 * TICKS, from: 'DEATH_PAUSE 30 frames / 2' },
-  { id: 'hurt_hop_power', name: 'hurt hop', hint: 'How high I hop when I get hurt.', value: 4.5 * SPEED, from: 'the death hop, 4.5 px/frame x 2' },
   { id: 'hurt_back', name: 'time to come back', hint: 'How long after I get hurt I come back at the start. 30 is one second.', value: 150 * TICKS, from: 'DEATH_TICKS 150 frames / 2' },
   { id: 'safe_time', name: 'safe time', hint: 'How long I blink after coming back, when nothing can hurt me. 30 is one second.', value: 120 * TICKS, from: 'RESPAWN_INVULN 120 frames / 2' },
 ]
@@ -158,7 +157,7 @@ export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobId
   },
   { id: 'falling', label: 'Falling', knobIds: ['max_fall'] },
   { id: 'walls', label: 'Walls', knobIds: ['wall_slide', 'wall_shed', 'wall_push', 'wall_up', 'wall_lock_ticks', 'wall_late_ticks'] },
-  { id: 'hurt', label: 'Getting hurt', knobIds: ['hurt_stop', 'hurt_hop_power', 'hurt_back', 'safe_time'] },
+  { id: 'hurt', label: 'Getting hurt', knobIds: ['hurt_stop', 'hurt_back', 'safe_time'] },
 ]
 
 /** How many tuning numbers are tucked under "More sliders". */
@@ -217,7 +216,6 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'start_x', name: 'start x' }, // where I start this level (where I first stand): getting hurt sends me back here
   { id: 'start_y', name: 'start y' },
   { id: 'hurt_time', name: 'hurt time' }, // 0 while I'm fine; counts up from 1 while I'm hurt
-  { id: 'hop', name: 'hurt hop now' }, // my up speed in the hurt hop
   { id: 'safe', name: 'safe time left' }, // counts down after I come back; nothing hurts me (but pits) until 0
 ]
 
@@ -642,9 +640,11 @@ export function createHeroWorkspace(): WorkspaceJson {
   receive('boing', 'When a Spring says boing: fly up', [setY(14)])
   // A stomped Walker: a small bounce.
   receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
-  // Hurt (by a Walker, Spikes or Lava). Since parity bucket A (2026-11-03) it is the old Hero's: I stop with an "Ouch",
-  // hop up and fade away, come back where I started this level, and blink for a while, safe. "Getting hurt" below does
-  // it; this only starts it, unless I'm hurt already or still safe. (Going back to the start keeps its old blocks.)
+  // Hurt (by a Walker, Spikes or Lava). Since parity bucket A (2026-11-03) it is timed like the old Hero's: I stop with
+  // an "Ouch", pop away, come back where I started this level after 2.5 seconds, and blink for a while, safe. "Getting
+  // hurt" below does it; this only starts it, unless I'm hurt already or still safe. (Going back to the start keeps its
+  // old blocks.) The old Hero also hopped up as it fell away; this one pops in place and hides, so a Walker it is
+  // touching never sees it above and counts a stomp.
   const backToStart = [goTo(v('start_x'), v('start_y')), setX(0), setY(0)]
   const startHurt = (): Json => set('hurt_time', 1)
   receive('hero hurt', 'When I get hurt: start getting hurt, unless I am safe', later(() => [when(and(eq(v('hurt_time'), 0), eq(v('safe'), 0)), [startHurt()])]))
@@ -657,24 +657,21 @@ export function createHeroWorkspace(): WorkspaceJson {
     tick('basics', 'Fall into a pit: when I drop below the bottom of the level, I get hurt', [
       when(and(lt(yPosition(), PIT_Y), eq(v('hurt_time'), 0)), [startHurt()]),
     ])
-    tick('basics', 'Getting hurt: stop with an Ouch, hop up and fade away, then come back where I started', [
+    tick('basics', 'Getting hurt: stop with an Ouch, pop away, then come back where I started', [
       when(gt(v('hurt_time'), 0), [
         when(eq(v('hurt_time'), 1), [
           blk('sound_play', { fields: { SOUND_MENU: HERO_OUCH_SOUND } }),
           blk('event_broadcast', { inputs: { BROADCAST_INPUT: { shadow: { type: 'text', id: idSource.next(), fields: { TEXT: HERO_OUCH } } } } }),
-          set('hop', v('hurt_hop_power')),
           effect('looks_seteffectto', 0),
         ]),
         change('hurt_time', 1),
-        when(gt(v('hurt_time'), v('hurt_stop')), [
-          // In a pit I'm already out of sight below the level: moving would only pull me back to its edge.
-          when(not(lt(yPosition(), 0)), [blk('motion_changeyby', { inputs: { DY: v('hop') } })]),
-          change('hop', -1),
-          effect('looks_changeeffectby', 6),
-        ]),
+        // After the stop: pop (fade out fast), then hide, so nothing touches me until I come back.
+        when(gt(v('hurt_time'), v('hurt_stop')), [effect('looks_changeeffectby', 20)]),
+        when(gt(v('hurt_time'), add(v('hurt_stop'), 5)), [blk('looks_hide')]),
         when(gt(v('hurt_time'), v('hurt_back')), [
           set('hurt_time', 0),
           blk('looks_cleargraphiceffects'),
+          blk('looks_show'),
           ...backToStart,
           set('meter', 0),
           set('safe', v('safe_time')),

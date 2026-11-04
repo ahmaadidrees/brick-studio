@@ -337,8 +337,8 @@ describe('The Hero brick is built from open blocks', () => {
       'event_whenbroadcastreceived', 'event_broadcast', 'motion_gotoxy', 'text',
       // getting hurt sends the Hero back to where it started this level
       'motion_xposition', 'motion_yposition', 'control_wait_until',
-      // parity bucket A: getting hurt stops with an Ouch, hops, fades and blinks
-      'sound_play', 'motion_changeyby', 'looks_seteffectto', 'looks_changeeffectby', 'looks_cleargraphiceffects', 'operator_mod',
+      // parity bucket A: getting hurt stops with an Ouch, pops away, comes back and blinks
+      'sound_play', 'looks_seteffectto', 'looks_changeeffectby', 'looks_cleargraphiceffects', 'looks_hide', 'looks_show', 'operator_mod',
     ])
     expect([...opcodes].filter((o) => !known.has(o))).toEqual([])
     expect(JSON.stringify(workspace)).toContain('"GRAVITY":"off"')
@@ -395,7 +395,7 @@ describe('The Hero brick is built from open blocks', () => {
     const shown = createHeroBrick().brick.program.variables.filter((v) => v.showInBuild)
     expect(shown.map((v) => v.id)).toEqual(['walk_top', 'run_top', 'jump_stand', 'fall_gravity'])
     // The working memory is not a knob either.
-    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 32)
+    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 31)
     // The groups hold every other tuning number exactly once, in Walking / Running / Jumping / Falling / Walls order.
     expect(HERO_KNOB_GROUPS.map((g) => g.label)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls', 'Getting hurt'])
     const grouped = HERO_KNOB_GROUPS.flatMap((g) => g.knobIds)

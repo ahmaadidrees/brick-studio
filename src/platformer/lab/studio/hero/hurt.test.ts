@@ -1,7 +1,7 @@
 /**
- * Getting hurt like the classic Hero (parity bucket A, 2026-11-03): a stop with an "Ouch", a hop that fades away, back
- * at the start after 2.5 seconds, then 2 seconds of blinking when nothing but a pit can hurt it. Old Heroes that upgrade
- * get the Ouch sound too.
+ * Getting hurt timed like the classic Hero (parity bucket A, 2026-11-03): a stop with an "Ouch", a pop (fade and hide),
+ * back at the start after 2.5 seconds, then 2 seconds of blinking when nothing but a pit can hurt it. Old Heroes that
+ * upgrade get the Ouch sound too. And a hurt Hero never stomps the Walker that hurt it.
  */
 import { describe, expect, it } from 'vitest'
 import { play } from '../../core/index'
@@ -27,23 +27,36 @@ function hurtAt(x: number) {
 }
 
 describe('getting hurt', () => {
-  it('stops, says ouch with a sound, hops up while fading, and is back at the start standing after 2.5 s', () => {
+  it('stops, says ouch with a sound, pops away, and is back at the start standing after 2.5 s', () => {
     const { rt, hero, heard, sounds } = hurtAt(200)
-    const log: Array<{ x: number; y: number; ghost: number }> = []
+    hero.x = 260
+    const log: Array<{ x: number; y: number; ghost: number; visible: boolean }> = []
     for (let i = 0; i < knob('hurt_back') + 3; i++) {
       rt.step()
-      log.push({ x: hero.x, y: hero.y, ghost: hero.effects.ghost ?? 0 })
+      log.push({ x: hero.x, y: hero.y, ghost: hero.effects.ghost ?? 0, visible: hero.visible })
     }
     expect(heard).toContain(HERO_OUCH)
     expect(sounds()).toEqual([HERO_OUCH_SOUND])
     // The stop: half a second standing still where it was hurt.
-    for (const p of log.slice(0, knob('hurt_stop') - 1)) expect(p).toMatchObject({ x: 200, y: HERO_STAND_Y, ghost: 0 })
-    // The hop: up first, fading.
-    const top = Math.max(...log.map((p) => p.y))
-    expect(top).toBeGreaterThan(HERO_STAND_Y + 30)
-    expect(log[knob('hurt_stop') + 20]!.ghost).toBeGreaterThan(90)
+    for (const p of log.slice(0, knob('hurt_stop') - 1)) expect(p).toEqual({ x: 260, y: HERO_STAND_Y, ghost: 0, visible: true })
+    // The pop: it fades, then is hidden (so nothing touches it), and never moves up.
+    expect(log[knob('hurt_stop') + 2]!.ghost).toBeGreaterThan(30)
+    expect(log[knob('hurt_stop') + 10]!.visible).toBe(false)
+    expect(Math.max(...log.map((p) => p.y))).toBe(HERO_STAND_Y)
     // Back at the start, standing, seen again.
-    expect(log.at(-1)).toMatchObject({ x: 200, y: HERO_STAND_Y })
+    expect(log.at(-1)).toEqual({ x: 200, y: HERO_STAND_Y, ghost: 0, visible: true })
+  })
+
+  it('a Walker that hurts the Hero is not stomped by it, and the Hero comes back', () => {
+    const project = createStarterProject()
+    const rt = play(project.design)
+    for (let i = 0; i < 20; i++) rt.step()
+    const hero = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    const walker = rt.world.targets.find((t) => t.copyId === 'copy_walker_slow')!
+    hero.x = walker.x + 10
+    for (let i = 0; i < knob('hurt_back') + 5; i++) rt.step()
+    expect(walker.visible).toBe(true)
+    expect({ x: hero.x, y: hero.y, visible: hero.visible }).toEqual({ x: HERO_START.x, y: HERO_START.y, visible: true })
   })
 
   it('blinks for 2 seconds after coming back; nothing hurts it then, and it can be hurt again after', () => {
@@ -57,6 +70,7 @@ describe('getting hurt', () => {
     }
     expect(heard.filter((m) => m === HERO_OUCH)).toHaveLength(1)
     expect(new Set(ghosts)).toEqual(new Set([0, 70]))
+    expect(hero.visible).toBe(true)
     for (let i = 0; i < knob('safe_time'); i++) rt.step()
     expect(hero.effects.ghost ?? 0).toBe(0)
     rt.broadcast('hero hurt')
@@ -90,7 +104,7 @@ describe('getting hurt', () => {
       ys.push(hero.y)
     }
     expect(heard.filter((m) => m === HERO_OUCH)).toHaveLength(1)
-    // Out of sight below the level the whole time it is hurt: it never pops back up to the edge.
+    // Out of sight below the level the whole time it is hurt.
     const hurtFrom = ys.findIndex((y) => y < 0)
     const back = ys.findIndex((y) => y === HERO_START.y)
     expect(hurtFrom).toBeGreaterThan(0)
