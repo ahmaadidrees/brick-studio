@@ -318,7 +318,8 @@ export function isPowerOn(project: StudioProject, brickId: string, snapId: strin
   const snap = brickOf(project, brickId)?.powers?.find((p) => p.id === snapId)
   if (!snap) return false
   const ids = new Set(snap.blockIds)
-  return topBlocks(workspaceOf(project, brickId)).some((b) => ids.has(b.id as string) && !turnedOff(b))
+  // A My Block definition never switches off (setPowerOn leaves it alone): only scripts count.
+  return topBlocks(workspaceOf(project, brickId)).some((b) => ids.has(b.id as string) && b.type !== 'procedures_definition' && !turnedOff(b))
 }
 
 const turnedOff = (b: Json): boolean => b.enabled === false || (Array.isArray(b.disabledReasons) && b.disabledReasons.length > 0)

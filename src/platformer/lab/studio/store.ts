@@ -434,7 +434,25 @@ export class StudioStore {
 
   takeOffPower(brickId: string, snapId: string) {
     this.flushEditor()
+    const job = this.brick(brickId)?.powers?.find((p) => p.id === snapId)?.job
     this.applyPowerChange(brickId, takeOffPowerFrom(this.state.project, brickId, snapId))
+    // Start from nothing: taking the Player job off the player leaves the game with no player (unless it has another).
+    const d = this.state.project.design
+    if (job?.startsWith('player') && d.player === brickId && !this.brick(brickId)?.powers?.some((p) => p.job?.startsWith('player'))) this.setPlayer(null)
+  }
+
+  /**
+   * Start from nothing: snap a job (studio/blank/jobs.ts) onto a brick, tagged with its job. Unlike a power it fits a
+   * grid brick too (a Wall of tiles). The editor reloads to show its blocks.
+   */
+  giveJob(brickId: string, power: PowerBrick, job: string): SnappedPower | null {
+    if (!this.brick(brickId) || brickId === STAGE_ID) return null
+    this.flushEditor()
+    const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
+    const tagged: SnappedPower = { ...snap, job }
+    const design = { ...project.design, bricks: project.design.bricks.map((b) => (b.id === brickId ? { ...b, powers: (b.powers ?? []).map((p) => (p.id === snap.id ? tagged : p)) } : b)) }
+    this.applyPowerChange(brickId, { ...project, design })
+    return tagged
   }
 
   setPowerOn(brickId: string, snapId: string, on: boolean) {

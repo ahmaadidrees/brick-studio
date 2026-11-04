@@ -76,3 +76,27 @@
 /* The drawer of a game from nothing holds only the kid's own bricks: no search, no categories (board 1). */
 .cl-drawer-blank .part-search-row { display: none; }
 .cl-blank-drawer-title { margin: 4px 12px 8px; color: #5b6676; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+/* Boards 3a and 3c: Give it a job, and the job a brick has. */
+.cl-blank-jobs { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px; overflow-y: auto; min-height: 0; }
+.cl-blank-jobs-title { margin: 0; font-family: Fredoka, Nunito, system-ui, sans-serif; font-size: 20px; font-weight: 600; }
+.cl-blank-jobs .cl-muted { margin: 2px 0 0; font-size: 13px; }
+.cl-blank-jobgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cl-blank-job, .cl-blank-way { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px; box-sizing: border-box; border: 2px solid #e6dfd0; border-radius: 14px; color: var(--cl-ink); background: var(--cl-panel); font: inherit; text-align: left; cursor: pointer; }
+.cl-blank-job span, .cl-blank-way span, .cl-blank-chip span { display: flex; flex-direction: column; min-width: 0; }
+.cl-blank-job b, .cl-blank-way b, .cl-blank-chip b { font-size: 14px; }
+.cl-blank-job small, .cl-blank-way small, .cl-blank-chip small { color: var(--cl-muted); font-size: 12px; }
+.cl-blank-job:hover, .cl-blank-way:hover { border-color: var(--cl-blue); }
+.cl-blank-job:focus-visible, .cl-blank-way:focus-visible { outline: none; box-shadow: var(--focus-ring, 0 0 0 3px #93a8f4); }
+.cl-blank-player.is-open { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 2px solid var(--cl-blue); border-radius: 14px; background: var(--cl-blue-soft); }
+.cl-blank-player.is-open .cl-blank-job { border: 0; padding: 0; min-height: 40px; background: none; }
+.cl-blank-ways { display: flex; flex-direction: column; gap: 8px; }
+.cl-blank-ways-title { font-size: 13px; font-weight: 800; }
+.cl-blank-way { min-height: 48px; padding: 9px 10px; border: 1px solid #c9d2f4; border-radius: 12px; }
+.cl-blank-chips { display: flex; flex-direction: column; gap: 8px; }
+.cl-blank-chip { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 12px; color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-blank-chip span { flex: 1; color: var(--cl-ink); }
+.cl-blank-chip.is-off { color: var(--cl-muted); background: var(--cl-soft); }
+.cl-blank-change { display: flex; flex-direction: column; gap: 8px; }
+.cl-blank-change .cl-blank-jobs { padding: 0; }
+.cl-blank-player-pill { align-self: flex-start; padding: 2px 8px; border-radius: 999px; color: #17663f; background: #e7f7ee; font-size: 12px; font-weight: 800; }

@@ -854,6 +854,7 @@ export function instantiate(design: LevelDesign): World {
     nextAskId: 1,
     hostClock: null,
     ...(design.tiles ? { tiles: structuredClone(design.tiles) } : {}),
+    ...(typeof design.player === 'string' ? { player: design.player } : {}),
   }
 }
 

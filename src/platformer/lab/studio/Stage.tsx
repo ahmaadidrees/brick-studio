@@ -44,6 +44,7 @@ import {
 } from './stage/renderer'
 import { StageControls } from './stage/StageControls'
 import { backgroundOf, isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
+import { BLANK_COLS, BLANK_ROWS } from './blank/blankProject'
 import './stage/stage.css'
 
 /** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
@@ -243,7 +244,9 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     setPlayFree(false)
   }, [mode])
 
-  const playCameraMode: PlayCameraMode = playChoice ?? defaultPlayCameraMode(design.bounds, viewport)
+  // A game from nothing on one screen shows the whole stage, like Scratch; a bigger one follows its player.
+  const oneScreen = screens.fromNothing && design.bounds.right - design.bounds.left <= BLANK_COLS * TILE_SIZE && design.bounds.top - design.bounds.bottom <= BLANK_ROWS * TILE_SIZE
+  const playCameraMode: PlayCameraMode = playChoice ?? (oneScreen ? 'whole' : defaultPlayCameraMode(design.bounds, viewport))
 
   // The follow camera eases after the player like the classic game's (stage/camera.ts FollowRig): a new one each Play.
   const rigKind = screens.kit === 'race' || screens.kit === 'blank' ? 'top' : 'side'

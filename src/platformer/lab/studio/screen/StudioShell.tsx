@@ -15,6 +15,7 @@ import { limitedStore } from '../builder/limits'
 import { builderSession } from '../builder/session'
 import { BuildDrawer, PaintStrip } from './BuildDrawer'
 import type { BrickKind } from './NewBrickSheet'
+import { giveJob } from '../blank/jobs'
 import { CodeColumn } from './CodeColumn'
 import { Inspector } from './Inspector'
 import { LevelBricks } from './LevelBricks'
@@ -26,8 +27,8 @@ import '../builder/builder.css'
 import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
-/** After + New brick (lane C gives Tiles the Wall job here). */
-const onBrickMade = (_store: StudioStore, _brickId: string, _kind?: BrickKind) => undefined
+/** After + New brick in a game from nothing: Tiles start solid (the Wall job, which comes off like any job). */
+const onBrickMade = (store: StudioStore, brickId: string, kind?: BrickKind) => { if (kind === 'tiles') giveJob(store, brickId, 'wall') }
 const LEAVE_WAIT_MS = 5000
 /** How long the small-screen brick card ignores touches after it opens (longer than a tap's trailing click). */
 const INSPECTOR_SETTLE_MS = 400

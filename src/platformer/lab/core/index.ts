@@ -10,6 +10,7 @@ import { motionPrimitives } from './motion'
 import { operatorPrimitives } from './operators'
 import { everyTickLifecycle, physicsStep, platformerPrimitives, selfMovePrimitives } from './platformer'
 import { instantiate } from './project'
+import { gamePrimitives } from './game'
 import { racePrimitives, raceStep } from './race'
 import { Runtime, type RuntimeLifecycle } from './runtime'
 import { clearQuestions, sensingPrimitives } from './sensing'
@@ -65,7 +66,10 @@ const raceEngine: KitEngine = {
  * every Racing block, and bodies start with gravity off, so an empty stage behaves like Scratch until a brick's own code
  * (or its job) says otherwise.
  */
-const blankEngine: KitEngine = raceEngine
+const blankEngine: KitEngine = {
+  primitives: { ...raceEngine.primitives, ...gamePrimitives },
+  lifecycle: raceEngine.lifecycle,
+}
 
 /** The kits this core can run. 3D (D1) registers here when it lands. */
 const KIT_ENGINES: Partial<Record<KitId, KitEngine>> = { platformer: platformerEngine, race: raceEngine, blank: blankEngine }

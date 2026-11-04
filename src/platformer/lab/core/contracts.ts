@@ -547,6 +547,8 @@ export interface World {
    * Like `bricks` it is shared between copies and never changed in place; an edit replaces it.
    */
   design?: LevelDesign
+  /** Start from nothing: the player brick's id (LevelDesign.player) when the game started. Rooms read `design` first. */
+  player?: string
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives
