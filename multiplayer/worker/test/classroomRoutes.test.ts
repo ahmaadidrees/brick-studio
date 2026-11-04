@@ -443,11 +443,16 @@ describe("live presence for the class list", () => {
   const teacher = { id: identity.userId, username: "Teacher", rosterName: "Teacher", role: "teacher" as const, resetRequired: false, authVersion: 0, sessionId: identity.sessionId, token: "test" };
   const classId = identity.userId, studentId = identity.sessionId;
   const worlds = [identity.worldId, "44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"];
-  function presenceEnv(answer: (room: string) => Response) {
+  function presenceEnv(answer: (room: string) => Response, more: Record<string, (room: string) => Response> = {}) {
     const asked: string[] = [];
+    const rooms = (kind: string, reply: (room: string) => Response) => ({
+      idFromName: (x: string) => x,
+      get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${kind}${room}${new URL(String(input)).pathname}`); return reply(room); } }),
+    });
     const env = {
       SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test",
-      WORLD_ROOMS: { idFromName: (x: string) => x, get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${room}${new URL(String(input)).pathname}`); return answer(room); } }) },
+      WORLD_ROOMS: rooms("", answer),
+      ...Object.fromEntries(Object.entries(more).map(([binding, reply]) => [binding, rooms(`${binding}:`, reply)])),
     } as unknown as Env;
     vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
     vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name) => { if (name !== "take_rate_limit") throw new Error(`Unexpected rpc ${name}`); return true; });
@@ -465,6 +470,13 @@ describe("live presence for the class list", () => {
     expect(await list()).toBe(3);
     expect(asked.sort()).toEqual(worlds.map((id) => `${id.replaceAll("-", "")}/internal/classroom-presence`).sort());
   });
+  it("counts players in 2D and Hackable rooms as well as 3D builders", async () => {
+    const { list } = presenceEnv((room) => Response.json({ userIds: room === worlds[0].replaceAll("-", "") ? ["a"] : [] }), {
+      PLATFORMER_ROOMS: (room) => Response.json({ userIds: room === worlds[1].replaceAll("-", "") ? ["b"] : [] }),
+      HACKABLE_ROOMS: (room) => Response.json({ userIds: room === worlds[2].replaceAll("-", "") ? ["b", "c"] : [] }),
+    });
+    expect(await list()).toBe(3);
+  });
   it("reports null rather than a guess when a room cannot answer", async () => {
     const { list } = presenceEnv((room) => room === worlds[1].replaceAll("-", "") ? new Response("busy", { status: 503 }) : Response.json({ userIds: [] }));
     expect(await list()).toBeNull();
@@ -480,11 +492,16 @@ describe("live presence for the class list", () => {
 describe("live presence for the Worlds list (?presence=1)", () => {
   const student = { id: identity.sessionId, username: "ben_k", rosterName: "Ben Kim", role: "student" as const, classId: identity.userId, resetRequired: false, authVersion: 0, sessionId: identity.sessionId, token: "test" };
   const own = identity.worldId, classWorld = "44444444-4444-4444-8444-444444444444";
-  function presenceEnv(answer: (room: string) => Response) {
+  function presenceEnv(answer: (room: string) => Response, more: Record<string, (room: string) => Response> = {}) {
     const asked: string[] = [];
+    const rooms = (kind: string, reply: (room: string) => Response) => ({
+      idFromName: (x: string) => x,
+      get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${kind}${room}${new URL(String(input)).pathname}`); return reply(room); } }),
+    });
     const env = {
       SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test",
-      WORLD_ROOMS: { idFromName: (x: string) => x, get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${room}${new URL(String(input)).pathname}`); return answer(room); } }) },
+      WORLD_ROOMS: rooms("", answer),
+      ...Object.fromEntries(Object.entries(more).map(([binding, reply]) => [binding, rooms(`${binding}:`, reply)])),
     } as unknown as Env;
     vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(student);
     vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name) => { if (name !== "take_rate_limit") throw new Error(`Unexpected rpc ${name}`); return true; });
@@ -506,6 +523,17 @@ describe("live presence for the Worlds list (?presence=1)", () => {
     const worlds = await list("?presence=1");
     expect(worlds.map((row) => [row.id, row.buildingNow, row.buildingNames])).toEqual([[own, 2, ["Ava R."]], [classWorld, 2, ["Ava R.", "Teacher"]]]);
     expect(asked.sort()).toEqual([own, classWorld].map((id) => `${id.replaceAll("-", "")}/internal/classroom-presence`).sort());
+  });
+  it("counts players in 2D and Hackable rooms too, not only 3D", async () => {
+    const nobody = () => Response.json({ userIds: [] });
+    const { list, asked } = presenceEnv(nobody, {
+      PLATFORMER_ROOMS: (room) => Response.json({ userIds: room === classWorld.replaceAll("-", "") ? ["a"] : [] }),
+      HACKABLE_ROOMS: (room) => Response.json({ userIds: room === own.replaceAll("-", "") ? [student.id, "a"] : [] }),
+    });
+    const worlds = await list("?presence=1");
+    expect(worlds.map((row) => [row.id, row.buildingNow, row.buildingNames])).toEqual([[own, 2, ["Ava R."]], [classWorld, 1, ["Ava R."]]]);
+    expect(asked.filter((path) => path.startsWith("HACKABLE_ROOMS:")).length).toBe(2);
+    expect(asked.filter((path) => path.startsWith("PLATFORMER_ROOMS:")).length).toBe(2);
   });
   it("adds nothing and asks no room without the flag", async () => {
     const { list, asked } = presenceEnv(() => Response.json({ userIds: ["a"] }));

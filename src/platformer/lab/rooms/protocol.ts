@@ -29,6 +29,8 @@ export const MAX_MESSAGE_BYTES = 16 * 1024
 /** A project or a keyframe. Painted costumes make projects big; past this a project can't be shared live yet. */
 export const MAX_PROJECT_BYTES = 900 * 1024
 export const MAX_KEY_LENGTH = 16
+/** A player whose connection drops keeps their Hero this long, in case they come back. */
+export const RECONNECT_GRACE_MS = 30_000
 
 /** The keys a game hears (studio/stage/keys.ts browserKeyToScratchKey). */
 export function isGameKey(key: unknown): key is string {
@@ -74,6 +76,8 @@ export interface PlayerInfo {
   /** The player whose game sends the room keyframes for people joining. */
   provider: boolean
   host: boolean
+  /** Their connection dropped: their Hero waits (RECONNECT_GRACE_MS) in case they come back. */
+  away?: boolean
 }
 
 export interface RoomSettings {

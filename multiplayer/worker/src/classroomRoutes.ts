@@ -101,42 +101,48 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
   );
 }
 /**
- * Distinct classroom accounts connected to these rooms right now. Presence lives only in the WorldRoom
- * objects, so each id costs one internal fetch; there is no registry of rooms that have opened, so an id
- * that never did instantiates a cold object that answers with nobody. ClassroomService.buildingNow bounds
- * the total per request and per teacher; this guard only refuses a single oversized batch.
+ * Who is in one world's room: a world id names a 3D room, a 2D room or a Hackable room, never two, so all three are
+ * asked (the ones that never opened answer with nobody). Each answers `/internal/classroom-presence` the same way.
+ */
+async function roomPresence(env: Env, worldId: string): Promise<string[]> {
+  const roomId = worldId.replaceAll("-", "");
+  const stubs: Array<{ fetch: (input: string, init?: RequestInit) => Promise<Response> }> = [env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(roomId))];
+  // Partial environments (older tests, tools) may not bind the 2D rooms; production always does.
+  if (env.PLATFORMER_ROOMS) stubs.push(env.PLATFORMER_ROOMS.get(env.PLATFORMER_ROOMS.idFromName(roomId)));
+  if (env.HACKABLE_ROOMS) stubs.push(env.HACKABLE_ROOMS.get(env.HACKABLE_ROOMS.idFromName(roomId)));
+  const answers = await Promise.all(stubs.map(async (stub) => {
+    const r = await stub.fetch("https://world.internal/internal/classroom-presence");
+    if (!r.ok) throw new Error("presence_unavailable");
+    const { userIds } = await r.json<{ userIds: unknown }>();
+    return Array.isArray(userIds) ? userIds.filter((value): value is string => typeof value === "string") : [];
+  }));
+  return [...new Set(answers.flat())];
+}
+/**
+ * Distinct classroom accounts connected to these rooms right now. Presence lives only in the room objects, so each
+ * id costs one internal fetch per kind of room (roomPresence); there is no registry of rooms that have opened, so an
+ * id that never did instantiates cold objects that answer with nobody. ClassroomService.buildingNow bounds the total
+ * per request and per teacher; this guard only refuses a single oversized batch.
  * Returns null (unknown) rather than a guess when the fan-out is too large or a room cannot answer.
  */
 async function liveParticipants(env: Env, worldIds: string[]): Promise<string[] | null> {
   if (worldIds.length > PRESENCE_ROOM_LIMIT) return null;
   try {
-    const rooms = await Promise.all(worldIds.map(async (id) => {
-      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(id.replaceAll("-", "")));
-      const r = await stub.fetch("https://world.internal/internal/classroom-presence");
-      if (!r.ok) throw new Error("presence_unavailable");
-      const { userIds } = await r.json<{ userIds: unknown }>();
-      return Array.isArray(userIds) ? userIds.filter((value): value is string => typeof value === "string") : [];
-    }));
+    const rooms = await Promise.all(worldIds.map((id) => roomPresence(env, id)));
     return [...new Set(rooms.flat())];
   } catch {
     return null;
   }
 }
 /**
- * The same fan-out keyed by world for `GET /worlds?presence=1`: who is in each room. One internal fetch per id,
- * so ClassroomService.presenceByWorld bounds the batch and the per-caller rate; this guard only refuses one
- * oversized batch. Null (unknown) for the whole batch when any room cannot answer, never a guess.
+ * The same fan-out keyed by world for `GET /worlds?presence=1`: who is in each room. ClassroomService.presenceByWorld
+ * bounds the batch and the per-caller rate; this guard only refuses one oversized batch. Null (unknown) for the whole
+ * batch when any room cannot answer, never a guess.
  */
 async function liveParticipantsByWorld(env: Env, worldIds: string[]): Promise<Map<string, string[]> | null> {
   if (worldIds.length > PRESENCE_ROOM_LIMIT) return null;
   try {
-    const rooms = await Promise.all(worldIds.map(async (id): Promise<[string, string[]]> => {
-      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(id.replaceAll("-", "")));
-      const r = await stub.fetch("https://world.internal/internal/classroom-presence");
-      if (!r.ok) throw new Error("presence_unavailable");
-      const { userIds } = await r.json<{ userIds: unknown }>();
-      return [id, Array.isArray(userIds) ? userIds.filter((value): value is string => typeof value === "string") : []];
-    }));
+    const rooms = await Promise.all(worldIds.map(async (id): Promise<[string, string[]]> => [id, await roomPresence(env, id)]));
     return new Map(rooms);
   } catch {
     return null;

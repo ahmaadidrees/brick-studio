@@ -55,11 +55,15 @@ export class RoomSession {
   private nextCid = 0
   private hashedTo = -1
   private keyframedTo = -1
+  /** Keys this screen holds down, so a held key is sent once. */
+  private readonly heldKeys = new Set<string>()
 
   constructor(opts: RoomSessionOptions) {
     this.view = { status: 'connecting', title: '', me: 0, host: false, players: [], settings: { closed: false }, classroom: false, notice: null, generation: 0 }
     this.link = new HackableRoomLink(opts.name, {
       welcome: (w) => {
+        // The room let go of our keys when we dropped; the next press goes out again.
+        if (w.reconnect) this.heldKeys.clear()
         this.set({ title: w.title, me: w.you, host: w.host, players: w.players, settings: w.settings, classroom: w.classroom })
         this.start(w.base, w.events)
       },
@@ -131,7 +135,7 @@ export class RoomSession {
   readonly facade: Runtime = this.makeFacade()
 
   private makeFacade(): Runtime {
-    const down = new Set<string>()
+    const down = this.heldKeys
     const mouse = { x: 0, y: 0, down: false }
     const worlds = new WeakMap<object, unknown>()
     return new Proxy({} as Runtime, {

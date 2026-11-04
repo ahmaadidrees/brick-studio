@@ -75,13 +75,30 @@ describe("Hackable guest rooms", () => {
     send(owner.socket, { type: "ev", cid: "a:2", tick: 4, ev: { t: "project", text: "{}", restart: false } });
     expect(await owner.inbox.next("reject")).toMatchObject({ cid: "a:2", reason: "invalid" });
 
-    // The guest leaves: their Hero goes, for everyone.
+    // The guest drops while holding a key: the room lets go of it for them, and their Hero waits in case they come back.
     await owner.inbox.next("players"); // Sam's arrival
+    send(guest.socket, { type: "ev", cid: "b:3", tick: 5, ev: { t: "key", key: "space", down: true } });
+    let held = await owner.inbox.next("ev");
+    while ((held.e as { cid: string }).cid !== "b:3") held = await owner.inbox.next("ev");
     guest.socket.close();
+    // Sam still held right arrow from before, and space.
+    const ups: unknown[] = [];
+    while (ups.length < 2) {
+      const e = (await owner.inbox.next("ev")).e as { ev: { t: string } };
+      if (e.ev.t === "key") ups.push(e);
+    }
+    expect(ups).toMatchObject([{ by: 2, ev: { t: "key", key: "right arrow", down: false } }, { by: 2, ev: { t: "key", key: "space", down: false } }]);
+    expect((await owner.inbox.next("players")).players).toEqual([
+      { num: 1, name: "Maya", provider: true, host: true },
+      { num: 2, name: "Sam", provider: false, host: false, away: true },
+    ]);
+    // The host removes them: their Hero goes now, for everyone.
+    send(owner.socket, { type: "kick", num: 2 });
     let leave = await owner.inbox.next("ev");
     while ((leave.e as { ev: { t: string } }).ev.t !== "leave") leave = await owner.inbox.next("ev");
     expect(leave.e).toMatchObject({ by: 0, ev: { t: "leave", num: 2 } });
     expect((await owner.inbox.next("players")).players).toEqual([{ num: 1, name: "Maya", provider: true, host: true }]);
+    expect(await owner.inbox.next("settings")).toMatchObject({ banned: 1 });
 
     const stub = workerEnv.HACKABLE_ROOMS.get(workerEnv.HACKABLE_ROOMS.idFromName(roomId));
     await runInDurableObject(stub, async (_instance: HackableRoom, state) => {

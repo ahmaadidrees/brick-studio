@@ -20,6 +20,7 @@ import {
   MAX_MESSAGE_BYTES,
   MAX_PLAYERS,
   MAX_PROJECT_BYTES,
+  RECONNECT_GRACE_MS,
   ROOM_LEAD,
   cleanName,
   isPlayerEv,
@@ -61,6 +62,17 @@ interface Client {
   windowStart: number
   events: number
   lastSync: number
+  /** Keys this player holds down in the game, so the room can let them go if the player drops. */
+  held: Set<string>
+}
+
+/** A player whose connection dropped: their Hero stays (standing still) until `until`, in case they come back. */
+interface Away {
+  num: number
+  name: string
+  key: string
+  host: boolean
+  until: number
 }
 
 export interface RoomMeta {
@@ -112,6 +124,8 @@ export class HackableRoomCore {
   private banned: Set<string>
   private admitted = new Set<string>()
   private clients = new Map<RoomSocket, Client>()
+  /** Players who dropped, by player number, keeping their slot and their Hero for RECONNECT_GRACE_MS. */
+  private away = new Map<number, Away>()
   private epoch = 0
   private base: Base | null = null
   private events: StampedEvent[] = []
@@ -145,14 +159,20 @@ export class HackableRoomCore {
   }
 
   info(): RoomInfo {
-    const players = this.playerCount
+    const players = this.slotCount
     return { roomId: this.roomId, title: this.title, kit: this.kit, players, full: players >= MAX_PLAYERS, closed: this.settings.closed }
   }
 
+  /** Players connected now. */
   get playerCount(): number {
     let n = 0
     for (const c of this.clients.values()) if (c.hello) n++
     return n
+  }
+
+  /** Players with a Hero in the game: connected, or dropped and maybe coming back. */
+  private get slotCount(): number {
+    return this.playerCount + this.away.size
   }
 
   /** Whether anyone is playing now (a live session with a clock and an event log). */
@@ -165,10 +185,16 @@ export class HackableRoomCore {
   }
 
   connect(sock: RoomSocket, trusted?: TrustedIdentity) {
-    this.clients.set(sock, { num: 0, name: '', key: '', host: false, joinedAt: 0, hello: false, trusted, windowStart: this.now(), events: 0, lastSync: -Infinity })
+    this.sweep()
+    this.clients.set(sock, { num: 0, name: '', key: '', host: false, joinedAt: 0, hello: false, trusted, windowStart: this.now(), events: 0, lastSync: -Infinity, held: new Set() })
   }
 
-  disconnect(sock: RoomSocket) {
+  /**
+   * A connection closed. A player who simply dropped keeps their slot and their Hero for RECONNECT_GRACE_MS: their
+   * keys come up at once (so the Hero stands still), and their Hero goes only if they are not back in time. `gone`
+   * (removed, refused) takes the Hero at once.
+   */
+  disconnect(sock: RoomSocket, gone = false) {
     const c = this.clients.get(sock)
     this.clients.delete(sock)
     if (!c?.hello) return
@@ -177,15 +203,35 @@ export class HackableRoomCore {
       this.base = null
       this.events = []
       this.hashes.clear()
+      this.away.clear()
       return
     }
-    this.roomEvent({ t: 'leave', num: c.num })
+    for (const key of c.held) this.roomEvent({ t: 'key', key, down: false }, c.num)
+    if (!gone && c.key) {
+      this.away.set(c.num, { num: c.num, name: c.name, key: c.key, host: c.host, until: this.now() + RECONNECT_GRACE_MS })
+    } else {
+      this.roomEvent({ t: 'leave', num: c.num })
+    }
     this.broadcast({ type: 'players', players: this.players() })
+  }
+
+  /** Dropped players who did not come back in time leave now. The host calls this whenever the room hears anything. */
+  sweep() {
+    const now = this.now()
+    let changed = false
+    for (const a of [...this.away.values()]) {
+      if (a.until > now) continue
+      this.away.delete(a.num)
+      this.roomEvent({ t: 'leave', num: a.num })
+      changed = true
+    }
+    if (changed) this.broadcast({ type: 'players', players: this.players() })
   }
 
   message(sock: RoomSocket, raw: string) {
     const c = this.clients.get(sock)
     if (!c) return
+    this.sweep()
     if (raw.length > MAX_PROJECT_BYTES + 1024) return this.fail(sock, 'too_big', 'Message too large')
     let msg: ClientMsg
     try {
@@ -267,15 +313,16 @@ export class HackableRoomCore {
   /** Close one connection with a reason the player sees. */
   refuse(sock: RoomSocket, code: Extract<ServerMsg, { type: 'error' }>['code'], message: string) {
     this.fail(sock, code, message, true)
-    this.disconnect(sock)
+    this.disconnect(sock, true)
   }
 
   players(): PlayerInfo[] {
     const provider = this.provider()
-    return [...this.clients.values()]
+    const here: PlayerInfo[] = [...this.clients.values()]
       .filter((c) => c.hello)
-      .sort((a, b) => a.num - b.num)
       .map((c) => ({ num: c.num, name: c.name, provider: c === provider, host: c.host }))
+    const away: PlayerInfo[] = [...this.away.values()].map((a) => ({ num: a.num, name: a.name, provider: false, host: a.host, away: true }))
+    return [...here, ...away].sort((a, b) => a.num - b.num)
   }
 
   // -------------------------------------------------------------------------------------------
@@ -288,11 +335,14 @@ export class HackableRoomCore {
     const host = t ? t.host : !!this.hostKey && (msg as { host?: unknown }).host === this.hostKey
     if (!host && key && this.banned.has(key)) return this.fail(sock, 'kicked', 'The host removed you from this room.', true)
     if (!host && this.settings.closed && !this.admitted.has(key)) return this.fail(sock, 'closed', 'The host has closed this room to new players.', true)
-    if (this.playerCount >= MAX_PLAYERS) return this.fail(sock, 'full', `This room is full (${MAX_PLAYERS} players).`, true)
-    const used = new Set<number>()
+    // Back within the grace time: the same player number, so the same Hero, where it was.
+    const back = key ? [...this.away.values()].find((a) => a.key === key) : undefined
+    if (back) this.away.delete(back.num)
+    else if (this.slotCount >= MAX_PLAYERS) return this.fail(sock, 'full', `This room is full (${MAX_PLAYERS} players).`, true)
+    const used = new Set<number>(this.away.keys())
     for (const o of this.clients.values()) if (o.hello) used.add(o.num)
-    let num = t?.num && t.num > 0 && t.num <= MAX_PLAYERS && !used.has(t.num) ? t.num : 1
-    while (used.has(num)) num++
+    let num = back ? back.num : t?.num && t.num > 0 && t.num <= MAX_PLAYERS && !used.has(t.num) ? t.num : 1
+    while (!back && used.has(num)) num++
     c.num = num
     c.name = t?.name ? t.name.slice(0, 24) : cleanName(msg.name)
     c.key = key
@@ -308,8 +358,8 @@ export class HackableRoomCore {
       this.projectTick = 0
       this.hashes.clear()
     }
-    // Their Hero appears a moment from now, the same tick on every screen.
-    const join = this.stamp({ t: 'join', num, name: c.name })
+    // Their Hero appears a moment from now, the same tick on every screen (a player coming back still has theirs).
+    const join = back ? null : this.stamp({ t: 'join', num, name: c.name })
     this.send(sock, {
       type: 'welcome',
       you: num,
@@ -324,20 +374,21 @@ export class HackableRoomCore {
       settings: { ...this.settings },
       classroom: this.classroom,
     })
-    this.broadcast({ type: 'ev', e: join }, sock)
+    if (join) this.broadcast({ type: 'ev', e: join }, sock)
     this.broadcast({ type: 'players', players: this.players() }, sock)
   }
 
   /** An event the room makes itself, a moment ahead so nobody has to go back for it. */
-  private roomEvent(ev: RoomEv): StampedEvent {
-    const e = this.stamp(ev)
+  /** `by`: the player it is for (keys the room lets go of for a player who dropped); 0 for the room's own. */
+  private roomEvent(ev: RoomEv, by = 0): StampedEvent {
+    const e = this.stamp(ev, by)
     this.broadcast({ type: 'ev', e })
     return e
   }
 
-  private stamp(ev: RoomEv): StampedEvent {
+  private stamp(ev: RoomEv, by = 0): StampedEvent {
     const tick = Math.max(this.serverTick() + ROOM_LEAD, (this.base?.tick ?? 0) + 1)
-    const e: StampedEvent = { tick, seq: ++this.seq, by: 0, cid: `room:${this.seq}`, ev }
+    const e: StampedEvent = { tick, seq: ++this.seq, by, cid: `room:${this.seq}`, ev }
     this.events.push(e)
     return e
   }
@@ -368,6 +419,10 @@ export class HackableRoomCore {
     const e: StampedEvent = { tick, seq: ++this.seq, by: c.num, cid: msg.cid, ev: clean }
     this.events.push(e)
     this.stats.events++
+    if (clean.t === 'key') {
+      if (clean.down) c.held.add(clean.key)
+      else c.held.delete(clean.key)
+    }
     if (clean.t === 'project') {
       this.project = clean.text
       this.projectDirty = true
@@ -384,7 +439,16 @@ export class HackableRoomCore {
       }
       this.metaDirty = true
       this.fail(s, 'kicked', 'The host removed you from this room.', true)
-      this.disconnect(s)
+      this.disconnect(s, true)
+    }
+    // Someone who dropped can be removed too: they can't come back, and their Hero goes now.
+    const gone = this.away.get(num)
+    if (gone && !gone.host) {
+      this.away.delete(num)
+      this.banned.add(gone.key)
+      this.admitted.delete(gone.key)
+      this.metaDirty = true
+      this.roomEvent({ t: 'leave', num })
     }
     this.broadcast({ type: 'players', players: this.players() })
     this.broadcastSettings()

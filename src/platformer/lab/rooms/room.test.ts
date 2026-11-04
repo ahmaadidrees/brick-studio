@@ -6,7 +6,7 @@ import { createStarterProject } from '../studio/starter'
 import { createRaceStarterProject } from '../studio/race/raceProject'
 import { TICK_MS } from '../core/contracts'
 import type { LinkSocket } from './link'
-import { HASH_EVERY, KEYFRAME_EVERY, type ServerMsg } from './protocol'
+import { HASH_EVERY, KEYFRAME_EVERY, RECONNECT_GRACE_MS, type ServerMsg } from './protocol'
 import { HackableRoomCore, checkProject, type RoomSocket } from './roomCore'
 import { RoomSession } from './session'
 import { designOfText } from './game'
@@ -53,22 +53,22 @@ class Net {
     queueMicrotask(() => client.onopen?.())
     return client
   }
-  /** Run time forward in 1 ms steps, delivering messages and playing every session's frames. */
-  async run(ms: number, sessions: RoomSession[]) {
+  /** Run time forward in `step` ms steps (1 by default), delivering messages and playing every session's frames. */
+  async run(ms: number, sessions: RoomSession[], step = 1) {
     const end = now + ms
     while (now < end) {
-      now += 1
+      now += step
       await Promise.resolve()
       const due = this.queue.filter((m) => m.at <= now)
       this.queue = this.queue.filter((m) => m.at > now)
       for (const m of due) m.fn()
-      if (now % 16 === 0) for (const s of sessions) s.frame(now)
+      if (now % 16 < step) for (const s of sessions) s.frame(now)
     }
   }
 }
 
-function join(net: Net, name: string, host = false) {
-  const s = new RoomSession({ name, url: 'test://room', socket: net.socket, now: clock, ...(host ? { hostKey: 'HOST' } : {}) })
+function join(net: Net, name: string, host = false, key?: string) {
+  const s = new RoomSession({ name, url: 'test://room', socket: net.socket, now: clock, ...(host ? { hostKey: 'HOST' } : {}), ...(key ? { key } : {}) })
   s.connect()
   return s
 }
@@ -221,7 +221,7 @@ describe('a Hackable room (docs/qa/hackable-rooms M1)', () => {
     expect(a).toBe(b)
   })
 
-  it('a player leaving takes their Hero with them, for everyone', async () => {
+  it('a player leaving takes their Hero with them, for everyone, once they are not back in time', async () => {
     const room = new HackableRoomCore('r5', designText(createRaceStarterProject().design), { now: clock, hostKey: 'HOST' })
     const net = new Net(room, 30)
     const maya = join(net, 'Maya', true)
@@ -230,8 +230,90 @@ describe('a Hackable room (docs/qa/hackable-rooms M1)', () => {
     expect(playerHero(maya.runtime!.world, 2)).toBeDefined()
     sam.close()
     await net.run(600, [maya])
+    // Sam may only have dropped: his Car waits, and the host sees he is away.
+    expect(playerHero(maya.runtime!.world, 2)).toBeDefined()
+    expect(maya.view.players.map((p) => [p.name, !!p.away])).toEqual([['Maya', false], ['Sam', true]])
+    await net.run(RECONNECT_GRACE_MS, [maya], 16)
     expect(playerHero(maya.runtime!.world, 2)).toBeUndefined()
     expect(maya.view.players.map((p) => p.name)).toEqual(['Maya'])
+  })
+
+  it('a player who drops and comes back in time keeps their Hero where it was, the same in every game', async () => {
+    const room = new HackableRoomCore('r7', designText(createStarterProject().design), { now: clock, hostKey: 'HOST' })
+    const net = new Net(room, 40)
+    const maya = join(net, 'Maya', true)
+    let sam = join(net, 'Sam', false, 'sams-browser')
+    await net.run(600, [maya, sam])
+    sam.key('right arrow', true)
+    await net.run(800, [maya, sam])
+    sam.close()
+    await net.run(600, [maya])
+    // The room let go of Sam's key: his Hero stopped where it was.
+    const stopped = playerHero(maya.runtime!.world, 2)!.x
+    await net.run(1000, [maya])
+    expect(playerHero(maya.runtime!.world, 2)!.x).toBe(stopped)
+    expect(maya.view.players.find((p) => p.num === 2)?.away).toBe(true)
+
+    maya.clearNotice()
+    // Back (a reload, the same browser): the same player number, so the same Hero, still there.
+    sam = join(net, 'Sam', false, 'sams-browser')
+    const all = [maya, sam]
+    await net.run(800, all)
+    expect(sam.view.me).toBe(2)
+    expect(maya.view.players.map((p) => [p.num, !!p.away])).toEqual([[1, false], [2, false]])
+    expect(maya.view.notice ?? '').not.toMatch(/joined/)
+    for (const s of all) {
+      expect(s.runtime!.world.players?.map((p) => p.num)).toEqual([1, 2])
+      expect(playerHero(s.runtime!.world, 2)!.x).toBe(stopped)
+    }
+    sam.key('left arrow', true)
+    await net.run(1000, all)
+    sam.key('left arrow', false)
+    await net.run(1500, all)
+    expect(playerHero(sam.runtime!.world, 2)!.x).toBeLessThan(stopped)
+    const tick = Math.min(maya.timeline!.tick, sam.timeline!.tick) - 40
+    const t = tick - (tick % 4)
+    const [a, b] = printsAt(all, t)
+    expect(a).not.toBeNull()
+    expect(a).toBe(b)
+    // The grace time passing changes nothing for someone who came back.
+    await net.run(RECONNECT_GRACE_MS, all, 16)
+    expect(playerHero(maya.runtime!.world, 2)).toBeDefined()
+    expect(room.stats.resyncs).toBe(0)
+  })
+
+  it('the host can remove a player who dropped, and close the room to newcomers', () => {
+    const room = new HackableRoomCore('r8', designText(createStarterProject().design), { now: clock, hostKey: 'HOST' })
+    const inbox = (sent: ServerMsg[]): RoomSocket => ({ send: (d) => sent.push(JSON.parse(d) as ServerMsg), close: () => {} })
+    const hostSent: ServerMsg[] = []
+    const host = inbox(hostSent)
+    room.connect(host)
+    room.message(host, JSON.stringify({ type: 'hello', v: 1, name: 'Maya', key: 'm', host: 'HOST' }))
+    const sam = inbox([])
+    room.connect(sam)
+    room.message(sam, JSON.stringify({ type: 'hello', v: 1, name: 'Sam', key: 's' }))
+    room.disconnect(sam)
+    expect(room.players().map((p) => [p.name, !!p.away])).toEqual([['Maya', false], ['Sam', true]])
+    room.message(host, JSON.stringify({ type: 'kick', num: 2 }))
+    expect(room.players().map((p) => p.name)).toEqual(['Maya'])
+    const leaves = hostSent.filter((m) => m.type === 'ev' && m.e.ev.t === 'leave')
+    expect(leaves).toHaveLength(1)
+    // Removed: Sam can't come back.
+    const again: ServerMsg[] = []
+    const back = inbox(again)
+    room.connect(back)
+    room.message(back, JSON.stringify({ type: 'hello', v: 1, name: 'Sam', key: 's' }))
+    expect(again[0]).toMatchObject({ type: 'error', code: 'kicked' })
+    // Closed: a newcomer is turned away, but the host's Restart still works.
+    room.message(host, JSON.stringify({ type: 'settings', closed: true }))
+    expect(room.info().closed).toBe(true)
+    const late: ServerMsg[] = []
+    const lee = inbox(late)
+    room.connect(lee)
+    room.message(lee, JSON.stringify({ type: 'hello', v: 1, name: 'Lee', key: 'l' }))
+    expect(late[0]).toMatchObject({ type: 'error', code: 'closed' })
+    room.message(host, JSON.stringify({ type: 'unban' }))
+    expect(hostSent.filter((m) => m.type === 'settings').at(-1)).toMatchObject({ banned: 0, settings: { closed: true } })
   })
 
   it('refuses events the room does not order, and edits from someone who is not the host', () => {
