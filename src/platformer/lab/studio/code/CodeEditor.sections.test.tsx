@@ -46,7 +46,7 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
     expect(entry).toHaveTextContent(`How I move · ${movement.length} scripts`)
     expect(entry).toHaveTextContent('See inside')
     const top = shownIds(ws).map((id) => ws.getBlockById(id)!.type)
-    expect(top).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived')])
+    expect(top).toEqual(['event_whenflagclicked', ...Array(5).fill('event_whenbroadcastreceived')])
 
     fireEvent.click(entry)
     const trail = () => screen.getByRole('navigation', { name: 'Where you are' })

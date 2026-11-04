@@ -12,6 +12,7 @@ import type { BrickDef, LevelDesign } from '../../core/contracts'
 import type { MadeBrick } from '../starter'
 import type { StudioProject } from '../store'
 import { createMovingPlatformBrick, createUpDownPlatformBrick, LIFT_BRICK_ID, PLATFORM_BRICK_ID } from './platforms'
+import { CHECKPOINT_BRICK_ID, createCheckpointBrick } from './checkpoint'
 
 export interface ExtraBrick {
   /** Catalog id, the id the brick has in a level. */
@@ -26,6 +27,7 @@ export interface ExtraBrick {
 export const PLATFORMER_EXTRAS: readonly ExtraBrick[] = [
   { id: PLATFORM_BRICK_ID, category: 'blocks', hint: 'Glides side to side and carries you', make: () => createMovingPlatformBrick() },
   { id: LIFT_BRICK_ID, category: 'blocks', hint: 'Goes up and down and carries you', make: () => createUpDownPlatformBrick() },
+  { id: CHECKPOINT_BRICK_ID, category: 'course', hint: 'Touch it: get hurt and you come back here', make: () => createCheckpointBrick() },
 ]
 
 const BY_ID: ReadonlyMap<string, ExtraBrick> = new Map(PLATFORMER_EXTRAS.map((x) => [x.id, x]))

@@ -215,7 +215,7 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     const tracker = new SectionTracker(sectionsForBrick({ id: HERO_BRICK_ID }))
     const shown = (state: typeof TOP_VIEW) => ws.getTopBlocks(false).filter((b) => isShownIn(b, state, tracker.sectionOf))
     const top = shown(TOP_VIEW)
-    expect(top.map((b) => b.type)).toEqual(['event_whenflagclicked', ...Array(4).fill('event_whenbroadcastreceived'), 'platformer_everytick'])
+    expect(top.map((b) => b.type)).toEqual(['event_whenflagclicked', ...Array(5).fill('event_whenbroadcastreceived'), 'platformer_everytick'])
     expect(top[top.length - 1]).toBe(kid)
     // The section's list shows no blocks; "all of them" shows every movement script; one script shows just it.
     expect(shown(openSection('how-i-move'))).toEqual([])

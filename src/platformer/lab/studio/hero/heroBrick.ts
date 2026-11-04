@@ -716,6 +716,17 @@ export function createHeroWorkspace(): WorkspaceJson {
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
   receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(keys('space', 'x', 'k'), [setY(11)], [setY(6.5)])])
+  // A Checkpoint I touched says checkpoint (parity bucket B, the classic checkpoints): where I next stand becomes my
+  // start, so getting hurt brings me back here. Only where I come back changes; getting hurt itself is the same.
+  receive(
+    'checkpoint',
+    'When I reach a Checkpoint: next time I get hurt, I come back here',
+    later(() => [
+      blk('control_wait_until', { inputs: { CONDITION: and(onGround(), eq(v('hurt_time'), 0)) } }),
+      set('start_x', { block: blk('motion_xposition') }),
+      set('start_y', { block: blk('motion_yposition') }),
+    ]),
+  )
 
   for (const [block, text] of labels) withLabel(block, text)
 
