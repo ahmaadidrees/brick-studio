@@ -14,9 +14,25 @@ function resolveFrom(file: string, spec: string): string {
 
 const sources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./**/*.test.{ts,tsx}'], { query: '?raw', import: 'default', eager: true })
 
+/**
+ * Hackable 3D's drawing (lab/studio/three's three.js view, and the 3D spike's dev page) is its own chunk: it may use
+ * three.js, and nothing else may import it except through import(), so the 2D studio never downloads it.
+ */
+const THREE_CHUNK = /^\.\/lab\/(studio\/three\/(Stage3D|TestRoom3D|render3d)\.tsx?|kit3d\/spike\/)/
+const isThreeChunk = (file: string) => THREE_CHUNK.test(file)
+
 describe('2D chunk boundaries', () => {
+  it('reaches Hackable 3D\'s three.js chunk only through import()', () => {
+    for (const [file, source] of Object.entries(sources)) {
+      if (isThreeChunk(file)) continue
+      for (const [, spec] of source.matchAll(/^\s*(?:import|export)\s[^'"]*from\s+'(\.[^']*)'/gm)) {
+        expect(isThreeChunk(`./${resolveFrom(file.slice(2), spec)}.tsx`) || isThreeChunk(`./${resolveFrom(file.slice(2), spec)}.ts`), `${file} imports ${spec} statically`).toBe(false)
+      }
+    }
+  })
+
   it('imports no 3D code', () => {
-    const files = Object.entries(sources)
+    const files = Object.entries(sources).filter(([file]) => !isThreeChunk(file))
     expect(files.length).toBeGreaterThan(20)
     for (const [file, source] of files) {
       expect(source, file).not.toMatch(/from\s+'three'/)
