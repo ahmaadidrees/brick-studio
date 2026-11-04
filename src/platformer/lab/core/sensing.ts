@@ -65,12 +65,13 @@ function keyOption(ctx: PrimitiveCtx): Value {
   return ctx.field('KEY_OPTION')
 }
 
-const SPECIAL_KEYS = new Set(['space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'enter'])
+const SPECIAL_KEYS = new Set(['space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'enter', 'shift'])
 
 /** Block argument → contract key name. Letters are lowercase to match `world.keysDown`. */
 function toScratchKey(arg: Value): string {
   if (typeof arg === 'number' && Number.isFinite(arg)) {
     if (arg >= 48 && arg <= 90) return String.fromCharCode(arg).toLowerCase()
+    if (arg === 16) return 'shift'
     if (arg === 32) return 'space'
     if (arg === 37) return 'left arrow'
     if (arg === 38) return 'up arrow'

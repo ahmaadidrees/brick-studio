@@ -495,7 +495,7 @@ export interface World {
   targets: Target[]
   bricks: Record<string, BrickDef>
   /**
-   * Scratch key names: 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'a'..'z', '0'..'9'. In a room,
+   * Scratch key names: 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'a'..'z', '0'..'9', plus 'shift'. In a room,
    * every key some player holds.
    */
   keysDown: Set<string>

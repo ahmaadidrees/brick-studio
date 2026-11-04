@@ -359,7 +359,7 @@ describe('The Hero brick is built from open blocks', () => {
       'Start each tick with the normal numbers',
       'Wall jump (part 1)',
       'Wall slide (part 1)',
-      'Run with Z or J',
+      'Run with Z, J or Shift',
       'Skid',
       'Walk',
       'Run meter',

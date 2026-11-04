@@ -25,10 +25,10 @@ export function saysOuch(design: LevelDesign): boolean {
 export const COINS_VARIABLE = 'coins'
 
 /** The keys the Hero reads (hero/heroBrick.ts "read keys"), the classic Platformer's: shown after the ← → keys. */
-export const PLAY_CONTROLS_HINT = 'or A D move · Space, X or K jumps (hold to go higher) · hold Z or J to run'
+export const PLAY_CONTROLS_HINT = 'or A D move · Space, X or K jumps (hold to go higher) · hold Z, J or Shift to run'
 
 /** Keys the Hero already has (the touch buttons press these): a power reading one needs no button or hint of its own. */
-export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'a', 'd', 'space', 'x', 'k', 'z', 'j', 'any'])
+export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'a', 'd', 'space', 'x', 'k', 'z', 'j', 'shift', 'any'])
 
 /** A key a snapped power reads beyond the Hero's own, and the power's name (Dash reads c). */
 export interface PowerKey {

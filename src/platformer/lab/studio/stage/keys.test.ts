@@ -21,8 +21,13 @@ describe('keys mapping', () => {
     expect(browserKeyToScratchKey({ key: '9' })).toBe('9')
   })
 
+  it('maps Shift (either side) to shift, the classic run key', () => {
+    expect(browserKeyToScratchKey({ key: 'Shift', code: 'ShiftLeft' })).toBe('shift')
+    expect(browserKeyToScratchKey({ key: 'Shift', code: 'ShiftRight' })).toBe('shift')
+    expect(browserKeyToScratchKey({ key: 'Unidentified', code: 'ShiftRight' })).toBe('shift')
+  })
+
   it('returns null for unhandled keys', () => {
-    expect(browserKeyToScratchKey({ key: 'Shift' })).toBeNull()
     expect(browserKeyToScratchKey({ key: 'Control' })).toBeNull()
     expect(browserKeyToScratchKey({ key: 'Alt' })).toBeNull()
   })

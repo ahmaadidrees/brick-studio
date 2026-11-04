@@ -2,7 +2,7 @@
  * Keyboard mapping from browser KeyboardEvent to Scratch key names.
  * Keys recognized by Scratch:
  * 'space', 'left arrow', 'right arrow', 'up arrow', 'down arrow', 'enter',
- * 'a'..'z', '0'..'9'.
+ * 'a'..'z', '0'..'9', and 'shift' (not Scratch's: the classic Platformer runs with it).
  */
 export function browserKeyToScratchKey(event: { key: string; code?: string }): string | null {
   const k = event.key
@@ -12,6 +12,7 @@ export function browserKeyToScratchKey(event: { key: string; code?: string }): s
   if (k === 'ArrowDown') return 'down arrow'
   if (k === ' ' || k === 'Spacebar') return 'space'
   if (k === 'Enter') return 'enter'
+  if (k === 'Shift') return 'shift'
 
   if (k.length === 1) {
     const lower = k.toLowerCase()
@@ -30,6 +31,7 @@ export function browserKeyToScratchKey(event: { key: string; code?: string }): s
     }
     if (event.code === 'Space') return 'space'
     if (event.code === 'Enter') return 'enter'
+    if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') return 'shift'
     if (event.code === 'ArrowLeft') return 'left arrow'
     if (event.code === 'ArrowRight') return 'right arrow'
     if (event.code === 'ArrowUp') return 'up arrow'

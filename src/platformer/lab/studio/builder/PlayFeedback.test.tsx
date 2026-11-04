@@ -22,8 +22,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     expect(store.getState().mode).toBe('play')
     const hint = screen.getByText(/Space, X or K jumps/)
     expect(hint.textContent).toMatch(/move/)
-    expect(hint.textContent).toMatch(/hold Z or J to run/)
-    expect(hint.textContent).not.toMatch(/Shift/) // the Hero runs on X (heroBrick.ts "read keys")
+    expect(hint.textContent).toMatch(/hold Z, J or Shift to run/)
     expect(screen.getByRole('status', { name: 'Coins: 0' })).toBeTruthy()
     // a Coin was collected: the Stage's variable changes, the counter follows
     const runtime = store.getState().runtime!
@@ -114,7 +113,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     store.snapPower('brick_hero', builtInPowers().find((p) => p.id === 'dash')!)
     render(<StudioShell store={store} />)
     startPlay(store)
-    expect(screen.getByText(/Space, X or K jumps/).textContent).toMatch(/hold Z or J to run · C for Dash/)
+    expect(screen.getByText(/Space, X or K jumps/).textContent).toMatch(/hold Z, J or Shift to run · C for Dash/)
   })
 
   it('Play with no Goal plays, and the hint says there is nowhere to finish', () => {

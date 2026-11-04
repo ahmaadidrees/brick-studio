@@ -97,7 +97,7 @@ export interface HeroKnob {
 export const HERO_KNOBS: readonly HeroKnob[] = [
   // Running
   { id: 'walk_top', name: 'walk speed', hint: 'How fast I walk.', value: 1.5 * SPEED, from: 'walkMax 1.5 px/frame x 2' },
-  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold Z or J.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
+  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold Z, J or Shift.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
   { id: 'p_top', name: 'full run speed', hint: 'My fastest run, once the run meter is full.', value: 3.5 * SPEED, from: 'pMax 3.5 px/frame x 2' },
   { id: 'walk_push', name: 'walk speed-up', hint: 'How quickly I get up to walking speed.', value: engine(0.0547) * ACCEL, from: 'walkAccel 0.0547 (14/256) px/frame^2 x 4' },
   { id: 'run_push', name: 'run speed-up', hint: 'How quickly I get up to running speed.', value: engine(0.0625) * ACCEL, from: 'runAccel 0.0625 (16/256) px/frame^2 x 4' },
@@ -202,7 +202,7 @@ export function createHeroOuchSound(): Sound {
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'steer', name: 'steer' }, // -1 left, 0 none, 1 right (with the wall-jump lock applied)
   { id: 'raw_steer', name: 'arrow' }, // -1 left, 0 none, 1 right (just the arrow keys)
-  { id: 'running', name: 'running' }, // 1 while z or j (run) is held
+  { id: 'running', name: 'running' }, // 1 while z, j or shift (run) is held
   { id: 'way', name: 'way' }, // sign of x speed
   { id: 'speed', name: 'speed' }, // |x speed|, then the new speed
   { id: 'cap', name: 'top speed now' },
@@ -343,7 +343,7 @@ export function createHeroWorkspace(): WorkspaceJson {
   const not = (a: Conn): Conn => ({ block: blk('operator_not', { inputs: { OPERAND: a } }) })
   const abs = (a: Conn): Conn => ({ block: blk('operator_mathop', { fields: { OPERATOR: 'abs' }, inputs: { NUM: a } }) })
   const key = (k: string): Conn => ({ block: blk('sensing_keypressed', { fields: { KEY_OPTION: k } }) })
-  // The classic keys (parity bucket A, 2026-11-03): A and D beside the arrows, Space, X or K to jump, Z or J to run. The
+  // The classic keys (parity bucket A, 2026-11-03): A and D beside the arrows, Space, X or K to jump, Z, J or Shift to run. The
   // first key keeps the block (and id) the Hero always had; its partners are joined on with "or" blocks added later.
   const keys = (first: string, ...more: string[]): Conn => {
     const one = key(first)
@@ -434,13 +434,13 @@ export function createHeroWorkspace(): WorkspaceJson {
     'When the level starts: I do my own gravity and my own moving, and remember where I start',
   )
 
-  tick('basics', 'Read the keys: arrows or A and D to walk, Z or J to run, Space, X or K to jump', [
+  tick('basics', 'Read the keys: arrows or A and D to walk, Z, J or Shift to run, Space, X or K to jump', [
     set('raw_steer', 0),
     when(keys('right arrow', 'd'), [set('raw_steer', 1)]),
     when(keys('left arrow', 'a'), [change('raw_steer', -1)]), // both ways at once cancel out
     set('steer', v('raw_steer')),
     set('running', 0),
-    when(keys('z', 'j'), [set('running', 1)]),
+    when(keys('z', 'j', 'shift'), [set('running', 1)]),
     // "space just pressed" is only true on the first tick jump is down, so holding it never jumps twice.
     set('pressed', 0),
     either(keys('space', 'x', 'k'), [when(eq(v('space_down'), 0), [set('pressed', 1)]), set('space_down', 1)], [set('space_down', 0)]),
@@ -476,7 +476,7 @@ export function createHeroWorkspace(): WorkspaceJson {
     set('wall_hit', 0), // the bump hats set it again later this tick if we are still pushing
   ])
 
-  tick('feel', 'Run with Z or J: a higher top speed and a stronger push, and p speed once the run meter is full', [
+  tick('feel', 'Run with Z, J or Shift: a higher top speed and a stronger push, and p speed once the run meter is full', [
     when(eq(v('running'), 1), [
       either(
         onGround(),

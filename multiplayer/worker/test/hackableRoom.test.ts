@@ -62,6 +62,13 @@ describe("Hackable guest rooms", () => {
     expect((await owner.inbox.next("ev")).e).toMatchObject({ by: 2, cid: "b:1", ev: { t: "key", key: "right arrow", down: true } });
     // Everyone hears every event, their own too (that is how a game learns the room took it).
     expect((await guest.inbox.next("ev")).e).toMatchObject({ cid: "b:1" });
+    // Shift is a game key (the Hero runs with it, as in classic).
+    send(guest.socket, { type: "ev", cid: "b:s1", tick: 1, ev: { t: "key", key: "shift", down: true } });
+    expect((await owner.inbox.next("ev")).e).toMatchObject({ by: 2, cid: "b:s1", ev: { t: "key", key: "shift", down: true } });
+    expect((await guest.inbox.next("ev")).e).toMatchObject({ cid: "b:s1" });
+    send(guest.socket, { type: "ev", cid: "b:s2", tick: 1, ev: { t: "key", key: "shift", down: false } });
+    expect((await owner.inbox.next("ev")).e).toMatchObject({ by: 2, cid: "b:s2", ev: { t: "key", key: "shift", down: false } });
+    expect((await guest.inbox.next("ev")).e).toMatchObject({ cid: "b:s2" });
 
     // A guest's edit is refused; the host's goes to everyone and becomes the room's project.
     send(guest.socket, { type: "ev", cid: "b:2", tick: 2, ev: { t: "restart" } });

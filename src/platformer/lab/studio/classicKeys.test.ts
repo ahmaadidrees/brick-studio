@@ -1,6 +1,6 @@
 /**
  * The classic keys (parity bucket A, 2026-11-03): the Hero walks with the arrows or A and D, jumps with Space, X or K and
- * runs with Z or J, like the classic Platformer; the Car drives with the arrows or W A S D. An untouched Car saved
+ * runs with Z, J or Shift, like the classic Platformer; the Car drives with the arrows or W A S D. An untouched Car saved
  * before upgrades when the project opens; a Car a kid changed keeps its blocks.
  */
 import * as Blockly from 'blockly/core'
@@ -14,7 +14,8 @@ import { play } from '../core/index'
 import { validateDesign } from '../core/project'
 import { buildEditorContext } from './code/context'
 import { createHeroTestDesign } from './hero/heroLevel'
-import { HERO_BRICK_ID } from './hero/heroBrick'
+import { HERO_BRICK_ID, createHeroBrick } from './hero/heroBrick'
+import { addPlayer } from '../core/players'
 import { EARLIER_BUILT_IN_FINGERPRINTS, upgradeUntouchedBricks, workspaceFingerprint } from './remix'
 import { CAR_BRICK_ID } from './race/carBrick'
 import { createRaceStarterProject } from './race/raceProject'
@@ -52,6 +53,28 @@ describe('the Hero reads the classic keys', () => {
     const ran = Number(hero(['right arrow', 'z']).at(-1)!.split(',')[0])
     const walked = Number(hero(['right arrow']).at(-1)!.split(',')[0])
     expect(ran).toBeGreaterThan(walked + 20)
+  })
+
+  it('Shift runs like Z, as in the classic Platformer (integration, 2026-11-03)', () => {
+    expect(hero(['right arrow', 'shift'])).toEqual(hero(['right arrow', 'z']))
+    // A room player's Shift reaches only their own Hero.
+    const design = createHeroTestDesign()
+    const rt = play(design)
+    const spawn = design.copies.find((c) => c.brickId === HERO_BRICK_ID)!
+    const one = addPlayer(rt, { num: 1, name: 'Maya' }, spawn)!
+    const two = addPlayer(rt, { num: 2, name: 'Sam' }, spawn)!
+    for (const n of [1, 2]) rt.pressKey('right arrow', n)
+    rt.pressKey('shift', 1)
+    for (let i = 0; i < 50; i++) rt.step()
+    expect(one.x - spawn.x).toBeGreaterThan(two.x - (spawn.x + 20) + 20)
+  })
+
+  it("the Hero's shift block keeps its key through the code editor", () => {
+    const { workspace } = createHeroBrick()
+    expect(JSON.stringify(workspace)).toContain('"KEY_OPTION":"shift"')
+    // Blockly keeps a menu value only if the menu has it (core/editor/context.ts DEFAULT_KEYS).
+    const count = (ws: unknown) => JSON.stringify(ws).split('"KEY_OPTION":"shift"').length - 1
+    expect(count(throughBlockly(workspace))).toBe(count(workspace))
   })
 })
 

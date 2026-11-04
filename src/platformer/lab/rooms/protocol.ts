@@ -34,7 +34,7 @@ export const RECONNECT_GRACE_MS = 30_000
 
 /** The keys a game hears (studio/stage/keys.ts browserKeyToScratchKey). */
 export function isGameKey(key: unknown): key is string {
-  return typeof key === 'string' && key.length <= MAX_KEY_LENGTH && /^(space|enter|(left|right|up|down) arrow|[a-z0-9])$/.test(key)
+  return typeof key === 'string' && key.length <= MAX_KEY_LENGTH && /^(space|enter|shift|(left|right|up|down) arrow|[a-z0-9])$/.test(key)
 }
 
 /** What happens to the game, in the room's order. */

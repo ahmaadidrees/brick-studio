@@ -6,7 +6,7 @@ import { createStarterProject } from '../studio/starter'
 import { createRaceStarterProject } from '../studio/race/raceProject'
 import { TICK_MS } from '../core/contracts'
 import type { LinkSocket } from './link'
-import { HASH_EVERY, KEYFRAME_EVERY, RECONNECT_GRACE_MS, type ServerMsg } from './protocol'
+import { HASH_EVERY, KEYFRAME_EVERY, RECONNECT_GRACE_MS, isGameKey, type ServerMsg } from './protocol'
 import { HackableRoomCore, checkProject, type RoomSocket } from './roomCore'
 import { RoomSession } from './session'
 import { designOfText } from './game'
@@ -327,5 +327,19 @@ describe('a Hackable room (docs/qa/hackable-rooms M1)', () => {
     room.message(sock, JSON.stringify({ type: 'ev', cid: 'c', tick: 5, ev: { t: 'restart' } }))
     const rejects = sent.filter((m) => m.type === 'reject').map((m) => (m as { cid: string; reason: string }))
     expect(rejects).toEqual([{ type: 'reject', cid: 'a', reason: 'invalid' }, { type: 'reject', cid: 'b', reason: 'invalid' }, { type: 'reject', cid: 'c', reason: 'host_only' }])
+  })
+
+  it('orders Shift like any other game key (the Hero runs with it, as in classic)', () => {
+    expect(isGameKey('shift')).toBe(true)
+    expect(isGameKey('Shift')).toBe(false)
+    expect(isGameKey('shift left')).toBe(false)
+    const room = new HackableRoomCore('r7', designText(createStarterProject().design), { now: clock })
+    const sent: ServerMsg[] = []
+    const sock: RoomSocket = { send: (d) => sent.push(JSON.parse(d) as ServerMsg), close: () => {} }
+    room.connect(sock)
+    room.message(sock, JSON.stringify({ type: 'hello', v: 1, name: 'Kid', key: 'k1' }))
+    room.message(sock, JSON.stringify({ type: 'ev', cid: 's', tick: 5, ev: { t: 'key', key: 'shift', down: true } }))
+    expect(sent.filter((m) => m.type === 'reject')).toEqual([])
+    expect(sent.filter((m) => m.type === 'ev').map((m) => (m as { e: { cid: string; ev: unknown } }).e).find((e) => e.cid === 's')?.ev).toEqual({ t: 'key', key: 'shift', down: true })
   })
 })
