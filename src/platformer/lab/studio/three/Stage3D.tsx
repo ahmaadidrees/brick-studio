@@ -154,7 +154,11 @@ export function Stage3D({ store, tools, codeView = false, onOpenCode }: { store:
       ro?.observe(wrap)
       view.resize(wrap.clientWidth, wrap.clientHeight)
     }
+    // My projects' picture (StudioApp stagePicture) reads the canvas outside a frame: draw first, so it isn't black.
+    const picture = () => view.render()
+    canvas.addEventListener('stage:picture', picture)
     return () => {
+      canvas.removeEventListener('stage:picture', picture)
       ro?.disconnect()
       view.dispose()
       viewRef.current = null

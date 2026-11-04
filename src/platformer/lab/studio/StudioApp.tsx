@@ -262,6 +262,8 @@ let compacted = false
 function stagePicture(): string | undefined {
   const canvas = document.querySelector<HTMLCanvasElement>('.cl-stage-frame canvas')
   if (!canvas || !canvas.width || !canvas.height) return undefined
+  // A WebGL stage (Hackable 3D) keeps its picture only while it draws: let it draw now, in this same task.
+  canvas.dispatchEvent(new Event('stage:picture'))
   try {
     // 16:9 like the cards; from the bottom of the stage, where the ground and most bricks are.
     const out = document.createElement('canvas')
