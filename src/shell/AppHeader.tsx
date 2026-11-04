@@ -79,6 +79,8 @@ export type AppHeaderEditorProps = CommonProps & {
   onNewBuild?: () => void
   onImportProject?: (file: File) => void | Promise<void>
   onExportProject?: () => void
+  /** The classic 3D builder's "Open in Hackable 3D" (a copy; the build is left alone). The ⋯ menu shows it when given. */
+  onOpenInHackable3d?: () => void
   /** Accepted for parity with the current header; not rendered (the People entry starts a shared world). */
   onPublishWorld?: () => void
   onOpenSettings?: () => void
@@ -208,7 +210,7 @@ function PeopleEntry({ livePolicy, onStartLiveWorld, startTitle = 'Start a share
 }
 
 function EditorHeader({
-  onNewBuild, onImportProject, onExportProject, onOpenSettings, onOpenHelp,
+  onNewBuild, onImportProject, onExportProject, onOpenInHackable3d, onOpenSettings, onOpenHelp,
   worldTitle, onRenameWorld, saveStatus,
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
@@ -266,6 +268,7 @@ function EditorHeader({
           onExportProject={onExportProject}
           onImportProject={inRoom ? undefined : onImportProject}
           onNewBuild={inRoom ? undefined : onNewBuild}
+          onOpenInHackable3d={inRoom ? undefined : onOpenInHackable3d}
           onOpenSettings={onOpenSettings}
           onOpenHelp={onOpenHelp}
         />}

@@ -4,10 +4,18 @@
  * The host's project goes to the room: a moment after each change the bricks change live for everyone, and the host's
  * Play (or Play again) starts everyone again from the project as it is. Anyone else's studio just shows the room's game.
  */
-import type { LevelDesign } from '../core/contracts'
+import { designKit, type LevelDesign } from '../core/contracts'
 import { designText } from '../core/save'
 import type { StudioRoom, StudioStore } from '../studio/store'
 import type { RoomSession } from './session'
+
+/** What a Hackable 3D project's room says, until its rooms come (D3, docs/qa/hackable-3d/SPIKE.md). */
+export const ROOMS_3D_SOON = 'Playing Hackable 3D together is coming soon.'
+
+/** Why this project cannot be played together in a room yet, in the kid's words, or null when it can. */
+export function roomRefusal(design: Pick<LevelDesign, 'kit'>): string | null {
+  return designKit(design) === '3d' ? ROOMS_3D_SOON : null
+}
 
 /** How long after the host's last change the project goes out live. */
 export const LIVE_EDIT_DELAY_MS = 800

@@ -153,3 +153,11 @@ it('a Hackable Racing project on this computer says so and opens at the race add
   expect(within(platformer).getByText('Hackable Platformer')).toBeInTheDocument()
   expect(within(platformer).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/2d/hackable?draft=p1')
 })
+
+it('a Hackable 3D project on this computer says so and opens at /3d/hackable', () => {
+  saveHackableText('d1', 'Sky castle', JSON.stringify({ schemaVersion: 1, design: { name: 'Sky castle', kit: '3d' }, workspaces: {} }))
+  render(<LocalProjectsSection signedIn={false} version={0} onChanged={vi.fn()} {...feedback()} />)
+  const world = screen.getByRole('article', { name: 'Sky castle' })
+  expect(within(world).getByText('Hackable 3D')).toBeInTheDocument()
+  expect(within(world).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/3d/hackable?draft=d1')
+})

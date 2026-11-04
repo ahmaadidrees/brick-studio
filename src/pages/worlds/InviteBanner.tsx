@@ -1,6 +1,6 @@
 import { Play } from 'lucide-react'
 import { Button } from '../../ui'
-import { initialsOf, liveHref, nameList, type WorldsWorld } from './worldsData'
+import { canPlayTogether, initialsOf, liveHref, nameList, type WorldsWorld } from './worldsData'
 
 type Props = {
   /** Already narrowed to the unseen invites, newest first; the banner shows at most three. */
@@ -28,7 +28,7 @@ export function InviteBanner({ invites, busy, onDismiss, onJoin }: Props) {
       return <article key={world.id} className="worlds-invite" aria-label={`Invite to ${world.title}`}>
         <span className="worlds-invite-disc" aria-hidden="true">{initialsOf(world.ownerName)}</span>
         <div className="worlds-invite-text">
-          <strong>{world.ownerName} invited you to {world.format === 'hackable' ? 'play' : world.canEdit ? 'build' : 'look at'} {world.title}</strong>
+          <strong>{world.ownerName} invited you to {canPlayTogether(world) ? 'play' : world.canEdit && world.format !== 'hackable' ? 'build' : 'look at'} {world.title}</strong>
           {here.length > 0 && <small className="worlds-invite-live">
             <span className="worlds-live-dot" aria-hidden="true" /> {nameList(here)} {world.format === 'hackable' ? 'playing' : 'building'} right now
           </small>}
@@ -36,7 +36,7 @@ export function InviteBanner({ invites, busy, onDismiss, onJoin }: Props) {
         <div className="worlds-invite-actions">
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => onDismiss(world)}>Not now</Button>
           <Button href={liveHref(world)} variant="primary" size="sm" icon={<Play size={16} />} onClick={() => onJoin(world)}>
-            {world.format === 'hackable' ? 'Play together' : world.canEdit ? 'Join and build' : 'Visit'}
+            {canPlayTogether(world) ? 'Play together' : world.canEdit && world.format !== 'hackable' ? 'Join and build' : 'Visit'}
           </Button>
         </div>
       </article>

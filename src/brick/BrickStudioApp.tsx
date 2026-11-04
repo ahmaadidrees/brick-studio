@@ -1365,6 +1365,25 @@ export default function BrickStudioApp({
     }
     window.location.assign(href)
   })().catch(reason => useBrickStore.setState({ toast: String(reason) })) }
+  // "Open in Hackable 3D": a copy of this build with code inside, kept like any new Hackable project (the account when
+  // signed in, else this browser). This build is left exactly as it is, and saved as usual before leaving.
+  const openingHackable3d = useRef(false)
+  const openInHackable3d = livePolicy || readOnly ? undefined : () => {
+    if (openingHackable3d.current) return
+    openingHackable3d.current = true
+    useBrickStore.setState({ toast: 'Making a Hackable 3D copy of this build…' })
+    void (async () => {
+      try {
+        const { keepClassicAsHackable3d } = await import('../platformer/lab/studio/persist/openInHackable3d')
+        const href = await keepClassicAsHackable3d(useBrickStore.getState().getDocumentSnapshot(), cloud.world?.title ?? '')
+        leaveStudioFor(href)
+      } catch (reason) {
+        useBrickStore.setState({ toast: `This build could not be opened in Hackable 3D. ${reason instanceof Error && reason.message ? reason.message : 'Try again in a moment.'}` })
+      } finally {
+        openingHackable3d.current = false
+      }
+    })()
+  }
   const goHome = () => {
     if (livePolicy) {
       livePolicy.onGoHome?.()
@@ -1459,6 +1478,7 @@ export default function BrickStudioApp({
         <AppHeader
           variant="editor"
           {...documentCommands}
+          onOpenInHackable3d={openInHackable3d}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenHelp={onboarding.reopen}
           worldTitle={cloud.world?.title}

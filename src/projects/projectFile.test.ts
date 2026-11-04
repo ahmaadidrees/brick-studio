@@ -62,6 +62,20 @@ describe('one project file for every kind', () => {
     expect(readProjectFile(JSON.stringify({ ...file, document: { format: 'brickgineers-hackable', version: 1 } }))).toMatchObject({ ok: false, message: expect.stringMatching(/^That Hackable project could not be opened/) })
   })
 
+  it('a Hackable 3D project travels as a Hackable file too, and My projects calls it Hackable 3D', () => {
+    const save = { schemaVersion: 1, design: { name: 'Sky castle', kit: '3d' }, workspaces: {} }
+    const document = { format: 'brickgineers-hackable' as const, version: 1 as const, save }
+    const file = projectFile({ title: 'Sky castle', content: { kind: 'hackable', document } })
+    expect(file.kind).toBe('hackable')
+    const back = roundTrip(JSON.stringify(file))
+    expect(back).toEqual({ title: 'Sky castle', content: { kind: 'hackable', document } })
+    expect(kindOfContent(back.content)).toBe('hackable-3d')
+    expect(PROJECT_KIND_LABEL[kindOfContent(back.content)]).toBe('Hackable 3D')
+    expect(hackableDocumentKit(document)).toBe('3d')
+    // A classic 3D build keeps its own label.
+    expect(PROJECT_KIND_LABEL['3d']).toBe('3D build')
+  })
+
   it('names files safely', () => {
     expect(projectFileName('Maya’s Big Race!')).toBe('maya-s-big-race.brickgineers')
     expect(projectFileName('   ')).toBe('my-project.brickgineers')

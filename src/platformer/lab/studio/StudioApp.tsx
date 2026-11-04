@@ -7,7 +7,7 @@ import { clientKey, savedGuestName } from '../../ui/prefs'
 import { designText } from '../core/save'
 import { RoomBar } from '../rooms/RoomBar'
 import { RoomSession } from '../rooms/session'
-import { StudioRoomLink } from '../rooms/studioRoom'
+import { StudioRoomLink, roomRefusal } from '../rooms/studioRoom'
 import { classRoomSocketUrl, createGuestRoom, guestRoomSocketUrl, rememberOwnerToken, roomHref } from '../rooms/endpoints'
 import type { HeaderSaveStatus } from '../../../shell/AppHeader'
 import { StudioShell } from './screen/StudioShell'
@@ -42,8 +42,11 @@ export interface StudioRoute {
   world?: string
   draft?: string
   fresh: boolean
-  /** The address's game (/2d/hackable-race): what a new project is, and which newest one opens. Absent: the Platformer. */
-  kit?: 'race'
+  /**
+   * The address's game (/2d/hackable-race, /3d/hackable): what a new project is, and which newest one opens. Absent: the
+   * Platformer.
+   */
+  kit?: 'race' | '3d'
   /** Open the project's room at once (the owner, after inviting classmates to play). */
   together?: boolean
 }
@@ -82,7 +85,7 @@ const homeOf = (opened: Opened): Home =>
 
 type Opening = { kind: 'opening' } | { kind: 'problem'; title: string; body: string } | Opened
 
-/** A new project of the address's game: the Platformer's starter level, or Hackable Racing's beginner track. */
+/** A new project of the address's game: the Platformer's starter level, Hackable Racing's beginner track, or Hackable 3D's starter world. */
 const newProject = (kit: ScreensKit): StudioProject => {
   const screens = KIT_SCREENS[kit]
   const project = screens.starter()
@@ -95,7 +98,7 @@ const kitIn = (project: StudioProject) => designKit(project.design)
 /** Replace the address without a reload, so a refresh opens this same project. */
 const settle = (href: string) => window.history.replaceState(window.history.state, '', href)
 
-/** Exported for tests: what a /2d/hackable (or /2d/hackable-race) address opens. */
+/** Exported for tests: what a /2d/hackable (or /2d/hackable-race, /3d/hackable) address opens. */
 export async function openStudioRoute(route: StudioRoute): Promise<Opening> {
   return open(route)
 }
@@ -117,7 +120,7 @@ async function open(route: StudioRoute): Promise<Opening> {
 function fixAddress(opened: Opened) {
   if (opened.kind === 'new') return
   const path = window.location.pathname.replace(/\/+$/, '')
-  if (path !== '/2d/hackable' && path !== '/2d/hackable-race') return
+  if (path !== '/2d/hackable' && path !== '/2d/hackable-race' && path !== '/3d/hackable') return
   const href = opened.kind === 'local' ? hackableHref.local(opened.id, kitIn(opened.project)) : hackableHref.world(opened.world.id, kitIn(opened.project))
   if (new URL(href, window.location.origin).pathname !== path) settle(href)
 }
@@ -274,8 +277,8 @@ function stagePicture(): string | undefined {
 }
 
 /**
- * /2d/hackable and /2d/hackable-race: the Hackable Platformer (Code Lab on the new core) and Hackable Racing, one studio
- * that reads the game from the project. One shell with Build · Code · Play
+ * /2d/hackable, /2d/hackable-race and /3d/hackable: the Hackable Platformer (Code Lab on the new core), Hackable Racing
+ * and Hackable 3D, one studio that reads the game from the project. One shell with Build · Code · Play
  * (docs/qa/code-lab-on-main/UX-AUDIT.md); Code is the only code editor. Each project lives in this browser or in the
  * account, like every other kind in My projects.
  */
@@ -591,6 +594,9 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
     setRoom(null)
   }, [])
   const startRoom = async () => {
+    // Hackable 3D has no rooms yet (D3): its menu has no Play together, and an old ?together=1 link only says so.
+    const refused = roomRefusal(store.getState().project.design)
+    if (refused) return setStorageNotice({ id: 'room', type: 'info', message: refused })
     if (home.kind === 'viewer') return window.location.assign(roomHref.classroom(home.world.id))
     if (roomRef.current) return
     try {
@@ -608,6 +614,8 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
     if (home.kind === 'account') settle(hackableHref.world(home.world.id, kitIn(store.getState().project)))
     if (home.kind === 'account' || home.kind === 'viewer') void startRoom()
   })
+  // Hackable 3D has no rooms yet (D3): no Play together in This project. A project never changes its game.
+  const noRooms = roomRefusal(opened.project.design) !== null
   const viewerBanner = home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined
   const roomBanner = room ? <RoomBar session={room.session} invite={room.invite} onLeave={leaveRoom} leaveLabel="Stop playing together" editing /> : undefined
 
@@ -620,7 +628,7 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
         onLeave={saveBeforeLeaving}
         firstRunTips
         banner={roomBanner || viewerBanner ? <>{roomBanner}{viewerBanner}</> : undefined}
-        menuExtra={!room && (
+        menuExtra={!room && !noRooms && (
           <MenuItem
             icon={<Users size={18} />}
             label="Play together"
