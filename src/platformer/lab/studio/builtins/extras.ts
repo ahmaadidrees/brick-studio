@@ -14,7 +14,7 @@ import type { StudioProject } from '../store'
 import { createMovingPlatformBrick, createUpDownPlatformBrick, LIFT_BRICK_ID, PLATFORM_BRICK_ID } from './platforms'
 import { CHECKPOINT_BRICK_ID, createCheckpointBrick } from './checkpoint'
 import { FLYER_BRICK_ID, SHELLBUG_BRICK_ID, SPIKY_BRICK_ID, createFlyerBrick, createShellbugBrick, createSpikyBrick } from './critters'
-import { TIRES_BRICK_ID, createRaceExtraBrick } from '../race/raceExtras'
+import { BUMPER_BRICK_ID, TIRES_BRICK_ID, createRaceExtraBrick } from '../race/raceExtras'
 
 export interface ExtraBrick {
   /** Catalog id, the id the brick has in a level. */
@@ -38,6 +38,7 @@ export const PLATFORMER_EXTRAS: readonly ExtraBrick[] = [
 /** Hackable Racing's, in drawer order. */
 export const RACE_EXTRAS: readonly ExtraBrick[] = [
   { id: TIRES_BRICK_ID, category: 'track', hint: 'Soaks up a crash: cars hardly bounce', make: () => createRaceExtraBrick(TIRES_BRICK_ID) },
+  { id: BUMPER_BRICK_ID, category: 'track', hint: 'Kicks cars back the way they came', make: () => createRaceExtraBrick(BUMPER_BRICK_ID) },
 ]
 
 const ALL: readonly ExtraBrick[] = [...PLATFORMER_EXTRAS, ...RACE_EXTRAS]

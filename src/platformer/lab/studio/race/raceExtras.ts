@@ -14,6 +14,7 @@ import { costumeFromImage, imageFromRows } from '../pixels'
 import type { MadeBrick } from '../starter'
 
 export const TIRES_BRICK_ID = 'brick_tires'
+export const BUMPER_BRICK_ID = 'brick_bumper'
 
 interface Spec {
   id: string
@@ -39,6 +40,17 @@ const SPECS: Readonly<Record<string, Spec>> = {
       const d = dist(x, y, cx, cy)
       if (d < 1.7) return (cx + cy) % 3 ? 'w' : 'r'
       return d < 3.9 ? 'k' : grass(x, y)
+    },
+  },
+  [BUMPER_BRICK_ID]: {
+    id: BUMPER_BRICK_ID, name: 'Bumper', char: 'U', solid: true,
+    palette: { ...GRASS, s: '#4c8a37', p: '#ff5fa2', w: '#ffffff' },
+    art: (x, y) => {
+      const d = dist(x, y, 8, 8)
+      if (d < 2.6) return 'p'
+      if (d < 4.4) return 'w'
+      if (d < 7) return 'p'
+      return dist(x, y, 9, 9.5) < 7 ? 's' : grass(x, y)
     },
   },
 }

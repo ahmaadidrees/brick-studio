@@ -11,7 +11,7 @@ import { extraEntryId, brickEntryId } from '../builder/catalog'
 import { raceDrawerEntries } from './raceDrawer'
 import { createRaceStarterProject } from './raceProject'
 import { CAR_BRICK_ID } from './carBrick'
-import { TIRES_BRICK_ID } from './raceExtras'
+import { BUMPER_BRICK_ID, TIRES_BRICK_ID } from './raceExtras'
 
 /** A race starter store with `id` added from the drawer. */
 function withBrick(id: string): StudioStore {
@@ -71,5 +71,20 @@ describe('Tire stack', () => {
     const design = withBrick(TIRES_BRICK_ID).getState().project.design
     const { before, after } = crash(wall(design, 'T'))
     expect(Math.abs(after + before * 0.08)).toBeLessThan(0.25)
+  })
+})
+
+describe('Bumper', () => {
+  it('is offered under Track and added with its own character', () => {
+    expect(raceDrawerEntries(createRaceStarterProject().design.bricks).find((e) => e.id === extraEntryId(BUMPER_BRICK_ID))).toMatchObject({ name: 'Bumper', category: 'track' })
+    const design = withBrick(BUMPER_BRICK_ID).getState().project.design
+    expect(design.bricks.find((b) => b.id === BUMPER_BRICK_ID)!.grid?.char).toBe('U')
+    expect(validateDesign(design)).toEqual([])
+  })
+
+  it('a car crashing into it gets all its speed back and a kick: classic 2.4 px a frame, 4.8 a tick', () => {
+    const design = withBrick(BUMPER_BRICK_ID).getState().project.design
+    const { before, after } = crash(wall(design, 'U'))
+    expect(Math.abs(after + before + 4.8)).toBeLessThan(0.25)
   })
 })
