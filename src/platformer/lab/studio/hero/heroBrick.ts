@@ -96,7 +96,7 @@ export interface HeroKnob {
 export const HERO_KNOBS: readonly HeroKnob[] = [
   // Running
   { id: 'walk_top', name: 'walk speed', hint: 'How fast I walk.', value: 1.5 * SPEED, from: 'walkMax 1.5 px/frame x 2' },
-  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold x.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
+  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold Z or J.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
   { id: 'p_top', name: 'full run speed', hint: 'My fastest run, once the run meter is full.', value: 3.5 * SPEED, from: 'pMax 3.5 px/frame x 2' },
   { id: 'walk_push', name: 'walk speed-up', hint: 'How quickly I get up to walking speed.', value: engine(0.0547) * ACCEL, from: 'walkAccel 0.0547 (14/256) px/frame^2 x 4' },
   { id: 'run_push', name: 'run speed-up', hint: 'How quickly I get up to running speed.', value: engine(0.0625) * ACCEL, from: 'runAccel 0.0625 (16/256) px/frame^2 x 4' },
@@ -119,7 +119,7 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'walk_jump_from', name: 'speed for walk jump', hint: 'How fast I must go to get the walk jump.', value: 1 * SPEED, from: 'speed 1 px/frame (player.ts tier 1) x 2' },
   { id: 'run_jump_from', name: 'speed for run jump', hint: 'How fast I must go to get the run jump.', value: 2.25 * SPEED, from: 'speed 2.25 px/frame (player.ts tier 2) x 2' },
   { id: 'p_jump_from', name: 'speed for full run jump', hint: 'How fast I must go to get the full run jump.', value: 3.25 * SPEED, from: 'speed 3.25 px/frame (player.ts tier 3) x 2' },
-  { id: 'hold_slow', name: 'float gravity', hint: 'Lighter gravity while I go up and you hold space.', value: engine(0.125) * ACCEL, from: 'holdSlow 0.125 (32/256) px/frame^2 x 4' },
+  { id: 'hold_slow', name: 'float gravity', hint: 'Lighter gravity while I go up and you hold jump.', value: engine(0.125) * ACCEL, from: 'holdSlow 0.125 (32/256) px/frame^2 x 4' },
   { id: 'hold_fast', name: 'run float gravity', hint: 'The same, for a jump from a run.', value: engine(0.135) * ACCEL, from: 'holdFast 0.135 (35/256) px/frame^2 x 4' },
   { id: 'fall_gravity', name: 'gravity', hint: 'How hard I get pulled down.', value: engine(0.375) * ACCEL, from: 'fallGravity 0.375 (96/256) px/frame^2 x 4' },
   { id: 'max_fall', name: 'top fall speed', hint: 'The fastest I can fall.', value: 4.25 * SPEED, from: 'maxFall 4.25 px/frame x 2' },
@@ -171,7 +171,7 @@ export const PIT_Y = -24
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'steer', name: 'steer' }, // -1 left, 0 none, 1 right (with the wall-jump lock applied)
   { id: 'raw_steer', name: 'arrow' }, // -1 left, 0 none, 1 right (just the arrow keys)
-  { id: 'running', name: 'running' }, // 1 while x is held
+  { id: 'running', name: 'running' }, // 1 while z or j (run) is held
   { id: 'way', name: 'way' }, // sign of x speed
   { id: 'speed', name: 'speed' }, // |x speed|, then the new speed
   { id: 'cap', name: 'top speed now' },
@@ -310,6 +310,12 @@ export function createHeroWorkspace(): WorkspaceJson {
   const not = (a: Conn): Conn => ({ block: blk('operator_not', { inputs: { OPERAND: a } }) })
   const abs = (a: Conn): Conn => ({ block: blk('operator_mathop', { fields: { OPERATOR: 'abs' }, inputs: { NUM: a } }) })
   const key = (k: string): Conn => ({ block: blk('sensing_keypressed', { fields: { KEY_OPTION: k } }) })
+  // The classic keys (parity bucket A, 2026-11-03): A and D beside the arrows, Space, X or K to jump, Z or J to run. The
+  // first key keeps the block (and id) the Hero always had; its partners are joined on with "or" blocks added later.
+  const keys = (first: string, ...more: string[]): Conn => {
+    const one = key(first)
+    return later(() => more.reduce<Conn>((either, k) => or(either, key(k)), one))
+  }
   const onGround = (): Conn => ({ block: blk('platformer_onground') })
   const xSpeed = (): Conn => ({ block: blk('platformer_speed', { fields: { AXIS: 'x' } }) })
   const ySpeed = (): Conn => ({ block: blk('platformer_speed', { fields: { AXIS: 'y' } }) })
@@ -395,16 +401,16 @@ export function createHeroWorkspace(): WorkspaceJson {
     'When the level starts: I do my own gravity and my own moving, and remember where I start',
   )
 
-  tick('basics', 'Read the arrow keys, x and space', [
+  tick('basics', 'Read the keys: arrows or A and D to walk, Z or J to run, Space, X or K to jump', [
     set('raw_steer', 0),
-    when(key('right arrow'), [set('raw_steer', 1)]),
-    when(key('left arrow'), [change('raw_steer', -1)]), // both arrows cancel out
+    when(keys('right arrow', 'd'), [set('raw_steer', 1)]),
+    when(keys('left arrow', 'a'), [change('raw_steer', -1)]), // both ways at once cancel out
     set('steer', v('raw_steer')),
     set('running', 0),
-    when(key('x'), [set('running', 1)]),
-    // "space just pressed" is only true on the first tick space is down, so holding it never jumps twice.
+    when(keys('z', 'j'), [set('running', 1)]),
+    // "space just pressed" is only true on the first tick jump is down, so holding it never jumps twice.
     set('pressed', 0),
-    either(key('space'), [when(eq(v('space_down'), 0), [set('pressed', 1)]), set('space_down', 1)], [set('space_down', 0)]),
+    either(keys('space', 'x', 'k'), [when(eq(v('space_down'), 0), [set('pressed', 1)]), set('space_down', 1)], [set('space_down', 0)]),
     when(eq(v('pressed'), 1), [set('buffer', 1)]),
   ])
 
@@ -437,7 +443,7 @@ export function createHeroWorkspace(): WorkspaceJson {
     set('wall_hit', 0), // the bump hats set it again later this tick if we are still pushing
   ])
 
-  tick('feel', 'Run with x: a higher top speed and a stronger push, and p speed once the run meter is full', [
+  tick('feel', 'Run with Z or J: a higher top speed and a stronger push, and p speed once the run meter is full', [
     when(eq(v('running'), 1), [
       either(
         onGround(),
@@ -553,8 +559,8 @@ export function createHeroWorkspace(): WorkspaceJson {
 
   tick('basics', 'Forget an old jump press, one tick at a time', [when(gt(v('buffer'), 0), [change('buffer', -1)])])
 
-  tick('feel', 'Hold to jump higher: gravity is lighter while I rise with space held', [
-    when(and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), key('space')), [set('gravity_now', v('hold'))]),
+  tick('feel', 'Hold to jump higher: gravity is lighter while I rise with jump held', [
+    when(and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), keys('space', 'x', 'k')), [set('gravity_now', v('hold'))]),
   ])
 
   tick('basics', 'Gravity: pull me down every tick', [changeY(sub(0, v('gravity_now'))), when(not(gt(ySpeed(), 0)), [set('jumping', 0)])])
@@ -624,7 +630,7 @@ export function createHeroWorkspace(): WorkspaceJson {
   )
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
-  receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(key('space'), [setY(11)], [setY(6.5)])])
+  receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(keys('space', 'x', 'k'), [setY(11)], [setY(6.5)])])
 
   for (const [block, text] of labels) withLabel(block, text)
 
@@ -655,13 +661,24 @@ export const HERO_MOVEMENT_HATS: readonly string[] = ['platformer_everytick', 'p
 let movementLabels: ReadonlySet<string> | undefined
 
 /**
+ * Movement scripts' labels before the classic keys (parity bucket A, 2026-11-03). A Hero a kid changed keeps them, and
+ * its scripts still fold into "How I move".
+ */
+export const HERO_EARLIER_MOVEMENT_LABELS: readonly string[] = [
+  'Read the arrow keys, x and space',
+  'Run with x: a higher top speed and a stronger push, and p speed once the run meter is full',
+  'Hold to jump higher: gravity is lighter while I rise with space held',
+]
+
+/**
  * The labels of the Hero's movement scripts (the basics and feel scripts above), read from `createHeroWorkspace` itself so
- * the list can never drift. The code editor folds the scripts with these labels into one "How I move" entry.
+ * the list can never drift, plus their earlier labels. The code editor folds the scripts with these labels into one
+ * "How I move" entry.
  */
 export function heroMovementLabels(): ReadonlySet<string> {
   if (!movementLabels) {
     const tops = (createHeroWorkspace().blocks as { blocks: Array<{ type: string; data?: string }> }).blocks
-    movementLabels = new Set(tops.filter((b) => HERO_MOVEMENT_HATS.includes(b.type)).map((b) => readLabel(b.data)).filter(Boolean))
+    movementLabels = new Set([...tops.filter((b) => HERO_MOVEMENT_HATS.includes(b.type)).map((b) => readLabel(b.data)).filter(Boolean), ...HERO_EARLIER_MOVEMENT_LABELS])
   }
   return movementLabels
 }

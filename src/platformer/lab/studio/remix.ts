@@ -240,6 +240,47 @@ export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e3
 let currentHeroFingerprint: string | undefined
 
 /**
+ * Built-in bricks other than the Hero, by catalog id: the fingerprints of their blocks as earlier versions made them
+ * (as generated; Blockly's own save keeps the same fingerprint). The first entry of each is what production had before
+ * parity bucket A (2026-11-03).
+ */
+export const EARLIER_BUILT_IN_FINGERPRINTS: Readonly<Record<string, readonly string[]>> = {
+  // Before W A S D.
+  brick_car: ['f3157bf8'],
+}
+
+/**
+ * What a save opens with: every untouched built-in brick moved to today's original (the Hero by `upgradeUntouchedHero`,
+ * the rest here). A built-in brick whose blocks are exactly an earlier original, with its variables still named as
+ * that original named them, gets today's blocks; the values the kid set on its sliders, its costumes, sounds and name
+ * stay. A brick with any other blocks, a renamed variable, or a remix is the kid's and is left as it is.
+ */
+export function upgradeUntouchedBricks(project: StudioProject): StudioProject {
+  return upgradeUntouchedHero(upgradeBuiltIns(project))
+}
+
+function upgradeBuiltIns(project: StudioProject): StudioProject {
+  let next = project
+  for (const brick of project.design.bricks) {
+    const earlier = !brick.remixOf ? EARLIER_BUILT_IN_FINGERPRINTS[brick.id] : undefined
+    if (!earlier || !earlier.includes(workspaceFingerprint(project.workspaces[brick.id]))) continue
+    const original = catalogOriginal(brick)
+    if (!original) continue
+    const fresh = clone(original)
+    const freshNames = new Map(fresh.brick.program.variables.map((v) => [v.id, v.name]))
+    if (brick.program.variables.some((v) => freshNames.has(v.id) && freshNames.get(v.id) !== v.name)) continue
+    const tuned = new Map(brick.program.variables.map((v) => [v.id, v.value]))
+    const variables = fresh.brick.program.variables.map((v) => (tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+    const upgraded: BrickDef = { ...brick, program: { ...fresh.brick.program, variables } }
+    next = {
+      design: { ...next.design, bricks: next.design.bricks.map((b) => (b.id === brick.id ? upgraded : b)) },
+      workspaces: { ...next.workspaces, [brick.id]: fresh.workspace },
+    }
+  }
+  return next
+}
+
+/**
  * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly
  * an earlier original moves to the current original. Slider values the kid tuned are kept for every variable that
  * still exists, and so are its costumes and sounds.

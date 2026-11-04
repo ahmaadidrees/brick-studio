@@ -69,7 +69,7 @@ export function RaceHud({ store }: { store: StudioStore }) {
 
       {hint && !hud.finished && !hud.noLaps && (
         <div className="p2d-hint p2d-hint-top play-hint race-hint" role="status">
-          <kbd>←</kbd> <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake
+          <kbd>←</kbd> <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake · or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>
         </div>
       )}
 

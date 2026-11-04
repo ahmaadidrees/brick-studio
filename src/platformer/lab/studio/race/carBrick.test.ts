@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { readLabel } from '../code/layers'
 import { CAR_BRICK_ID, CAR_BUILD_KNOB_IDS, CAR_KNOBS, carDrivingLabels, carVariableId, createCarBrick, createCarWorkspace, createRacerBrick, createRacerWorkspace, racerDrivingLabels } from './carBrick'
-import { workspaceFingerprint } from '../remix'
+import { EARLIER_BUILT_IN_FINGERPRINTS, workspaceFingerprint } from '../remix'
 import { boostField, carRunner, fieldDesign, hackableCarRunner, hold, measureCar, openField, speeds, type Runner } from '../../feel/race/carMetrics'
 
 type Block = Record<string, unknown>
@@ -100,15 +100,17 @@ describe('each feel script switches off, and the car still drives', () => {
 /**
  * The Car as saved in kids' projects from R1 on. Code folds its driving scripts into "How I drive" by their saved labels,
  * and an upgrade of an untouched Car would recognise it by its blocks' fingerprint. Changing either below means saved
- * Cars no longer match: add the old fingerprint to an EARLIER_CAR_FINGERPRINTS list (remix.ts, like the Hero's) and keep
- * the old labels folding before you update these pins.
+ * Cars no longer match: add the old fingerprint to EARLIER_BUILT_IN_FINGERPRINTS (remix.ts) and keep the old labels
+ * folding before you update these pins.
  */
 describe('the Car as saved (pinned for later upgrades)', () => {
   const labelsOf = (ws: WorkspaceJson) => tops(ws).map((b) => `${b.type} | ${label(b)}`)
 
-  it('has the blocks fingerprint of R1', () => {
-    // f3157bf8 since a202bb8; the label fix in R1 lane 3 changed no block (labels are not in the fingerprint).
-    expect(workspaceFingerprint(createCarWorkspace())).toBe('f3157bf8')
+  it('has the blocks fingerprint of the classic keys, and R1\'s upgrades', () => {
+    // f3157bf8 from a202bb8 (R1, as shipped) until W A S D (parity bucket A); an untouched R1 Car upgrades from it.
+    expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).toContain('f3157bf8')
+    expect(workspaceFingerprint(createCarWorkspace())).toBe(CAR_FINGERPRINT)
+    expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).not.toContain(CAR_FINGERPRINT)
     expect(workspaceFingerprint(createRacerWorkspace())).toBe('3f8004eb')
   })
 
@@ -118,6 +120,8 @@ describe('the Car as saved (pinned for later upgrades)', () => {
     expect([...racerDrivingLabels()]).toEqual(labelsOf(createRacerWorkspace()).filter((l) => l.startsWith('platformer_everytick | ')).map((l) => l.slice('platformer_everytick | '.length)))
   })
 })
+
+const CAR_FINGERPRINT = '875530e7'
 
 const CAR_LABELS_R1: readonly string[] = [
   'event_whenflagclicked | When the race starts: no gravity, I move myself',

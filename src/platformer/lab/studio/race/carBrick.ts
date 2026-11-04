@@ -168,6 +168,11 @@ class CarBlocks extends Blocks {
   key(k: string): Conn {
     return { block: this.blk('sensing_keypressed', { fields: { KEY_OPTION: k } }) }
   }
+  /** A key or its partners (WASD beside the arrows, parity bucket A): the first keeps the Car's old block. */
+  keys(first: string, ...more: string[]): Conn {
+    const one = this.key(first)
+    return this.later(() => more.reduce<Conn>((either, k) => ({ block: this.blk('operator_or', { inputs: { OPERAND1: either, OPERAND2: this.key(k) } }) }), one))
+  }
   ground(): Conn {
     return { block: this.blk('race_groundunder') }
   }
@@ -324,7 +329,7 @@ function driverWorkspace(prefix: string, controls: (b: CarBlocks) => void): Work
   return b.workspace(carVariables(prefix, CAR_KNOBS).map((d) => ({ id: d.id, name: d.name })))
 }
 
-/** The Car: the arrow keys drive it. */
+/** The Car: the arrow keys (or W A S D) drive it. */
 export function createCarWorkspace(): WorkspaceJson {
   return driverWorkspace('car', (b) => {
     b.every('Read the arrow keys: left and right steer, up is gas, down is brake', [
@@ -332,10 +337,10 @@ export function createCarWorkspace(): WorkspaceJson {
       b.set('gas', 0),
       b.set('brake_in', 0),
       b.when(b.eq(b.v('go'), 1), [
-        b.when(b.key('right arrow'), [b.set('steer_in', 1)]),
-        b.when(b.key('left arrow'), [b.change('steer_in', -1)]),
-        b.when(b.key('up arrow'), [b.set('gas', 1)]),
-        b.when(b.key('down arrow'), [b.set('brake_in', 1)]),
+        b.when(b.keys('right arrow', 'd'), [b.set('steer_in', 1)]),
+        b.when(b.keys('left arrow', 'a'), [b.change('steer_in', -1)]),
+        b.when(b.keys('up arrow', 'w'), [b.set('gas', 1)]),
+        b.when(b.keys('down arrow', 's'), [b.set('brake_in', 1)]),
       ]),
     ])
   })

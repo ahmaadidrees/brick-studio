@@ -11,13 +11,13 @@ export const TOUCH_KEYS: Partial<Record<Action, string>> = {
   up: 'up arrow',
   down: 'down arrow',
   jump: 'space',
-  run: 'x',
+  run: 'z',
 }
 
 /**
  * Play on a touch screen: the regular platformer's d-pad, Run and Jump, pressing keys in the running level. So a kid
  * who changes which key the Hero reads changes what the buttons do too, and their own scripts can use them. A snapped
- * power that reads another key (Dash reads z) gets a button of its own, named after the power.
+ * power that reads another key (Dash reads c) gets a button of its own, named after the power.
  */
 export function PlayTouchControls({ runtime }: { runtime: Runtime }) {
   const keys = useMemo(() => {

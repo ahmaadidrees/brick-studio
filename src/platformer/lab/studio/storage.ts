@@ -8,7 +8,7 @@
  *   and unmount, plus quota error defense.
  */
 
-import { upgradeUntouchedHero } from './remix'
+import { upgradeUntouchedBricks } from './remix'
 import {
   clearStorageNotice,
   getStorageNotice,
@@ -116,7 +116,7 @@ export function loadProject(storageOverride?: Storage, key = CODE_LAB_STORAGE_KE
   // A save holding a picture the game refuses (the old blank Stage backdrop) opens with that picture put right.
   const result = parseSaveText(raw)
   if (result.ok) {
-    const project = upgradeUntouchedHero({
+    const project = upgradeUntouchedBricks({
       design: result.save.design,
       workspaces: result.save.workspaces ?? {},
     })

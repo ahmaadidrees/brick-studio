@@ -14,13 +14,13 @@ export const HERO_HURT = 'hero hurt'
 /** The Stage's score variable (a Coin says "coin collected", the Stage adds one). */
 export const COINS_VARIABLE = 'coins'
 
-/** The keys the Hero reads (hero/heroBrick.ts "read keys"). */
-export const PLAY_CONTROLS_HINT = 'move · Space jumps (hold to go higher) · hold X to run'
+/** The keys the Hero reads (hero/heroBrick.ts "read keys"), the classic Platformer's: shown after the ← → keys. */
+export const PLAY_CONTROLS_HINT = 'or A D move · Space, X or K jumps (hold to go higher) · hold Z or J to run'
 
 /** Keys the Hero already has (the touch buttons press these): a power reading one needs no button or hint of its own. */
-export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'space', 'x', 'any'])
+export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'a', 'd', 'space', 'x', 'k', 'z', 'j', 'any'])
 
-/** A key a snapped power reads beyond the Hero's own, and the power's name (Dash reads z). */
+/** A key a snapped power reads beyond the Hero's own, and the power's name (Dash reads c). */
 export interface PowerKey {
   key: string
   power: string

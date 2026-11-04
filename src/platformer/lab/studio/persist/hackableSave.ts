@@ -1,5 +1,5 @@
 import { designKit } from '../../core/contracts'
-import { upgradeUntouchedHero } from '../remix'
+import { upgradeUntouchedBricks } from '../remix'
 import type { StudioProject } from '../store'
 import { HACKABLE_FORMAT, isHackableDocument, saveHackableText, type HackableDocument, type HackableSaveResult, type HackableStorage, type PendingWorld } from './hackableProjects'
 import { exportProjectJson, projectStorageText } from './projectIo'
@@ -15,7 +15,7 @@ import { announceOpened } from './openChecks'
 export function projectFromText(text: string): StudioProject | null {
   const result = parseSaveText(text)
   if (!result.ok) return null
-  const project = upgradeUntouchedHero({ design: result.save.design, workspaces: result.save.workspaces ?? {} })
+  const project = upgradeUntouchedBricks({ design: result.save.design, workspaces: result.save.workspaces ?? {} })
   // Blocks this version does not have, or pictures and sounds put right as it opened: the kid hears about it.
   announceOpened(project, result.replaced)
   return project

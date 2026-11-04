@@ -78,7 +78,7 @@ function oldEngine(opts: { startRow?: number; startCol?: number; floorCols?: num
 function newEngine(options: HeroTestOptions = {}): Engine {
   const rt = play(createHeroTestDesign(options))
   const hero = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
-  const keys: Record<keyof Input, string> = { left: 'left arrow', right: 'right arrow', jump: 'space', run: 'x' }
+  const keys: Record<keyof Input, string> = { left: 'left arrow', right: 'right arrow', jump: 'space', run: 'z' }
   const held = new Set<string>()
   return {
     dt: TICK_MS,
@@ -352,11 +352,11 @@ describe('The Hero brick is built from open blocks', () => {
     const ticks = brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_everytick').map((s) => labelOf(s.id).split(':')[0])
     // The order is the order they run in each tick: each feel script sits just before the basic it changes.
     expect(ticks).toEqual([
-      'Read the arrow keys, x and space',
+      'Read the keys',
       'Start each tick with the normal numbers',
       'Wall jump (part 1)',
       'Wall slide (part 1)',
-      'Run with x',
+      'Run with Z or J',
       'Skid',
       'Walk',
       'Run meter',
@@ -511,7 +511,7 @@ describe('Watching the Hero on a flat floor', () => {
     expect(hero.direction).toBe(90)
   })
 
-  it('runs faster than it walks when you hold x', () => {
+  it('runs faster than it walks when you hold z', () => {
     const walked = steadySpeed(settled(newEngine()), { right: true }, 1000)
     const ran = steadySpeed(settled(newEngine()), { right: true, run: true }, 1000)
     expect(ran).toBeGreaterThan(walked * 1.5)

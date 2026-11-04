@@ -75,10 +75,11 @@ function expectNoMissingVariables(project: StudioProject): void {
 }
 
 /** Where the Hero is after each tick of a run that walks, runs, jumps and stops: the whole movement, not one number. */
-function path(design: LevelDesign): string[] {
+function path(design: LevelDesign, run = 'z'): string[] {
   const rt = play(design)
   const hero = () => rt.world.targets.find((t) => t.brickId === HERO_BRICK_ID && !t.isClone)!
-  const script: Array<[number, string[]]> = [[20, []], [25, ['right arrow']], [40, ['right arrow', 'x']], [12, ['right arrow', 'x', 'space']], [30, ['left arrow']], [10, ['space']], [30, []]]
+  // The run key: z since the classic keys (parity bucket A); a Hero from before runs on x.
+  const script: Array<[number, string[]]> = [[20, []], [25, ['right arrow']], [40, ['right arrow', run]], [12, ['right arrow', run, 'space']], [30, ['left arrow']], [10, ['space']], [30, []]]
   const held = new Set<string>()
   const out: string[] = []
   for (const [ticks, keys] of script) {
@@ -153,7 +154,7 @@ describe('an untouched Hero saved with the old names', () => {
 
   it('plays exactly as before: the same path, tick by tick, as the old save and as a new Hero', () => {
     const old = savedWith(plainNamesHero)
-    const before = path(old.design)
+    const before = path(old.design, 'x')
     expect(path(upgradeUntouchedHero(old).design)).toEqual(before)
     expect(path(createStarterProject().design)).toEqual(before)
     expect(new Set(before).size).toBeGreaterThan(50) // it really moved

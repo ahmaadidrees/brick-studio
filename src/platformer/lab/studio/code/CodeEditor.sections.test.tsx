@@ -2,7 +2,7 @@ import * as Blockly from 'blockly/core'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CodeEditor } from '../CodeEditor'
-import { heroMovementLabels } from '../hero/heroBrick'
+import { HERO_EARLIER_MOVEMENT_LABELS, heroMovementLabels } from '../hero/heroBrick'
 import { createStarterProject } from '../starter'
 import { StudioStore } from '../store'
 import { getLabel, isScriptOff } from './affordances'
@@ -40,7 +40,7 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
   it('opens on the receivers and one "How I move" entry, which opens as a list; a row shows that script alone', async () => {
     const { ws } = await openHero()
     const movement = ws.getTopBlocks(false).filter(isMovement)
-    expect(movement.length).toBe(heroMovementLabels().size)
+    expect(movement.length).toBe((heroMovementLabels().size - HERO_EARLIER_MOVEMENT_LABELS.length))
 
     const entry = screen.getByRole('button', { name: /How I move/ })
     expect(entry).toHaveTextContent(`How I move · ${movement.length} scripts`)
@@ -111,7 +111,7 @@ describe('the Hero\'s code: movement folded into "How I move"', () => {
 
   it('a kid\'s script dropped on the top view stays on top; one made beside a section script stays in the section', async () => {
     const { ws } = await openHero()
-    const count = heroMovementLabels().size
+    const count = (heroMovementLabels().size - HERO_EARLIER_MOVEMENT_LABELS.length)
     const onTop = addScript(ws)
     expect(shownIds(ws)).toContain(onTop.id)
     expect(screen.getByRole('button', { name: /How I move/ })).toHaveTextContent(`${count} scripts`)

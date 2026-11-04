@@ -18,9 +18,9 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(store.getState().mode).toBe('play')
-    const hint = screen.getByText(/Space jumps/)
+    const hint = screen.getByText(/Space, X or K jumps/)
     expect(hint.textContent).toMatch(/move/)
-    expect(hint.textContent).toMatch(/hold X to run/)
+    expect(hint.textContent).toMatch(/hold Z or J to run/)
     expect(hint.textContent).not.toMatch(/Shift/) // the Hero runs on X (heroBrick.ts "read keys")
     expect(screen.getByRole('status', { name: 'Coins: 0' })).toBeTruthy()
     // a Coin was collected: the Stage's variable changes, the counter follows
@@ -40,7 +40,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByRole('status', { name: /Coins/ })).toBeNull()
-    expect(screen.getByText(/Space jumps/)).toBeTruthy()
+    expect(screen.getByText(/Space, X or K jumps/)).toBeTruthy()
   })
 
   it('"Try again" when the Hero is hurt (hero hurt broadcast), and it goes away by itself', async () => {
@@ -86,12 +86,12 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     expect(screen.getByText(NO_HERO_MESSAGE)).toBeTruthy()
   })
 
-  it('names a snapped power\'s own key in the hint (Dash: Z)', () => {
+  it('names a snapped power\'s own key in the hint (Dash: C)', () => {
     const store = new StudioStore(createStarterProject())
     store.snapPower('brick_hero', builtInPowers().find((p) => p.id === 'dash')!)
     render(<StudioShell store={store} />)
     startPlay(store)
-    expect(screen.getByText(/Space jumps/).textContent).toMatch(/hold X to run · Z for Dash/)
+    expect(screen.getByText(/Space, X or K jumps/).textContent).toMatch(/hold Z or J to run · C for Dash/)
   })
 
   it('Play with no Goal plays, and the hint says there is nowhere to finish', () => {
