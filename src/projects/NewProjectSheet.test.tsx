@@ -88,6 +88,25 @@ describe('Make a game', () => {
     expect(onPick).toHaveBeenLastCalledWith('/2d/build?new=1&template=workshop')
   })
 
+  it('keeps the classic 3D builder first in the 3D row, with Hackable 3D one link away', () => {
+    const onPick = vi.fn()
+    render(<NewProjectSheet open onClose={vi.fn()} onPick={onPick} />)
+    const build3d = screen.getByRole('button', { name: 'Or build in 3D' })
+    const row = build3d.closest('.projects-3d') as HTMLElement
+    const buttons = within(row).getAllByRole('button')
+    // Start (the classic builder) comes first; the Hackable link is second.
+    expect(buttons[0]).toBe(build3d)
+    const hackable = within(row).getByRole('button', { name: 'Start with code inside' })
+    expect(buttons.indexOf(hackable)).toBe(1)
+    expect(hackable).toHaveAccessibleDescription('Or build in 3D')
+    fireEvent.click(hackable)
+    expect(onPick).toHaveBeenLastCalledWith('/3d/hackable?new=1')
+    fireEvent.click(build3d)
+    expect(onPick).toHaveBeenLastCalledWith('/build?new=1')
+    expect(NEW_PROJECT_HREF.hackable3d).toBe(`${KITS['3d'].route}?new=1`)
+    expect(NEW_PROJECT_HREF.build3d).toBe('/build?new=1')
+  })
+
   it('tells a guest where the game saves, and signs in through onPick so an open game saves first', () => {
     const onPick = vi.fn()
     render(<NewProjectSheet open onClose={vi.fn()} onPick={onPick} />)

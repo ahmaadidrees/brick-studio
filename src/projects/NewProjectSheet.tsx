@@ -8,7 +8,7 @@ import { joinPath } from '../shell/navigation'
 import { useClassroomSession } from '../shell/useClassroomSession'
 import { raceThumb } from '../platformer/race/raceThumb'
 import { levelThumb } from '../platformer/ui/thumbs'
-import { BUILD_3D_HREF, DEFAULT_BUILDER, FROM_NOTHING_HREF, GAME_START_HREF, gameStart, type BuilderKind, type GameId } from './gameStarts'
+import { BUILD_3D_HREF, DEFAULT_BUILDER, FROM_NOTHING_HREF, GAME_START_HREF, HACKABLE_3D_HREF, OTHER_BUILDER_LABEL, gameStart, type BuilderKind, type GameId } from './gameStarts'
 import './projects.css'
 
 /** Where each choice goes: the builder, on a new project of that kind. */
@@ -19,6 +19,7 @@ export const NEW_PROJECT_HREF = {
   template: (id: string) => `/2d/build?new=1&template=${encodeURIComponent(id)}`,
   hackable: GAME_START_HREF.platformer.hackable,
   hackableRace: GAME_START_HREF.race.hackable,
+  hackable3d: HACKABLE_3D_HREF,
 }
 
 const MEDIA = '/brand/media'
@@ -66,8 +67,8 @@ export type NewProjectSheetProps = {
 
 /**
  * "Make a game": one card per game. Start opens that game's default builder (classic until the Hackable versions
- * reach parity, src/projects/gameStarts.ts) and the link under it opens the other one. Then 3D, then a starter to
- * play first. A project keeps the kind it starts as; rooms, inviting, saving, Build and Play work the same for all.
+ * reach parity, src/projects/gameStarts.ts) and the link under it opens the other one. Then 3D (the classic 3D builder
+ * first, Hackable 3D one link away), then a starter to play first. A project keeps the kind it starts as; rooms, inviting, saving, Build and Play work the same for all.
  */
 export function NewProjectSheet({ open, onClose, onPick = (href) => window.location.assign(href), focusGame, defaults = DEFAULT_BUILDER, fromNothingHref = FROM_NOTHING_HREF }: NewProjectSheetProps) {
   const session = useClassroomSession()
@@ -131,14 +132,22 @@ export function NewProjectSheet({ open, onClose, onPick = (href) => window.locat
         )}
       </div>
 
-      <button type="button" className="projects-3d" aria-labelledby="projects-3d-title" aria-describedby="projects-3d-text" onClick={() => onPick(NEW_PROJECT_HREF.build3d)}>
+      {/* The whole row starts a classic 3D build (its Start stretches over it); the link beside it starts Hackable 3D. */}
+      <div className="projects-3d" data-game="3d">
         <img src={`${MEDIA}/build-3d-stairs-880.webp`} alt="" draggable={false} />
         <span className="projects-3d-copy">
           <strong id="projects-3d-title">Or build in 3D</strong>
           <span id="projects-3d-text">Stack bricks on a plate, pick a scene, then walk around inside.</span>
         </span>
-        <span className="projects-3d-start" aria-hidden="true">Start</span>
-      </button>
+        <span className="projects-3d-actions">
+          <button type="button" className="projects-3d-start" aria-labelledby="projects-3d-title" aria-describedby="projects-3d-text" onClick={() => onPick(NEW_PROJECT_HREF.build3d)}>
+            Start
+          </button>
+          <button type="button" className="projects-game-other projects-3d-other" aria-describedby="projects-3d-title" onClick={() => onPick(NEW_PROJECT_HREF.hackable3d)}>
+            {OTHER_BUILDER_LABEL.hackable}
+          </button>
+        </span>
+      </div>
 
       <section className="projects-starters" aria-labelledby="projects-starters-title">
         <h3 id="projects-starters-title">Or play one first, then make it yours</h3>
