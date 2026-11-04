@@ -170,6 +170,10 @@ export const HERO_MORE_TUNING_COUNT = HERO_KNOB_GROUPS.reduce((n, g) => n + g.kn
  */
 export const HERO_START = { x: 60, y: 24 } as const
 
+/** The Spring's launch speeds (the old springHigh 6.75 and springLow 4.5 px/frame, in ticks with the tick correction). */
+export const SPRING_HIGH = 6.75 * SPEED + (engine(0.125) * ACCEL) / 4
+export const SPRING_LOW = 4.5 * SPEED + (engine(0.375) * ACCEL) / 4
+
 /** Below this y the Hero has fallen into a pit (its box top is a tile below the bottom of the level, which is y 0). */
 export const PIT_Y = -24
 
@@ -636,8 +640,18 @@ export function createHeroWorkspace(): WorkspaceJson {
   const goTo = (x: Conn | number, y: Conn | number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
   const receive = (message: string, label: string, body: Json[]): Json =>
     place('basics', blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message }, next: sub1(body) }), label)
-  // The Spring: one big upward speed (gravity keeps pulling it down).
-  receive('boing', 'When a Spring says boing: fly up', [setY(14)])
+  // The Spring, like the old Hero's (parity bucket A, 2026-11-03): springHigh 6.75 px/frame with jump held, springLow 4.5
+  // without, times 2 for ticks plus the quarter-gravity tick correction (as the jump powers above), and it counts as a
+  // jump, so holding jump floats me up much higher. The Spring says boing on every tick I touch it: only the first one
+  // (while I'm not already going up) throws me. The high launch keeps the block the old one-speed launch had.
+  const springHigh = setY(SPRING_HIGH)
+  receive(
+    'boing',
+    'When a Spring says boing: fly up, much higher if I hold jump',
+    later(() => [
+      when(not(gt(ySpeed(), 0)), [either(keys('space', 'x', 'k'), [springHigh], [setY(SPRING_LOW)]), set('jumping', 1), set('hold', v('hold_slow'))]),
+    ]),
+  )
   // A stomped Walker: a small bounce.
   receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
   // Hurt (by a Walker, Spikes or Lava). Since parity bucket A (2026-11-03) it is timed like the old Hero's: I stop with

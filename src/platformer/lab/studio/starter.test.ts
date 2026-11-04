@@ -494,16 +494,17 @@ describe('Starter level (starter.ts)', () => {
   })
 
 
-  it('the Spring launches the Hero higher than its own best jump (62)', () => {
+  it('the Spring launches the Hero higher than its own best jump (62) when jump is held, like the classic spring', () => {
     const { rt, of, run } = fresh()
     run(20)
     const h = of('copy_hero'), spring = of('copy_spring')
-    h.x = spring.x; h.y = spring.y + 4
-    const y0 = h.y
+    h.x = spring.x; h.y = spring.y + 30
+    const y0 = spring.y + 4
     let peak = y0
-    for (let i = 0; i < 40; i++) { run(1); peak = Math.max(peak, h.y) }
+    run(4) // in the air: holding jump now starts no jump of its own
+    rt.pressKey('space')
+    for (let i = 0; i < 60; i++) { run(1); peak = Math.max(peak, h.y) }
     expect(peak - y0).toBeGreaterThan(62)
-    void rt
   })
 
   it('the coin counts once and only that coin hides', () => {
