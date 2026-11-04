@@ -32,6 +32,20 @@ describe('public home and editor routes', () => {
     expect(resolve('/auth/teacher-callback?code=example&state=example').route).toBe('teacher-callback')
   })
 
+  it('opens Hackable 3D at /3d/hackable in the Hackable studio’s chunk, and nothing else under /3d', () => {
+    expect(resolve('/3d/hackable')).toEqual({ route: 'platformer' })
+    expect(resolve('/3d/hackable/')).toEqual({ route: 'platformer' })
+    expect(resolve('/3d/hackable?new=1')).toEqual({ route: 'platformer' })
+    expect(resolve('/3d/hackable?world=33333333333343338333000000000001').route).toBe('platformer')
+    expect(resolve('/3d').route).toBe('not-found')
+    expect(resolve('/3d/').route).toBe('not-found')
+    expect(resolve('/3d/hackable/r/' + 'a'.repeat(32)).route).toBe('not-found')
+    expect(resolve('/3d/build').route).toBe('not-found')
+    // The classic 3D builder keeps its own addresses.
+    expect(resolve('/build?new=1').route).toBe('build')
+    expect(resolve('/build?world=33333333333343338333000000000001').route).toBe('build')
+  })
+
   it('does not open a blank editor for mistyped links', () => {
     expect(resolve('/missing').route).toBe('not-found')
     expect(resolve('/live').route).toBe('not-found')

@@ -170,6 +170,52 @@ describe('Hackable Racing in My projects', () => {
   })
 })
 
+describe('Hackable 3D in My projects', () => {
+  const save = { schemaVersion: 1, design: { name: 'Sky castle', kit: '3d' }, workspaces: {} }
+  const document = { format: 'brickgineers-hackable' as const, version: 1 as const, save }
+  const client3d = (kit?: '3d') => ({ createWorld: vi.fn(async ({ title }: { title: string }) => ({ id: 'w3', title, format: 'hackable', ...(kit ? { kit } : {}) }) as ClassroomWorld) }) as unknown as ClientWithCreate
+
+  it('lists one as Hackable 3D at /3d/hackable, copies it out and removes exactly it', () => {
+    saveHackableText('old', 'Hacky', JSON.stringify({ schemaVersion: 1, design: { name: 'Hacky' }, workspaces: {} }), undefined, undefined, undefined, 'platformer')
+    saveHackableText('d1', 'Sky castle', JSON.stringify(save))
+    const kinds = listLocalProjects().map((p) => [p.id, p.kind, p.href])
+    expect(kinds).toEqual(expect.arrayContaining([['old', 'hackable', '/2d/hackable?draft=old'], ['d1', 'hackable-3d', '/3d/hackable?draft=d1']]))
+    const world = listLocalProjects().find((p) => p.id === 'd1')!
+    expect(localProject(world)).toEqual({ title: 'Sky castle', content: { kind: 'hackable', document } })
+    removeLocalProject(world)
+    expect(listHackableProjects().map((e) => e.id)).toEqual(['old'])
+  })
+
+  it('an account one is Hackable 3D and opens at /3d/hackable', () => {
+    expect(kindOfWorld({ format: 'hackable', kit: '3d' })).toBe('hackable-3d')
+    expect(projectHref({ id: 'abc', format: 'hackable', kit: '3d' })).toBe('/3d/hackable?world=abc')
+    // A classic 3D build is still a 3D build, opened in the classic builder.
+    expect(kindOfWorld({ format: 'brick' })).toBe('3d')
+    expect(projectHref({ id: 'abc', format: 'brick' })).toBe('/build?world=abc')
+  })
+
+  it('moves to the account and opens at /3d/hackable, even when the server does not say the game', async () => {
+    saveHackableText('d1', 'Sky castle', JSON.stringify(save))
+    const [world] = listLocalProjects()
+    const client = client3d()
+    expect((await moveToAccount(world, client)).href).toBe('/3d/hackable?world=w3')
+    expect(client.createWorld).toHaveBeenCalledWith({ title: 'Sky castle', document })
+    expect(listHackableProjects()).toEqual([])
+  })
+
+  it('an untitled one is named like a new 3D world', async () => {
+    const client = client3d('3d')
+    expect(await importProject({ title: '', content: { kind: 'hackable', document } }, { signedIn: true, client })).toMatchObject({ ok: true, href: '/3d/hackable?world=w3' })
+    expect(client.createWorld).toHaveBeenCalledWith({ title: 'My 3D world', document })
+  })
+
+  it('imports one for a guest into this browser, as a 3D project', async () => {
+    const local = await importProject({ title: 'Sky castle', content: { kind: 'hackable', document } }, { signedIn: false })
+    expect(local).toMatchObject({ ok: true, where: 'local', href: expect.stringMatching(/^\/3d\/hackable\?draft=h/) })
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'Sky castle', kit: '3d' })
+  })
+})
+
 describe('how old a project on this computer is', () => {
   const now = new Date(2026, 9, 28, 15, 0).getTime()
   const at = (days: number, hour = 9) => new Date(2026, 9, 28 - days, hour, 0).getTime()
