@@ -260,9 +260,9 @@ describe('Hackable 3D D1: the design checks', () => {
   it('refuses a 3D copy without a z, an unknown part and too many build bricks', () => {
     const d = room()
     expect(validateDesign({ ...d, copies: [{ id: 'copy_hero', brickId: HERO3D, x: 0, y: 0 } as CopyPlacement3] }).map((p) => p.path)).toContain('copies[0].z')
-    expect(validateDesign({ ...d, scenery3d: [{ partId: 'nope', x: 0, y: 0, z: 0, rotation: 0, color: '#ffffff' }] }).map((p) => p.path)).toContain('scenery3d[0].partId')
+    expect(validateDesign({ ...d, scenery3d: [{ partId: 'nope', x: 0, y: 0, z: 0, rotation: 0, color: '#ffffff' }] } as LevelDesign3).map((p) => p.path)).toContain('scenery3d[0].partId')
     const many = Array.from({ length: 2001 }, () => ({ partId: 'plate_2x4', x: 0, y: 0, z: 0, rotation: 0 as const, color: '#ffffff' }))
-    expect(validateDesign({ ...d, scenery3d: many }).some((p) => p.code === 'limit')).toBe(true)
+    expect(validateDesign({ ...d, scenery3d: many } as LevelDesign3).some((p) => p.code === 'limit')).toBe(true)
     expect(validateDesign({ ...d, scenery3d: undefined } as unknown as LevelDesign3).map((p) => p.path)).toContain('scenery3d')
   })
 })

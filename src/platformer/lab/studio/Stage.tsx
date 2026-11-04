@@ -119,7 +119,9 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   // The kit's screens: whom Play's camera follows, how wide, and what the level's background is.
   const screens = screensFor(design)
   // Start from nothing picks its own backdrop in the Stage card.
-  const background = backgroundOf(design)
+  // A 3D design has its own Stage (kitParts `Stage`); were this 2D Stage ever handed one, it would draw the sky.
+  const kitBackground = backgroundOf(design)
+  const background = kitBackground === '3d' ? 'sky' : kitBackground
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const erasing = tools?.erasing ?? false

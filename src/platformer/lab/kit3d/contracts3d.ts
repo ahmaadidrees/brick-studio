@@ -109,7 +109,7 @@ export interface Bump3 {
 
 export type PlayerSlot3 = PlayerSlot & { /** Camera yaw this player looks along, whole degrees (their keys move relative to it). */ yaw?: number }
 
-export type World3 = World & {
+export type World3 = Omit<World, 'targets' | 'players'> & {
   targets: Target3[]
   players?: PlayerSlot3[]
   /** Bumps the last physics step found (read by "launch who landed on me"). */
@@ -120,7 +120,7 @@ export type World3 = World & {
 
 export type CopyPlacement3 = CopyPlacement & { z: number }
 
-export type LevelDesign3 = LevelDesign & {
+export type LevelDesign3 = Omit<LevelDesign, 'kit' | 'copies' | 'bricks'> & {
   kit: '3d'
   copies: CopyPlacement3[]
   bricks: BrickDef3[]
