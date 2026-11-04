@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Pencil, Settings, Upload } from 'lucide-react'
+import { Code2, Download, FilePlus2, HelpCircle, MoreHorizontal, Pencil, Settings, Upload } from 'lucide-react'
 import { useRef } from 'react'
 import { BRAND_NAME } from '../brand'
 import { Button, Menu, MenuItem, MenuSeparator } from '../ui'
@@ -9,6 +9,11 @@ export type WorldMenuProps = {
   onExportProject?: () => void
   onImportProject?: (file: File) => void | Promise<void>
   onNewBuild?: () => void
+  /**
+   * The classic 3D builder: a copy of this build as a new Hackable 3D project (the build itself is left alone). Shown
+   * only where it is given (not in the 2D builders, live rooms or the Hackable studio).
+   */
+  onOpenInHackable3d?: () => void
   /** Camera, controls and preferences (moved here from the header). */
   onOpenSettings?: () => void
   onOpenHelp?: () => void
@@ -25,7 +30,7 @@ export type WorldMenuProps = {
  * missing are disabled rather than hidden so the menu keeps its shape across
  * guest, account and live sessions (a live room has no Import / New build).
  */
-export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBuild, onOpenSettings, onOpenHelp, defaultOpen, align = 'start', className }: WorldMenuProps) {
+export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBuild, onOpenInHackable3d, onOpenSettings, onOpenHelp, defaultOpen, align = 'start', className }: WorldMenuProps) {
   const importRef = useRef<HTMLInputElement>(null)
   return (
     <>
@@ -44,6 +49,7 @@ export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBui
         <MenuItem icon={<Download size={18} />} label="Download a copy" description="Save a .brickgineers file you can import later" disabled={!onExportProject} onSelect={onExportProject} />
         <MenuItem icon={<Upload size={18} />} label="Replace with a file" description="Open a project file in place of this build" disabled={!onImportProject} onSelect={() => importRef.current?.click()} />
         <MenuItem icon={<FilePlus2 size={18} />} label="New build" description="Start with a blank plate" disabled={!onNewBuild} onSelect={onNewBuild} />
+        {onOpenInHackable3d && <MenuItem icon={<Code2 size={18} />} label="Open in Hackable 3D" description="Make a copy with code inside. This build stays as it is." onSelect={onOpenInHackable3d} />}
         <MenuSeparator />
         <MenuItem icon={<Settings size={18} />} label="Settings" description="Camera, controls and preferences" disabled={!onOpenSettings} onSelect={onOpenSettings} />
         <MenuItem icon={<HelpCircle size={18} />} label="Help" description="Show the quick start guide" disabled={!onOpenHelp} onSelect={onOpenHelp} />

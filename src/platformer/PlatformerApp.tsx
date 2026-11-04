@@ -54,7 +54,7 @@ export default function PlatformerApp() {
       )
     case 'studio':
       return (
-        <Suspense fallback={<Notice title={route.kit === 'race' ? 'Opening Hackable Racing…' : route.kit === 'blank' ? 'Opening your game…' : 'Opening the Hackable Platformer…'} busy />}>
+        <Suspense fallback={<Notice title={route.kit === 'race' ? 'Opening Hackable Racing…' : route.kit === 'blank' ? 'Opening your game…' : route.kit === '3d' ? 'Opening Hackable 3D…' : 'Opening the Hackable Platformer…'} busy />}>
           <StudioApp route={route} />
         </Suspense>
       )

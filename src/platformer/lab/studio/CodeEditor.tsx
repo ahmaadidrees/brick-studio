@@ -7,11 +7,11 @@ Blockly.setLocale(En as unknown as Record<string, string>)
 import type { StudioStore } from './store'
 import { STAGE_ID } from './store'
 import type { Diagnostic } from '../core/editor/compile'
-import { designKit } from '../core/contracts'
 import { registerEditorBlocks } from '../core/editor/definitions'
 import { setEditorContext } from '../core/editor/context'
 import { createContinuousToolbox, myBlocksFlyout, registerToolboxPlugins } from '../core/editor/toolbox'
 import { buildEditorContext } from './code/context'
+import { screensFor } from './kitScreens'
 import { CODE_DARK_THEME, CODE_LIGHT_THEME } from './code/codeTheme'
 import { VariableModal } from './code/VariableModal'
 import { ProcedureModal, type ProcedureData } from './code/ProcedureModal'
@@ -220,8 +220,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     registerEditorBlocks(ctx)
     attachAffordances()
 
-    // 4. Configure continuous toolbox (filter Motion if stage selected)
-    const toolboxDef = createContinuousToolbox(ctx, { isStage, kit: designKit(store.getState().project.design) })
+    // 4. Configure continuous toolbox (filter Motion if stage selected); the kit's screens say what its palette holds.
+    const design = store.getState().project.design
+    const toolboxDef = createContinuousToolbox(ctx, { isStage, kit: ctx.kit, palette: screensFor(design).toolbox })
     const slotShadows = slotShadowsFromToolbox(toolboxDef)
     const variableValue = (id: string) => ctx.getVariables?.().find((v) => v.id === id)?.value
 

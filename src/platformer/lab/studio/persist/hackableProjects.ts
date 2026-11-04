@@ -1,7 +1,7 @@
 import { isKitId, type KitId } from '../../core/contracts'
 
 /*
- * Hackable projects (Hackable Platformer, the kid-facing name for Code Lab, and Hackable Racing): many per browser,
+ * Hackable projects (Hackable Platformer, the kid-facing name for Code Lab, Hackable Racing and Hackable 3D): many per browser,
  * and the same project as an account world. Each entry remembers its kit, so My projects names the game and links to
  * its address without opening the save; an entry with no kit is a Platformer (every entry made before kits). In this browser an index lists them and each keeps its save under its own key. The first project is
  * the one Code Lab always kept (CODE_LAB_STORAGE_KEY), so older saves become "project 1" without being moved. In an
@@ -19,7 +19,7 @@ export const LEGACY_ID = 'main'
 export const MAX_HACKABLE_PROJECTS = 30
 export const NEW_PROJECT_NAME = 'My platformer'
 /** A new project's name in each kit (kitScreens `copy.projectName`; hackableProjects.test.ts checks they agree). */
-export const newProjectName = (kit: KitId = 'platformer'): string => (kit === 'race' ? 'My race track' : kit === 'blank' ? 'My game' : NEW_PROJECT_NAME)
+export const newProjectName = (kit: KitId = 'platformer'): string => (kit === 'race' ? 'My race track' : kit === 'blank' ? 'My game' : kit === '3d' ? 'My 3D world' : NEW_PROJECT_NAME)
 /** What an account world can hold (the worlds table's own limit). */
 export const ACCOUNT_DOCUMENT_MAX_BYTES = 2_000_000
 /** The biggest save text the game opens (core/save.ts MAX_SAVE_BYTES, counted in characters; projectIo.test.ts checks they agree). */
@@ -344,17 +344,23 @@ export function documentFromText(text: string): HackableDocument | null {
   }
 }
 
-/**
- * Each kit's studio address (kits.ts `route`; hackableProjects.test.ts checks they agree). Hackable 3D has no address in
- * the 2D studio yet, so its projects open at the Platformer's, which says what they are.
- */
-export const hackableRoute = (kit: KitId | undefined = 'platformer'): string => (kit === 'race' ? '/2d/hackable-race' : kit === 'blank' ? '/2d/hackable-blank' : '/2d/hackable')
+/** Each kit's studio address (kits.ts `route`; hackableProjects.test.ts checks they agree). */
+export const hackableRoute = (kit: KitId | undefined = 'platformer'): string =>
+  kit === 'race' ? '/2d/hackable-race' : kit === 'blank' ? '/2d/hackable-blank' : kit === '3d' ? '/3d/hackable' : '/2d/hackable'
 
 /** Where a Hackable project opens: at its own kit's address (the Platformer's when the kit is not known). */
-export const hackableHref = {
+export const hackableHref: {
+  local: (id: string, kit?: KitId) => string
+  world: (id: string, kit?: KitId) => string
+  fresh: (kit?: KitId) => string
+  together: (id: string, kit?: KitId) => string
+} = {
   local: (id: string, kit?: KitId) => `${hackableRoute(kit)}?draft=${encodeURIComponent(id)}`,
   world: (id: string, kit?: KitId) => `${hackableRoute(kit)}?world=${encodeURIComponent(id)}`,
   fresh: (kit?: KitId) => `${hackableRoute(kit)}?new=1`,
-  /** The owner's account project with its class room open at once (after inviting classmates to play). */
-  together: (id: string, kit?: KitId) => `${hackableRoute(kit)}?world=${encodeURIComponent(id)}&together=1`,
+  /**
+   * The owner's account project with its class room open at once (after inviting classmates to play). Hackable 3D has no
+   * rooms yet (D3), so a 3D project just opens.
+   */
+  together: (id: string, kit?: KitId) => (kit === '3d' ? hackableHref.world(id, kit) : `${hackableRoute(kit)}?world=${encodeURIComponent(id)}&together=1`),
 }

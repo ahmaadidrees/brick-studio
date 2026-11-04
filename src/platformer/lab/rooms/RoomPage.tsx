@@ -18,7 +18,8 @@ import { classRoomSocketUrl, guestRoomInfo, guestRoomSocketUrl, ownerTokenOf, ro
 import type { RoomInfo } from './protocol'
 import { RoomBar } from './RoomBar'
 import { RoomSession, type RoomView } from './session'
-import { StudioRoomLink } from './studioRoom'
+import { StudioRoomLink, roomRefusal } from './studioRoom'
+import { hackableHref } from '../studio/persist/hackableProjects'
 import '../studio/studio.css'
 import '../studio/screen/screen.css'
 import './rooms.css'
@@ -66,7 +67,7 @@ export default function RoomPage({ route }: { route: RoomRoute }) {
           <Button href={joinPath({ next: roomHref.classroom(route.worldId) })} variant="primary" icon={<LogIn size={18} />}>Sign in</Button>
         </Notice>
       )
-    return <RoomPlay url={() => classRoomSocketUrl(route.worldId)} name={account.displayName ?? 'Player'} invite={roomHref.classroom(route.worldId)} />
+    return <RoomPlay url={() => classRoomSocketUrl(route.worldId)} name={account.displayName ?? 'Player'} invite={roomHref.classroom(route.worldId)} lookInside={hackableHref.world(route.worldId, '3d')} />
   }
 
   const ownerToken = ownerTokenOf(route.roomId)
@@ -107,16 +108,29 @@ export default function RoomPage({ route }: { route: RoomRoute }) {
   )
 }
 
-/** Connected: the room's game fills the screen, once the room has sent it. */
-function RoomPlay({ url, name, invite }: { url: string | (() => Promise<string>); name: string; invite: string }) {
+/**
+ * Connected: the room's game fills the screen, once the room has sent it. A game this page cannot play together yet (a
+ * Hackable 3D project, D3) is refused politely and the room is left; `lookInside` is where a class project opens instead.
+ */
+function RoomPlay({ url, name, invite, lookInside }: { url: string | (() => Promise<string>); name: string; invite: string; lookInside?: string }) {
   const session = useMemo(() => new RoomSession({ name, url, key: clientKey() }), [url, name])
   const [store, setStore] = useState<StudioStore | null>(null)
+  const [refused, setRefused] = useState<string | null>(null)
   useEffect(() => {
     session.connect()
     let made: StudioStore | null = null
+    let stopped = false
     const follow = () => {
       const design = session.runtime?.world.design
-      if (!design) return
+      if (!design || stopped) return
+      // Hackable 3D has no rooms yet (D3): a room holding a 3D project turns away politely.
+      const refusal = roomRefusal(design)
+      if (refusal) {
+        stopped = true
+        session.close()
+        setRefused(refusal)
+        return
+      }
       if (made) return
       made = new StudioStore({ design, workspaces: {} })
       made.enterRoom(new StudioRoomLink(session))
@@ -137,6 +151,14 @@ function RoomPlay({ url, name, invite }: { url: string | (() => Promise<string>)
 
   const rights = useSyncExternalStore(store ? store.subscribe : NO_STORE, () => store?.getState().roomRights ?? null)
   const bar = <RoomBar session={session} invite={invite} onLeave={leave} editing={!!rights && (rights.build || rights.code)} />
+
+  if (refused)
+    return (
+      <Notice title={refused} body="For now, open it on your own to play it and look inside.">
+        {lookInside && <Button href={lookInside} variant="primary" icon={<Play size={18} />}>Open it</Button>}
+        <Button href="/projects" variant={lookInside ? 'quiet' : 'primary'} icon={<House size={18} />}>My projects</Button>
+      </Notice>
+    )
 
   // We may build or change code: the studio, working on the room's project, with the room bar under its header.
   if (store && rights && (rights.build || rights.code)) {

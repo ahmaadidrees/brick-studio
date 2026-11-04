@@ -63,3 +63,26 @@ describe('Hackable Racing', () => {
     expect(at('/2d/hackable/race')).toEqual({ kind: 'not-found' })
   })
 })
+
+describe('Hackable 3D', () => {
+  it('opens the newest 3D world, a new one, one in this browser or one in the account, at /3d/hackable', () => {
+    expect(at('/3d/hackable')).toEqual({ kind: 'studio', fresh: false, kit: '3d' })
+    expect(at('/3d/hackable/')).toEqual({ kind: 'studio', fresh: false, kit: '3d' })
+    expect(at('/3d/hackable?new=1')).toEqual({ kind: 'studio', fresh: true, kit: '3d' })
+    expect(at('/3d/hackable?draft=hk3x9')).toEqual({ kind: 'studio', draft: 'hk3x9', fresh: false, kit: '3d' })
+    expect(at('/3d/hackable?world=33333333333343338333000000000001')).toEqual({ kind: 'studio', world: '33333333-3333-4333-8333-000000000001', fresh: false, kit: '3d' })
+    expect(at('/3d/hackable?draft=../x&world=nope')).toEqual({ kind: 'studio', fresh: false, kit: '3d' })
+  })
+
+  it('has no rooms yet: ?together=1 just opens the project', () => {
+    expect(at('/3d/hackable?world=33333333333343338333000000000001&together=1')).toEqual({ kind: 'studio', world: '33333333-3333-4333-8333-000000000001', fresh: false, kit: '3d' })
+    expect(at('/2d/hackable-race?world=33333333333343338333000000000001&together=1')).toMatchObject({ together: true, kit: 'race' })
+  })
+
+  it('is no other address', () => {
+    expect(at('/3d/hackable/r/' + 'a'.repeat(32))).toEqual({ kind: 'not-found' })
+    expect(at('/3d/hackable/w/33333333333343338333000000000001')).toEqual({ kind: 'not-found' })
+    expect(at('/3d')).toEqual({ kind: 'not-found' })
+    expect(at('/2d/hackable-3d')).toEqual({ kind: 'not-found' })
+  })
+})

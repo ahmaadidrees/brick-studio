@@ -30,22 +30,25 @@ const TOO_BIG = `That file is too big to be a project. Project files can be up t
 const TOO_BIG_NOT_HACKABLE = `That file is too big to open. 3D builds and 2D projects can be up to ${megabytes(PROJECT_FILE_MAX_BYTES)}.`
 
 /**
- * What My projects calls a project. 'hackable' is a Hackable Platformer and 'hackable-race' a Hackable Racing project:
- * both are kept, moved and saved as files the same way (a file's own `kind` is 'hackable' for both; the game is inside
- * its save).
+ * What My projects calls a project. 'hackable' is a Hackable Platformer, 'hackable-race' a Hackable Racing project and
+ * 'hackable-3d' a Hackable 3D project: all are kept, moved and saved as files the same way (a file's own `kind` is
+ * 'hackable' for each; the game is inside its save).
  */
-export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable' | 'hackable-race' | 'hackable-blank'
+export type ProjectKind = '3d' | 'platformer' | 'race' | HackableKind
 
-/** 'hackable-blank' is Start from nothing (kit `blank`, docs/qa/blank-2d): the kid's "Own game". */
-export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer', 'hackable-race': 'Hackable Racing', 'hackable-blank': 'Own game' }
+/**
+ * The My projects kinds of Hackable projects, one per game. 'hackable-blank' is Start from nothing (kit `blank`,
+ * docs/qa/blank-2d): the kid's "Own game".
+ */
+export type HackableKind = 'hackable' | 'hackable-race' | 'hackable-blank' | 'hackable-3d'
 
-type HackableKind = 'hackable' | 'hackable-race' | 'hackable-blank'
+export const PROJECT_KIND_LABEL: Record<ProjectKind, string> = { '3d': '3D build', platformer: 'Platformer', race: 'Race track', hackable: 'Hackable Platformer', 'hackable-race': 'Hackable Racing', 'hackable-blank': 'Own game', 'hackable-3d': 'Hackable 3D' }
 
 /** A Hackable project of any game. */
-export const isHackableKind = (kind: ProjectKind): kind is HackableKind => kind === 'hackable' || kind === 'hackable-race' || kind === 'hackable-blank'
+export const isHackableKind = (kind: ProjectKind): kind is HackableKind => kind === 'hackable' || kind === 'hackable-race' || kind === 'hackable-blank' || kind === 'hackable-3d'
 
 /** The My projects kind of a Hackable project, from its game. */
-export const hackableKind = (kit: KitId | undefined): HackableKind => (kit === 'race' ? 'hackable-race' : kit === 'blank' ? 'hackable-blank' : 'hackable')
+export const hackableKind = (kit: KitId | undefined): HackableKind => (kit === 'race' ? 'hackable-race' : kit === 'blank' ? 'hackable-blank' : kit === '3d' ? 'hackable-3d' : 'hackable')
 
 export type ProjectContent =
   | { kind: '3d'; document: BrickStudioDocument }

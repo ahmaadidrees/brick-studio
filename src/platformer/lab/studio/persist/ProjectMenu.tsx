@@ -14,12 +14,13 @@ export interface ProjectMenuProps {
 }
 
 /** What "Start over" starts from, in each game's words. */
-const START_OVER: Record<'platformer' | 'race' | 'blank', { what: string; done: string }> = {
+const START_OVER: Record<KitId, { what: string; done: string }> = {
   platformer: { what: 'the starter level', done: 'Started over with the starter level.' },
   race: { what: 'the beginner track', done: 'Started over with the beginner track.' },
   blank: { what: 'an empty stage', done: 'Started over with an empty stage.' },
+  '3d': { what: 'the starter world', done: 'Started over with the starter world.' },
 }
-const startOverOf = (kit: KitId) => (kit === 'race' ? START_OVER.race : kit === 'blank' ? START_OVER.blank : START_OVER.platformer)
+const startOverOf = (kit: KitId) => START_OVER[kit] ?? START_OVER.platformer
 
 export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)

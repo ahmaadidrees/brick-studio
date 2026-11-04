@@ -6,6 +6,12 @@ export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-cal
 export const PLATFORMER_PATH = '/2d'
 
 /**
+ * Hackable 3D's address. It is the same Hackable studio as /2d/hackable, so the same chunk opens it
+ * (src/platformer/routes2d.ts). Only this one address: nothing else under /3d is a page (the classic 3D builder is /build).
+ */
+export const HACKABLE_3D_PATH = '/3d/hackable'
+
+/**
  * Account entry intents carried by `/build?classroom=<intent>`.
  * `save` opens the save flow, `worlds`/`class` open a signed-in tab, and
  * `join`/`signin`/`teacher` pick the initial sign-in mode for guests.
@@ -42,6 +48,7 @@ export function resolveAppRoute(
   if (pathname === '/dev/ui' && dev) return { route: 'dev-ui' }
   if (/^\/live\/[^/]+\/?$/.test(pathname)) return { route: 'live' }
   if (pathname === PLATFORMER_PATH || pathname.startsWith(`${PLATFORMER_PATH}/`)) return { route: 'platformer' }
+  if (pathname === HACKABLE_3D_PATH || pathname === `${HACKABLE_3D_PATH}/`) return { route: 'platformer' }
   if (/^\/world\/?$/.test(pathname)) return { route: 'published' }
   if (pathname === '/build' || pathname === '/build/') {
     return { route: 'build', ...(pathname.endsWith('/') ? { canonicalPath: `${BUILD_PATH}${search}${hash}` } : {}) }

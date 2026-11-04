@@ -5,9 +5,17 @@
  * Since M2 the project's changes go out as they happen, from everyone allowed to make them (rooms/building.ts), so
  * Play changes nothing for anyone; the host's Restart (and Play again) starts everyone again from the project as it is.
  */
-import type { LevelDesign } from '../core/contracts'
+import { designKit, type LevelDesign } from '../core/contracts'
 import type { StudioRoom } from '../studio/store'
 import type { RoomSession } from './session'
+
+/** What a Hackable 3D project's room says, until its rooms come (D3, docs/qa/hackable-3d/SPIKE.md). */
+export const ROOMS_3D_SOON = 'Playing Hackable 3D together is coming soon.'
+
+/** Why this project cannot be played together in a room yet, in the kid's words, or null when it can. */
+export function roomRefusal(design: Pick<LevelDesign, 'kit'>): string | null {
+  return designKit(design) === '3d' ? ROOMS_3D_SOON : null
+}
 
 export class StudioRoomLink implements StudioRoom {
   constructor(readonly session: RoomSession) {}

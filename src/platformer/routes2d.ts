@@ -1,5 +1,6 @@
 /*
- * Pages under /2d. The app's router (src/routes.ts) sends every /2d path to the 2D chunk; this picks the page.
+ * Pages under /2d, and /3d/hackable. The app's router (src/routes.ts) sends every /2d path, and /3d/hackable, to the 2D
+ * chunk; this picks the page.
  *
  *   /2d                    home: start or continue a level, courses, your levels, play with friends
  *   /2d/build              your latest 2D level (a new one when there is none)
@@ -12,6 +13,8 @@
  *                          ?world=<id>&together=1 the owner's account project with its room open (after inviting)
  *   /2d/hackable-race      Hackable Racing, the same studio and the same ?new=1, ?world=, ?draft= (your newest race track)
  *   /2d/hackable-blank     Start from nothing (docs/qa/blank-2d): an empty stage, the same studio and the same queries
+ *   /3d/hackable           Hackable 3D, the same studio and the same ?new=1, ?world=, ?draft= (your newest 3D world). Its
+ *                          rooms are not built yet (D3), so it has no ?together=1 and no /3d/hackable/r or /w addresses
  *   /2d/hackable/r/<room>  a Hackable guest room (32 hex digits), joined by link (docs/qa/hackable-rooms)
  *   /2d/hackable/w/<world> an account Hackable project's room, for classmates it is shared with
  *   /2d/lab, /2d/lab/next  old addresses (the first Code Lab, then the Hackable Platformer's): go to /2d/hackable
@@ -28,10 +31,10 @@ export type Route2D =
   | { kind: 'guest'; roomId: string }
   | { kind: 'classroom'; worldId: string }
   /**
-   * `kit` 'race' at /2d/hackable-race, 'blank' at /2d/hackable-blank (a new project's game, and which newest one opens);
-   * absent is the Platformer.
+   * `kit` 'race' at /2d/hackable-race, 'blank' at /2d/hackable-blank and '3d' at /3d/hackable (a new project's game, and
+   * which newest one opens); absent is the Platformer.
    */
-  | { kind: 'studio'; world?: string; draft?: string; fresh: boolean; kit?: 'race' | 'blank'; together?: boolean }
+  | { kind: 'studio'; world?: string; draft?: string; fresh: boolean; kit?: 'race' | 'blank' | '3d'; together?: boolean }
   | { kind: 'studio-moved' }
   | { kind: 'hackable-room'; roomId: string }
   | { kind: 'hackable-class'; worldId: string }
@@ -49,7 +52,7 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
   const query = new URLSearchParams(search)
   if (path === '/2d') return { kind: 'home' }
   if (path === '/2d/lab' || path === '/2d/lab/next') return { kind: 'studio-moved' }
-  if (path === '/2d/hackable' || path === '/2d/hackable-race' || path === '/2d/hackable-blank') {
+  if (path === '/2d/hackable' || path === '/2d/hackable-race' || path === '/2d/hackable-blank' || path === '/3d/hackable') {
     const world = query.get('world')?.trim() || ''
     const draft = /^[a-z0-9]{1,64}$/i.exec(query.get('draft')?.trim() ?? '')?.[0]
     return {
@@ -57,8 +60,9 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
       ...(canonicalWorldId(world) ? { world: canonicalWorldId(world)! } : {}),
       ...(draft ? { draft } : {}),
       fresh: query.get('new') === '1',
-      ...(path === '/2d/hackable-race' ? { kit: 'race' as const } : path === '/2d/hackable-blank' ? { kit: 'blank' as const } : {}),
-      ...(query.get('together') === '1' ? { together: true } : {}),
+      ...(path === '/2d/hackable-race' ? { kit: 'race' as const } : path === '/2d/hackable-blank' ? { kit: 'blank' as const } : path === '/3d/hackable' ? { kit: '3d' as const } : {}),
+      // Hackable 3D has no rooms yet (D3): its address never opens one.
+      ...(query.get('together') === '1' && path !== '/3d/hackable' ? { together: true } : {}),
     }
   }
   const hackableRoom = /^\/2d\/hackable\/r\/([a-f0-9]{32})$/.exec(path)

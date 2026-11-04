@@ -20,6 +20,7 @@ export const KNOWN_BLOCK_TYPES: readonly string[] = [
   'event_broadcast', 'event_broadcastandwait', 'event_whenbackdropswitchesto', 'event_whenbroadcastreceived',
   'event_whenflagclicked', 'event_whengreaterthan', 'event_whenkeypressed', 'event_whenstageclicked',
   'event_whenthisspriteclicked',
+  'kit3d_changez', 'kit3d_gohome', 'kit3d_gotoxyz', 'kit3d_launchlanders', 'kit3d_setz', 'kit3d_zposition',
   'looks_backdropnumbername', 'looks_changeeffectby', 'looks_changesizeby', 'looks_cleargraphiceffects',
   'looks_costumenumbername', 'looks_goforwardbackwardlayers', 'looks_gotofrontback', 'looks_hide',
   'looks_nextbackdrop', 'looks_nextcostume', 'looks_say', 'looks_sayforsecs', 'looks_seteffectto', 'looks_setsizeto',
