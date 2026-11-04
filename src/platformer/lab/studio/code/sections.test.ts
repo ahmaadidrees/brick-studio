@@ -79,7 +79,7 @@ describe('brick sections: the Car\'s "How I drive"', () => {
     for (const b of driving) expect(ofCar(b), readLabel(b.data)).toBe('how-i-drive')
     const rest = tops.filter((b) => !driving.includes(b))
     expect(rest.map((b) => readLabel(b.data).split(':')[0])).toEqual([
-      'When the race starts', 'When the countdown says go', 'Drive and bounce off barriers', 'When I finish my last lap',
+      'When the race starts', 'When the countdown says go', 'Drive and bounce off barriers', 'How bouncy is what I hit', 'When I finish my last lap',
     ])
     for (const b of rest) expect(ofCar(b)).toBeNull()
   })
