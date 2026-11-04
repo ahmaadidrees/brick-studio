@@ -25,6 +25,8 @@ export interface KitParts {
 export const KIT_PARTS: Readonly<Record<ScreensKit, KitParts>> = {
   platformer: { PlayHud: PlayFeedback, TouchControls: PlayTouchControls },
   race: { PlayHud: RaceHud, TouchControls: RaceTouch, BuildChip: LapsChip },
+  // Hackable 3D: replaced by its own slots in D1's studio commit.
+  '3d': { PlayHud: PlayFeedback, TouchControls: PlayTouchControls },
 }
 
 export const partsFor = (design: Pick<LevelDesign, 'kit'>): KitParts => KIT_PARTS[screensFor(design).kit]

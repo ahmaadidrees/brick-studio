@@ -19,8 +19,9 @@ import { NO_HERO_MESSAGE, PLAY_CONTROLS_HINT } from './builder/playRules'
 import { TIPS_SEEN_KEY } from './screen/firstRunTips'
 import { RACE_COPY } from './race/raceCopy'
 import { raceDrawerActive, raceDrawerCategories, raceDrawerEntries, raceDrawerHint } from './race/raceDrawer'
+import { createStarter3dProject, PROJECT_NAME_3D } from './three/project3d'
 
-export type ScreensKit = 'platformer' | 'race'
+export type ScreensKit = 'platformer' | 'race' | '3d'
 
 /** The words a kit's screens use. */
 export interface KitCopy {
@@ -68,10 +69,10 @@ export interface KitScreens {
   powers: boolean
   /** Code offers "Just this brick" (a small test room built around a helper Hero). */
   testRoom: boolean
-  /** The palette: a Racing category, and block types left out. */
-  toolbox: { racing: boolean; hide: readonly string[] }
-  /** What the Stage draws behind the level when it has no backdrop. */
-  background: 'sky' | 'grass'
+  /** The palette: a Racing category, the 3D category (in place of Platformer), and block types left out. */
+  toolbox: { racing: boolean; threeD?: boolean; hide: readonly string[] }
+  /** What the Stage draws behind the level when it has no backdrop ('3d': the Stage slot is a three.js world). */
+  background: 'sky' | 'grass' | '3d'
   /** Play's follow camera width in steps; the Stage's own choice when missing. */
   followViewWidth?: number
   copy: KitCopy
@@ -133,13 +134,42 @@ export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {
     background: 'grass',
     get copy() { return RACE_COPY },
   },
+  // Hackable 3D (D1, docs/qa/hackable-3d/D1.md). Its drawer, Stage, test room and HUD are React slots
+  // (screen/kitParts.tsx); the drawer data here is unused because the 3D drawer lists parts, not bricks.
+  '3d': {
+    kit: '3d',
+    starter: () => createStarter3dProject(),
+    playerBrickId: 'brick_hero3d',
+    drawer: { categories: [], entries: () => [], hint: () => undefined, active: () => null },
+    codeStarts: [],
+    powers: false,
+    testRoom: true,
+    // The 2D-only Platformer blocks: moving by your own sweep, the old hit flags, and setting "on ground" by hand.
+    toolbox: { racing: false, threeD: true, hide: ['platformer_setmover', 'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_tellhit', 'platformer_setonground', 'motion_ifonedgebounce'] },
+    background: '3d',
+    get copy() { return COPY_3D },
+  },
 }
 
-/** A design's screens. A kit with no screens yet (3D) gets the Platformer's; the studio refuses to open it anyway. */
-export const screensFor = (design: Pick<LevelDesign, 'kit'>): KitScreens => {
-  const kit = designKit(design)
-  return kit === 'race' ? KIT_SCREENS.race : KIT_SCREENS.platformer
+const COPY_3D: KitCopy = {
+  projectName: PROJECT_NAME_3D,
+  player: 'Hero',
+  noPlayer: 'Place the Hero first: it is under Code bricks in the Bricks drawer.',
+  controlsHint: 'Arrows or WASD move, Space jumps, X runs, drag to look around',
+  followLabel: 'Follow the Hero',
+  tipsKey: 'brickgineers.hackable3d.tips',
+  tips: {
+    build: 'Pick a brick, then click a stud to place it. Drag to look around.',
+    buildPhone: 'Press Bricks, pick one, then tap a stud to place it.',
+    code: 'Open a code brick’s code. Change a number, then press Restart.',
+    codeSmall: 'On a bigger screen, open a code brick’s code.',
+    play: 'Press Play to try your world.',
+  },
+  helpPlay: 'Press Play to try your world. The arrow keys (or WASD) move, Space jumps, and X runs. Drag the world to turn the camera; the Hero walks the way the camera looks. Press Build to go back.',
 }
+
+/** A design's screens. */
+export const screensFor = (design: Pick<LevelDesign, 'kit'>): KitScreens => KIT_SCREENS[designKit(design)]
 
 /**
  * Is this brick the kit's player? Its own id, a remix of it ("My Car" remembers it was the Car), or a brick the kid
