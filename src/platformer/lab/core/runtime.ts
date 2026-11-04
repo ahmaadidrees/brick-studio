@@ -59,6 +59,9 @@ export interface RuntimeLifecycle {
 
 export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
 
+/** Hears a broadcast: the message, and the sprite whose script said it (missing for the screen's own broadcast). */
+export type BroadcastListener = (message: string, from?: Target) => void
+
 /** Blockly ids executed in one tick, grouped by runtime target (painted copy or clone). */
 export type ExecutedBlocks = ReadonlyMap<string, ReadonlySet<string>>
 
@@ -313,13 +316,15 @@ export class Runtime implements RuntimeApi {
     }
   }
 
-  private broadcastListeners = new Set<(message: string) => void>()
+  private broadcastListeners = new Set<BroadcastListener>()
 
   /**
    * Watch broadcasts without changing anything: the Studio uses it to show "You made it!" when the Goal broadcasts
-   * `course clear`. A listener only observes; it never touches the world, so runs stay deterministic. Returns an unsubscribe.
+   * `course clear`. `from` is the sprite whose script said it (missing when the screen or a test broadcast), so a room's
+   * screen can tell its own Hero's "ouch" from someone else's. A listener only observes; it never touches the world, so
+   * runs stay deterministic. Returns an unsubscribe.
    */
-  onBroadcast(listener: (message: string) => void): () => void {
+  onBroadcast(listener: BroadcastListener): () => void {
     this.broadcastListeners.add(listener)
     return () => this.broadcastListeners.delete(listener)
   }
@@ -365,8 +370,8 @@ export class Runtime implements RuntimeApi {
     this.emitExecutedBlocks()
   }
 
-  broadcast(message: string): ThreadHandle[] {
-    for (const l of [...this.broadcastListeners]) l(message)
+  broadcast(message: string, from?: Target): ThreadHandle[] {
+    for (const l of [...this.broadcastListeners]) l(message, from)
     return this.startHats('event_whenbroadcastreceived', {
       fields: { BROADCAST_OPTION: message },
     })
@@ -1045,7 +1050,7 @@ export class Runtime implements RuntimeApi {
         } else if (stmt.fields?.BROADCAST_OPTION) {
           msg = stmt.fields.BROADCAST_OPTION
         }
-        this.broadcast(msg)
+        this.broadcast(msg, thread.target)
         frame.pc++
         continue
       }
@@ -1065,7 +1070,7 @@ export class Runtime implements RuntimeApi {
           } else if (stmt.fields?.BROADCAST_OPTION) {
             msg = stmt.fields.BROADCAST_OPTION
           }
-          const receivers = this.broadcast(msg)
+          const receivers = this.broadcast(msg, thread.target)
           if (receivers.length === 0) {
             frame.pc++
             continue

@@ -7,6 +7,7 @@
  * keyframe every KEYFRAME_EVERY ticks for people joining. A game the room finds out of step is replaced by a fresh copy.
  */
 import type { Runtime } from '../core'
+import type { BroadcastListener } from '../core/runtime'
 import { worldFingerprint, worldToJson } from '../core/snapshot'
 import { applyRoomEvent, gameFromBase } from './game'
 import { HackableRoomLink, type LinkOptions, type LinkStatus } from './link'
@@ -59,6 +60,10 @@ export class RoomSession {
   private keyframedTo = -1
   /** Keys this screen holds down, so a held key is sent once. */
   private readonly heldKeys = new Set<string>()
+  /** Screens hearing the game's broadcasts: they keep hearing them when the game is rebuilt. */
+  private readonly heard = new Set<BroadcastListener>()
+  /** When the play we joined started (a fresh game's first tick), if we know it. */
+  private startedAt: number | null = null
 
   constructor(opts: RoomSessionOptions) {
     this.view = { status: 'connecting', title: '', me: 0, host: false, players: [], settings: { closed: false }, banned: 0, classroom: false, notice: null, generation: 0 }
@@ -89,6 +94,21 @@ export class RoomSession {
   /** The game to draw and to read. Changes when the game is rebuilt (a join, a resync, Play again). */
   get runtime(): Runtime | null {
     return this.timeline?.runtime ?? null
+  }
+
+  /**
+   * The tick the play on screen started: a fresh game's first tick, or the tick the host's Play again rebuilt it at.
+   * Null when we joined a game already going (from a keyframe) and have not seen it start again since. Every
+   * player's game gives the same answer, so their screens' clocks agree.
+   */
+  get playStart(): number | null {
+    return this.timeline?.rebuiltAt ?? this.startedAt
+  }
+
+  /** Hear the game's broadcasts (each once, as first played), whichever game is running now. Returns the way to stop. */
+  onBroadcast(listener: BroadcastListener): () => void {
+    this.heard.add(listener)
+    return () => this.heard.delete(listener)
   }
 
   subscribe(fn: () => void): () => void {
@@ -144,6 +164,8 @@ export class RoomSession {
       get: (_target, prop) => {
         if (prop === 'pressKey') return (key: string) => { if (!down.has(key)) { down.add(key); this.key(key, true) } }
         if (prop === 'releaseKey') return (key: string) => { if (down.delete(key)) this.key(key, false) }
+        // Not bound to the game of the moment: a Play again or a resync builds a new one, and screens keep hearing.
+        if (prop === 'onBroadcast') return (listener: BroadcastListener) => this.onBroadcast(listener)
         if (LOCAL_ONLY.has(prop)) return () => undefined
         const runtime = this.runtime
         if (!runtime) return undefined
@@ -172,7 +194,12 @@ export class RoomSession {
       this.set({ notice: 'This room’s game could not be opened here.' })
       return
     }
+    // A keyframe is the same play carried on (a resync, coming back), unless the events after it start it again.
+    this.startedAt = base.world ? this.playStart : base.tick
     this.timeline = new HackableTimeline<RoomEv>(runtime, applyRoomEvent, { history: 300, snapshotEvery: 4 })
+    this.timeline.onBroadcast((message, from) => {
+      for (const l of [...this.heard]) l(message, from)
+    })
     this.hashedTo = this.keyframedTo = Math.floor(base.tick / HASH_EVERY) * HASH_EVERY
     for (const e of events) this.timeline.addRemote(record(e))
     this.set({ generation: this.view.generation + 1 })

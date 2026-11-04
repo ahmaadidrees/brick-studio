@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LevelDesign } from '../../../core/contracts'
 import { StudioStore } from '../../store'
+import { roomGame, TestRoom } from '../../testRoom'
 import { CAR_BRICK_ID, createRacerBrick } from '../carBrick'
 import { createRaceStarterProject } from '../raceProject'
 import { RACE_HUD_MS, RaceHud } from './RaceHud'
@@ -75,6 +76,28 @@ describe('RaceHud', () => {
     expect(store.getState().mode).toBe('build')
     expect(store.getState().runtime).toBeNull()
     expect(document.querySelector('.race-hud')).toBeNull()
+  })
+
+  it('in a room, the host\'s Play again starts the race clock again from the new "go"', { timeout: 30_000 }, () => {
+    const project = createRaceStarterProject()
+    const store = new StudioStore(project)
+    const room = new TestRoom(roomGame(project.design, ['Maya', 'Sam']))
+    store.enterRoom(room)
+    store.play()
+    render(<RaceHud store={store} />)
+    race(store, 3 * 30 + 1)
+    expect(document.querySelector('.race-countdown')?.textContent).toBe('Go!')
+    race(store, 60)
+    expect(screen.getByRole('timer').textContent).toMatch(/^⏱ 2\.\ds$/)
+
+    // A new game under the same screen, the room's clock carrying on: no clock until its own "go".
+    room.rebuild(roomGame(project.design, ['Maya', 'Sam'], room.game.world.tick))
+    race(store, 1)
+    expect(screen.queryByRole('timer')).toBeNull()
+    expect(document.querySelector('.race-countdown')?.textContent).toBe('3')
+    race(store, 3 * 30)
+    race(store, 30)
+    expect(screen.getByRole('timer').textContent).toMatch(/^⏱ [01]\.\ds$/)
   })
 
   it('hides the keys after a few seconds', () => {

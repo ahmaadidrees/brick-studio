@@ -342,4 +342,34 @@ describe('a Hackable room (docs/qa/hackable-rooms M1)', () => {
     expect(sent.filter((m) => m.type === 'reject')).toEqual([])
     expect(sent.filter((m) => m.type === 'ev').map((m) => (m as { e: { cid: string; ev: unknown } }).e).find((e) => e.cid === 's')?.ev).toEqual({ t: 'key', key: 'shift', down: true })
   })
+
+  it('screens keep hearing the game after Play again, each "go" once, and agree when the play started', async () => {
+    const room = new HackableRoomCore('r8', designText(createRaceStarterProject().design), { now: clock, hostKey: 'HOST' })
+    const net = new Net(room, 40)
+    const maya = join(net, 'Maya', true)
+    const sam = join(net, 'Sam')
+    const all = [maya, sam]
+    // What each screen hears (the HUD's way in: the facade), and the tick it heard it on.
+    const gos = all.map((s) => {
+      const ticks: number[] = []
+      s.facade.onBroadcast((m) => { if (m === 'go') ticks.push(s.facade.world.tick) })
+      return ticks
+    })
+    await net.run(5000, all, 4)
+    expect(gos.map((g) => g.length)).toEqual([1, 1])
+    expect(gos[0]![0]).toBe(gos[1]![0])
+
+    const before = sam.runtime
+    expect(maya.restart()).toBe(true)
+    await net.run(5000, all, 4)
+    expect(sam.runtime).not.toBe(before)
+    // One play start for everyone: the tick the Play again rebuilt the game at, after the first race's start.
+    expect(maya.playStart).not.toBeNull()
+    expect(sam.playStart).toBe(maya.playStart)
+    expect(maya.playStart!).toBeGreaterThan(gos[0]![0]!)
+    // The rebuilt game's "go" reached both screens, once, after the play started: the race clock starts again.
+    expect(gos.map((g) => g.length)).toEqual([2, 2])
+    expect(gos[0]![1]).toBe(gos[1]![1])
+    expect(gos[0]![1]!).toBeGreaterThan(maya.playStart!)
+  })
 })

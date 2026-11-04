@@ -38,6 +38,10 @@ export class StudioRoomLink implements StudioRoom {
     return this.session.runtime
   }
 
+  get playStart() {
+    return this.session.playStart
+  }
+
   frame(now: number) {
     const ticks = this.session.frame(now)
     const tick = this.session.link.serverTick(now)

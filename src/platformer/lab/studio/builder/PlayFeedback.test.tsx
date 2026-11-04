@@ -6,6 +6,8 @@ import { createStarterProject, STARTER_GOAL } from '../starter'
 import { builtInPowers } from '../powers/powers'
 import { StudioStore } from '../store'
 import { StudioShell } from '../screen/StudioShell'
+import { roomGame, TestRoom } from '../testRoom'
+import { PlayFeedback } from './PlayFeedback'
 import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins, saysOuch } from './playRules'
 import { HERO_OUCH as HERO_SAYS } from '../hero/heroBrick'
 import beforePits from '../hero/__fixtures__/hero-before-pits.json'
@@ -219,5 +221,33 @@ describe('the time (parity bucket A, 2026-11-03)', () => {
     })
     const dialog = screen.getByRole('dialog', { name: 'You made it' })
     expect(dialog.textContent).toMatch(/Time 0:03\.0/)
+  })
+
+  it('in a room the time counts from the play\'s start, and the host\'s Play again forgets the last finish', () => {
+    const project = createStarterProject()
+    project.design.id = 'room_time_test'
+    const store = new StudioStore(project)
+    // The room's clock was already at 300 when this play started.
+    const room = new TestRoom(roomGame(project.design, ['Maya'], 300))
+    store.enterRoom(room)
+    store.play()
+    render(<PlayFeedback store={store} />)
+    for (let i = 0; i < 60; i++) room.game.step()
+    act(() => {
+      room.game.broadcast(COURSE_CLEAR)
+    })
+    expect(screen.getByRole('dialog', { name: 'You made it' }).textContent).toMatch(/Time 0:02\.0/)
+
+    // Play again rebuilds the game under the same screen: the card goes, and the new game is still heard.
+    room.rebuild(roomGame(project.design, ['Maya'], 1000))
+    act(() => {
+      room.game.broadcast('boing')
+    })
+    expect(screen.queryByRole('dialog', { name: 'You made it' })).toBeNull()
+    for (let i = 0; i < 30; i++) room.game.step()
+    act(() => {
+      room.game.broadcast(COURSE_CLEAR)
+    })
+    expect(screen.getByRole('dialog', { name: 'You made it' }).textContent).toMatch(/Time 0:01\.0/)
   })
 })

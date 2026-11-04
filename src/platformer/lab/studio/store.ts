@@ -49,6 +49,12 @@ export interface StudioRoom {
   readonly me: number
   /** The room's game itself, for drawing (null until the room has said welcome). */
   readonly game: Runtime | null
+  /**
+   * The tick the room's play started (its first tick, or the host's last Play again; the game's clock carries on
+   * across them), or null when we joined part way. The Play screens count their time from it and forget the last
+   * play's finish when it changes.
+   */
+  readonly playStart: number | null
   /** Play up to the room's clock now: how many ticks ran, and how far into the next one we are (0 to 1). */
   frame(now: number): { ticks: number; fraction: number }
 }

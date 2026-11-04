@@ -12,6 +12,9 @@ const HURT_MS = 1600
  * p2d-clear): a controls hint when Play starts, a coin counter and the time, "Try again" when the Hero is hurt, and
  * "You made it!" with the time and the best time when the Goal says the course is clear. It only listens to the running
  * game; the engine knows nothing about it. The time is the game's own ticks since Play, so it never drifts.
+ *
+ * In a room the game goes on across the host's Play again (one clock for the room, rooms/session.ts `playStart`):
+ * the time counts from the play's start, and a new play forgets the last one's finish.
  */
 export function PlayFeedback({ store }: { store: StudioStore }) {
   const runtime = useStudio(store, (s) => s.runtime)
@@ -28,23 +31,42 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
     setWon(null)
     if (!runtime) return
     const design = store.getState().project.design
+    const room = store.getState().room
     setCoins(readCoins(runtime, design))
     setTime(0)
     let clearedAt: number | null = null
+    let startTick = 0
+    // The room's play this screen is showing (undefined: none seen yet).
+    let play: number | null | undefined
+    const samePlay = () => {
+      if (!room || room.playStart === play) return
+      const again = play !== undefined
+      play = room.playStart
+      // Joined part way: count from now, the nearest we know.
+      startTick = play ?? runtime.world.tick
+      clearedAt = null
+      if (!again) return
+      setWon(null)
+      setHurt(0)
+    }
+    samePlay()
     const hintTimer = setTimeout(() => setHint(false), HINT_MS)
     const coinTimer = setInterval(() => {
+      samePlay()
       setCoins(readCoins(runtime, design))
-      setTime(clearedAt ?? runtime.world.tick)
+      setTime((clearedAt ?? runtime.world.tick) - startTick)
     }, 100)
     const hurtMessage = saysOuch(design) ? HERO_OUCH : HERO_HURT
     const off = runtime.onBroadcast((message) => {
+      samePlay()
       const m = message.trim().toLowerCase()
       if (m === COURSE_CLEAR) {
         if (clearedAt !== null) return
         clearedAt = runtime.world.tick
-        const newBest = recordClear(design, clearedAt)
-        setTime(clearedAt)
-        setWon({ coins: readCoins(runtime, design), time: clearedAt, best: bestTime(design), newBest })
+        const time = clearedAt - startTick
+        const newBest = recordClear(design, time)
+        setTime(time)
+        setWon({ coins: readCoins(runtime, design), time, best: bestTime(design), newBest })
       } else if (m === hurtMessage) {
         setHurt((n) => n + 1)
         if (hurtTimer.current) clearTimeout(hurtTimer.current)

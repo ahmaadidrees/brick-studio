@@ -9,10 +9,12 @@
  *
  * Copies are kept every `snapshotEvery` ticks (a Racing world takes about 3 ms to copy, so not every tick), and only
  * for `history` ticks; an event older than that can't be placed, and the caller asks the room for a fresh keyframe.
- * Sounds and other notes from ticks played again are dropped: they were heard the first time.
+ * Sounds and other notes from ticks played again are dropped: they were heard the first time. So are broadcasts: the
+ * screens that listen (onBroadcast) hear each one once, from whichever game is running, even when a Play again builds a
+ * new one.
  */
 import type { World } from '../core/contracts'
-import type { Runtime } from '../core/runtime'
+import type { BroadcastListener, Runtime } from '../core/runtime'
 import { copyWorld, worldFingerprint } from '../core/snapshot'
 
 export interface EventRecord<E> {
@@ -58,6 +60,12 @@ export class HackableTimeline<E> {
   private frontier: number
   rewinds = 0
   replayedTicks = 0
+  /** The ticks a Play again rebuilt the game at, oldest first (for the screens: when the play on screen started). */
+  private rebuilds: number[] = []
+  private readonly heard = new Set<BroadcastListener>()
+  private unwatch: () => void = () => {}
+  /** Playing a tick again: its broadcasts were heard the first time. */
+  private replaying = false
 
   constructor(runtime: Runtime, private readonly apply: ApplyEvent<E>, opts: TimelineOptions = {}) {
     this.runtime = runtime
@@ -65,6 +73,26 @@ export class HackableTimeline<E> {
     this.snapshotEvery = Math.max(1, opts.snapshotEvery ?? 4)
     this.frontier = runtime.world.tick
     this.snaps.set(runtime.world.tick, startCopy(runtime))
+    this.watch(runtime)
+  }
+
+  /** Hear the game's broadcasts as they are first played, whichever game is running. Returns the way to stop. */
+  onBroadcast(listener: BroadcastListener): () => void {
+    this.heard.add(listener)
+    return () => this.heard.delete(listener)
+  }
+
+  /** The tick the game was last rebuilt at by an event (a Play again), or null when it has not been. */
+  get rebuiltAt(): number | null {
+    return this.rebuilds.length ? this.rebuilds[this.rebuilds.length - 1]! : null
+  }
+
+  private watch(runtime: Runtime): void {
+    this.unwatch()
+    this.unwatch = runtime.onBroadcast((message, from) => {
+      if (this.replaying) return
+      for (const l of [...this.heard]) l(message, from)
+    })
   }
 
   /** The next tick to run. */
@@ -79,6 +107,8 @@ export class HackableTimeline<E> {
   /** Start again from a fresh game (joining late, or a resync from the room's keyframe). */
   reset(runtime: Runtime): void {
     this.runtime = runtime
+    this.watch(runtime)
+    this.rebuilds = []
     this.snaps.clear()
     this.byTick.clear()
     this.applied.clear()
@@ -189,6 +219,8 @@ export class HackableTimeline<E> {
     const snap = this.snaps.get(at)
     if (!snap) return false
     this.rewinds++
+    // Rebuilds from here on happen again as the ticks are played again (or not, if their event is gone).
+    this.rebuilds = this.rebuilds.filter((t) => t < at)
     this.runtime.restoreWorld(copyWorld(snap))
     while (this.tick < end) {
       this.replayedTicks++
@@ -202,12 +234,21 @@ export class HackableTimeline<E> {
     const events = this.eventsAt(t)
     const replay = t < this.frontier
     const notesBefore = this.runtime.notes.length
-    for (const e of events) {
-      const next = this.apply(this.runtime, e.ev, e.by)
-      if (next) this.runtime = next
+    this.replaying = replay
+    try {
+      for (const e of events) {
+        const next = this.apply(this.runtime, e.ev, e.by)
+        if (next) {
+          this.runtime = next
+          this.watch(next)
+          this.rebuilds.push(t)
+        }
+      }
+      this.applied.set(t, this.signature(events))
+      this.runtime.step()
+    } finally {
+      this.replaying = false
     }
-    this.applied.set(t, this.signature(events))
-    this.runtime.step()
     // A tick played again already made its sounds the first time.
     if (replay) this.runtime.notes.length = Math.min(this.runtime.notes.length, notesBefore)
     const now = this.tick
@@ -223,6 +264,8 @@ export class HackableTimeline<E> {
     for (const t of [...this.snaps.keys()]) if (t < cutoff && t !== keep) this.snaps.delete(t)
     for (const t of [...this.byTick.keys()]) if (t < cutoff) this.byTick.delete(t)
     for (const t of [...this.applied.keys()]) if (t < cutoff) this.applied.delete(t)
+    // Rebuilds too old to play again: only the newest one still says when the play on screen started.
+    while (this.rebuilds.length > 1 && this.rebuilds[1]! <= cutoff) this.rebuilds.shift()
   }
 
   /** The game as tick `t` was about to run, before its events, when a copy of it is kept (every `snapshotEvery`). */

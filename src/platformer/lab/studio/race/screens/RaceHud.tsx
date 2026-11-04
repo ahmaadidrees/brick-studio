@@ -24,13 +24,23 @@ function useRaceHud(runtime: Runtime | null, store: StudioStore): RaceHudState |
       return
     }
     const design = store.getState().project.design
+    const room = store.getState().room
     let startTick: number | null = null
+    // A room's game goes on across the host's Play again: a new play needs its own "go" (rooms/session.ts playStart).
+    let play = room?.playStart
+    const samePlay = () => {
+      if (!room || room.playStart === play) return
+      play = room.playStart
+      startTick = null
+    }
     const read = () => {
+      samePlay()
       const next = readRaceHud(runtime.world, design, startTick)
       setHud((prev) => (same(prev, next) ? prev : next))
     }
     // The first "go" of this game starts the clock, on the exact tick it was said.
     const off = runtime.onBroadcast((message) => {
+      samePlay()
       if (startTick === null && message.trim().toLowerCase() === RACE_GO) startTick = runtime.world.tick
     })
     read()

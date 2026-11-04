@@ -5,7 +5,7 @@ import { addPlayer } from '../core/players'
 import { createStarterProject } from '../studio/starter'
 import { HackableTimeline, type EventRecord } from './timeline'
 
-type Ev = { kind: 'join'; name: string } | { kind: 'down' | 'up'; key: string } | { kind: 'beep' }
+type Ev = { kind: 'join'; name: string } | { kind: 'down' | 'up'; key: string } | { kind: 'beep' } | { kind: 'shout' } | { kind: 'again' }
 
 function setup(snapshotEvery = 4) {
   const design: LevelDesign = createStarterProject().design
@@ -15,6 +15,14 @@ function setup(snapshotEvery = 4) {
   const apply = (runtime: Runtime, ev: Ev, by: number) => {
     if (ev.kind === 'join') addPlayer(runtime, { num: by, name: ev.name }, spawn)
     else if (ev.kind === 'beep') runtime.emit({ kind: 'sound', targetId: 'stage', sound: 'beep', volume: 100, pitch: 0, pan: 0 })
+    else if (ev.kind === 'shout') runtime.broadcast('hi')
+    else if (ev.kind === 'again') {
+      // Play again: a fresh game, the clock carrying on (rooms/game.ts playAgain).
+      const fresh = createRuntime(design)
+      fresh.world.tick = runtime.world.tick
+      fresh.greenFlag()
+      return fresh
+    }
     else if (ev.kind === 'down') runtime.pressKey(ev.key, by)
     else runtime.releaseKey(ev.key, by)
   }
@@ -125,5 +133,29 @@ describe('a Hackable room timeline (docs/qa/hackable-rooms M0)', () => {
     t.advanceTo(31)
     expect(t.rewinds).toBe(1)
     expect(beeps()).toBe(1)
+  })
+
+  it('screens hear each broadcast once, from whichever game is running, and know when a Play again started it', () => {
+    const t = setup()
+    const heard: number[] = []
+    t.onBroadcast(() => heard.push(t.tick))
+    t.addRemote(rec(5, 0, { kind: 'shout' }))
+    t.addRemote(rec(10, 0, { kind: 'again' }))
+    t.addRemote(rec(15, 0, { kind: 'shout' }))
+    const first = t.runtime
+    t.advanceTo(20)
+    expect(t.runtime).not.toBe(first)
+    expect(heard).toEqual([5, 15])
+    expect(t.rebuiltAt).toBe(10)
+    // An earlier event arrives: ticks 3 to 19 are played again, the Play again and both shouts among them.
+    t.addRemote(rec(3, 1, { kind: 'join', name: 'Maya' }))
+    t.advanceTo(21)
+    expect(t.rewinds).toBe(1)
+    expect(heard).toEqual([5, 15])
+    expect(t.rebuiltAt).toBe(10)
+    // The rebuilt game is still heard.
+    t.addRemote(rec(25, 0, { kind: 'shout' }))
+    t.advanceTo(30)
+    expect(heard).toEqual([5, 15, 25])
   })
 })
