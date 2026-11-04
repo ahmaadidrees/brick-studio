@@ -15,6 +15,7 @@ import type { MadeBrick } from '../starter'
 
 export const TIRES_BRICK_ID = 'brick_tires'
 export const BUMPER_BRICK_ID = 'brick_bumper'
+export const TREE_BRICK_ID = 'brick_tree'
 
 interface Spec {
   id: string
@@ -51,6 +52,16 @@ const SPECS: Readonly<Record<string, Spec>> = {
       if (d < 4.4) return 'w'
       if (d < 7) return 'p'
       return dist(x, y, 9, 9.5) < 7 ? 's' : grass(x, y)
+    },
+  },
+  [TREE_BRICK_ID]: {
+    id: TREE_BRICK_ID, name: 'Tree', char: 'E', solid: true,
+    palette: { ...GRASS, s: '#4c8a37', d: '#2f7d32', l: '#3f9a3c', w: '#9ccf8c' },
+    art: (x, y) => {
+      if (dist(x, y, 5.5, 5.5) < 1.6) return 'w'
+      if (dist(x, y, 7, 7) < 4.6) return 'l'
+      if (dist(x, y, 8, 8) < 7.2) return 'd'
+      return dist(x, y, 9.5, 10) < 7 ? 's' : grass(x, y)
     },
   },
 }
