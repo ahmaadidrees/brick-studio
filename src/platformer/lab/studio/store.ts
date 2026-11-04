@@ -409,7 +409,7 @@ export class StudioStore {
       this.set({ selectedBrickId: catalogId, brushBrickId: catalogId, brushTile: null })
       return catalogId
     }
-    const fresh = freshExtra(catalogId)
+    const fresh = freshExtra(catalogId, new Set(d.bricks.flatMap((b) => (b.grid ? [b.grid.char] : []))))
     if (!fresh) return null
     this.setDesign({ ...d, bricks: [...d.bricks, fresh.brick] }, { ...this.state.project.workspaces, [catalogId]: fresh.workspace })
     this.setWorkspace(catalogId, fresh.workspace)

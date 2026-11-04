@@ -1,12 +1,12 @@
 /**
- * Built-in Platformer bricks that a level gets only when a kid picks them (parity bucket B, 2026-11-04): the classic
+ * Built-in bricks that a level gets only when a kid picks them (parity bucket B, 2026-11-04): the classic
  * bricks rebuilt with open code. A new project doesn't carry them, so saves stay small; the Bricks drawer offers each
  * one, and picking it adds a fresh copy to the level under its catalog id (store.addCatalogBrick). From then on it is a
  * built-in brick like the Walker: "Back to the original" works (remix.ts reads this list), and changing its blocks
  * makes it "My ...".
  *
- * Each brick talks to the rest of the level only through broadcasts and Platformer blocks, so it works in any
- * Platformer that has a Hero.
+ * Each Platformer brick talks to the rest of the level only through broadcasts and Platformer blocks, so it works in
+ * any Platformer that has a Hero. Racing's are track bricks (race/raceExtras.ts).
  */
 import type { BrickDef, LevelDesign } from '../../core/contracts'
 import type { MadeBrick } from '../starter'
@@ -14,12 +14,13 @@ import type { StudioProject } from '../store'
 import { createMovingPlatformBrick, createUpDownPlatformBrick, LIFT_BRICK_ID, PLATFORM_BRICK_ID } from './platforms'
 import { CHECKPOINT_BRICK_ID, createCheckpointBrick } from './checkpoint'
 import { FLYER_BRICK_ID, SHELLBUG_BRICK_ID, SPIKY_BRICK_ID, createFlyerBrick, createShellbugBrick, createSpikyBrick } from './critters'
+import { TIRES_BRICK_ID, createRaceExtraBrick } from '../race/raceExtras'
 
 export interface ExtraBrick {
   /** Catalog id, the id the brick has in a level. */
   id: string
-  /** The Platformer drawer category (catalog.ts CatalogCategory). */
-  category: 'terrain' | 'blocks' | 'items' | 'critters' | 'course'
+  /** The drawer category: the Platformer's (catalog.ts CatalogCategory) or Racing's (race/raceDrawer.ts). */
+  category: 'terrain' | 'blocks' | 'items' | 'critters' | 'course' | 'track' | 'scenery'
   /** One line for the paint strip and the drawer. */
   hint: string
   make(): MadeBrick
@@ -34,7 +35,13 @@ export const PLATFORMER_EXTRAS: readonly ExtraBrick[] = [
   { id: SPIKY_BRICK_ID, category: 'critters', hint: 'Walks, and hurts from every side: don\'t stomp it', make: () => createSpikyBrick() },
 ]
 
-const BY_ID: ReadonlyMap<string, ExtraBrick> = new Map(PLATFORMER_EXTRAS.map((x) => [x.id, x]))
+/** Hackable Racing's, in drawer order. */
+export const RACE_EXTRAS: readonly ExtraBrick[] = [
+  { id: TIRES_BRICK_ID, category: 'track', hint: 'Soaks up a crash: cars hardly bounce', make: () => createRaceExtraBrick(TIRES_BRICK_ID) },
+]
+
+const ALL: readonly ExtraBrick[] = [...PLATFORMER_EXTRAS, ...RACE_EXTRAS]
+const BY_ID: ReadonlyMap<string, ExtraBrick> = new Map(ALL.map((x) => [x.id, x]))
 export const extraBrick = (id: string): ExtraBrick | undefined => BY_ID.get(id)
 
 const made = new Map<string, MadeBrick>()
@@ -55,15 +62,26 @@ function copyOf<T>(value: T): T {
   return value
 }
 
-/** A fresh copy to add to a level. */
-export function freshExtra(id: string): { brick: BrickDef; workspace: unknown } | undefined {
+/**
+ * A fresh copy to add to a level. A grid brick whose character another brick of the level already paints with gets a
+ * free one (`taken`), so its cells never turn into the other brick's.
+ */
+export function freshExtra(id: string, taken: ReadonlySet<string> = new Set()): { brick: BrickDef; workspace: unknown } | undefined {
   const m = extraOriginal(id)
-  return m ? copyOf({ brick: m.brick, workspace: m.workspace }) : undefined
+  if (!m) return undefined
+  const fresh = copyOf({ brick: m.brick, workspace: m.workspace })
+  const grid = fresh.brick.grid
+  if (grid && taken.has(grid.char)) {
+    const free = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'].find((c) => !taken.has(c))
+    if (!free) return undefined
+    fresh.brick = { ...fresh.brick, grid: { ...grid, char: free } }
+  }
+  return fresh
 }
 
 /** Every extra brick as one project, for the remix catalog (remix.ts `catalogOriginal`). It is never played. */
 export function createExtrasProject(): StudioProject {
-  const bricks = PLATFORMER_EXTRAS.map((x) => extraOriginal(x.id)!)
+  const bricks = ALL.map((x) => extraOriginal(x.id)!)
   const design: LevelDesign = {
     id: 'platformer_extras',
     name: 'Platformer bricks',

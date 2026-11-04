@@ -35,7 +35,7 @@ const BY_NAME: Record<string, CatalogCategory> = {
 export function categoryForBrick(brick: Pick<BrickDef, 'name'> & Partial<Pick<BrickDef, 'id' | 'remixOf'>>): CatalogCategory {
   if (brick.remixOf || (brick.id && !isCatalogBrick(brick as BrickDef))) return 'mine'
   const extra = brick.id ? extraBrick(brick.id) : undefined
-  if (extra) return extra.category
+  if (extra && PLATFORMER_EXTRAS.includes(extra)) return extra.category as CatalogCategory
   return BY_NAME[brick.name.trim().toLowerCase().replace(/\s+\d+$/, '')] ?? 'mine'
 }
 
