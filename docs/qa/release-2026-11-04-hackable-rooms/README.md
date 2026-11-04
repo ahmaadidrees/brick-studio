@@ -1,5 +1,7 @@
 # Hackable rooms, Parity A and Landing v2: November 4, 2026
 
+**Live on brickgineers.com:** Worker `c0b06a58`, site `dpl_AC6ubz7CKB3ZREfBBL1kGPKGNhpE`.
+
 Branch `claude/hackable-int-c541e7`. On top of production (main `0a7efbd`, Hackable Racing R1) it adds:
 
 - **Hackable rooms** (`claude/ship-rooms-868d57`): Play together for Hackable projects, from My projects, the class
@@ -115,8 +117,53 @@ unchanged (below).
 
 ## Deploy
 
-Pending: the Worker goes first (it adds the `HackableRoom` Durable Object with migration v5, and the Shift key
-allowlist), then the site. This section is filled in after the deploy.
+The owner approved shipping ("Yes, fix then ship"). [PR #28](https://github.com/ahmaadidrees/brick-studio/pull/28).
+
+**Worker, first:** `c0b06a58-f37b-4ffb-9b5d-cf8712b744f9`.
+- It adds the `HackableRoom` Durable Object (migration v5) and the Shift key allowlist.
+- Rollback: `3842d41c-aeca-4f29-b05b-3c3ebcd54952` (Hackable Racing R1).
+- `npm run test:worker`: 263 of 263.
+- Deployed with `npx wrangler deploy` (the production default env) from the release worktree.
+- After the deploy, `GET /hackable/rooms/<made-up id>` answers 404 `room_not_found` from the new handler.
+
+**Website:** `dpl_AC6ubz7CKB3ZREfBBL1kGPKGNhpE` on https://brickgineers.com, serving `index-e16y6EJp.js`.
+- Rollback: `dpl_Fi22yqRw489wJzBZi6jpgXAg36Bo` (Hackable Racing R1).
+- To roll back, run `vercel promote dpl_Fi22yqRw489wJzBZi6jpgXAg36Bo`, then
+  `npx wrangler rollback 3842d41c-aeca-4f29-b05b-3c3ebcd54952` in `multiplayer/worker`.
+- **How it was built**, in a new release worktree `~/.codex/worktrees/hackable-rooms-release` (detached at
+  `e397c5c7`, with its own `npm ci`, so no symlinked node_modules):
+  1. Copied `.vercel/project.json`, `.vercel/output/config.json` and `.vercel/output/static/micro/` from
+     `brick-hackable-modes`.
+  2. Ran `vercel pull --yes --environment=production`, loaded `.vercel/.env.production.local`, and ran `npm run build`.
+  3. Copied `dist/` into `.vercel/output/static`, keeping `micro/`.
+  4. Ran `vercel deploy --prebuilt --prod --yes` once. It printed only the JSON hint; `vercel inspect brickgineers.com`
+     confirmed the deployment, with aliases brickgineers.com, www.brickgineers.com and virtual-legos.vercel.app.
+- The bundle carries the production Worker address. `localhost:8787` appears only as the code's fallback, as in the
+  previous release.
+
+**No migration.**
+
+### Checks after the deploy, on production
+
+- **Bundle:** brickgineers.com and virtual-legos.vercel.app both serve `index-e16y6EJp.js`.
+- **Routes:** `/`, `/help`, `/join`, `/projects`, `/class`, `/2d/hackable`, `/2d/hackable-race`, `/2d/build`, `/micro/`
+  and `/2d/hackable/r/<id>` all return 200.
+- **Landing:** the new landing loads ("Make your own games, brick by brick.", with Make a game).
+- **`/2d/hackable?new=1`:** opens "My platformer · Hackable Platformer".
+- **Play together, guest room, two tabs:**
+  - The host opened a room from This project → Play together, and a guest joined by its link as "Sam". Both showed
+    "2 playing".
+  - The guest's timer counted from the play's start, and the hint says "hold Z, J or Shift to run".
+  - The guest's keys reached the shared game. The guest ran into the Walker, and the host's screen showed "Ouch!":
+    a Walker hurts every Hero in a room.
+  - Shift: I sent Shift with the arrows three times with the tabs steady, and the connection never dropped. One
+    "Reconnecting…" (back within a second or two) and a brief "1 playing" came while switching which tab was in front,
+    like the background-tab drops seen in the integration check.
+  - No console errors. The host then stopped playing together.
+
+| Host (production) | Guest (production) |
+|---|---|
+| ![Production room, host](shots/prod-room-host.jpg) | ![Production room, guest](shots/prod-room-guest.jpg) |
 
 ## Not checked
 
