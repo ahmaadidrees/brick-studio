@@ -10,7 +10,7 @@ import { play, type Runtime } from '../core/index'
 import { deterministicStringify } from '../core/save'
 import { designKit, parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
-import { screensFor } from './kitScreens'
+import { playerIdOf, screensFor } from './kitScreens'
 import { freshExtra } from './builtins/extras'
 import { withLength } from './builder/levelLength'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, powerProblem, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
@@ -283,8 +283,8 @@ export class StudioStore {
     const copyBrick = s.selectedCopyId ? (parseGridCopyId(s.selectedCopyId) ? s.selectedBrickId : d.copies.find((c) => c.id === s.selectedCopyId)?.brickId) : undefined
     if (copyBrick && this.brick(copyBrick)) return copyBrick
     if (this.codeVisited && this.brick(s.selectedBrickId)) return s.selectedBrickId
-    const player = screensFor(d).playerBrickId
-    return (d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player))?.id ?? d.bricks[0]?.id ?? STAGE_ID
+    const player = playerIdOf(d)
+    return (player ? d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player) : undefined)?.id ?? d.bricks[0]?.id ?? STAGE_ID
   }
 
   /** Code: run the whole level, or just the open brick. */
@@ -487,7 +487,25 @@ export class StudioStore {
 
   takeOffPower(brickId: string, snapId: string) {
     this.flushEditor()
+    const job = this.brick(brickId)?.powers?.find((p) => p.id === snapId)?.job
     this.applyPowerChange(brickId, takeOffPowerFrom(this.state.project, brickId, snapId))
+    // Start from nothing: taking the Player job off the player leaves the game with no player (unless it has another).
+    const d = this.state.project.design
+    if (job?.startsWith('player') && d.player === brickId && !this.brick(brickId)?.powers?.some((p) => p.job?.startsWith('player'))) this.setPlayer(null)
+  }
+
+  /**
+   * Start from nothing: snap a job (studio/blank/jobs.ts) onto a brick, tagged with its job. Unlike a power it fits a
+   * grid brick too (a Wall of tiles). The editor reloads to show its blocks.
+   */
+  giveJob(brickId: string, power: PowerBrick, job: string): SnappedPower | null {
+    if (!this.brick(brickId) || brickId === STAGE_ID) return null
+    this.flushEditor()
+    const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
+    const tagged: SnappedPower = { ...snap, job }
+    const design = { ...project.design, bricks: project.design.bricks.map((b) => (b.id === brickId ? { ...b, powers: (b.powers ?? []).map((p) => (p.id === snap.id ? tagged : p)) } : b)) }
+    this.applyPowerChange(brickId, { ...project, design })
+    return tagged
   }
 
   setPowerOn(brickId: string, snapId: string, on: boolean) {
@@ -511,6 +529,56 @@ export class StudioStore {
     this.set({ editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
+  // ------------------------------------------------------------ Start from nothing (docs/qa/blank-2d)
+
+  /** Make this brick the player (or nobody, with null): the camera follows it, and a room gives each friend a copy. */
+  setPlayer(brickId: string | null) {
+    const d = this.state.project.design
+    if ((d.player ?? null) === brickId || (brickId !== null && !d.bricks.some((b) => b.id === brickId))) return
+    const { player: _player, ...rest } = d
+    this.setDesign(brickId === null ? rest : { ...rest, player: brickId })
+  }
+
+  /** The Stage card: the stage's size (its bounds, cells and placed bricks together) and backdrop. */
+  setStageLayout(layout: { bounds: LevelDesign['bounds']; tiles: NonNullable<LevelDesign['tiles']>; copies: CopyPlacement[] }) {
+    this.setDesign({ ...this.state.project.design, bounds: layout.bounds, tiles: layout.tiles, copies: layout.copies })
+  }
+
+  setBackdrop(backdrop: NonNullable<LevelDesign['backdrop']>) {
+    const d = this.state.project.design
+    if ((d.backdrop ?? 'paper') === backdrop) return
+    const { backdrop: _b, ...rest } = d
+    this.setDesign(backdrop === 'paper' ? rest : { ...rest, backdrop })
+  }
+
+  /** One thing / Tiles: a brick painted on the grid with this character, or placed one at a time (null). */
+  setGridChar(brickId: string, char: string | null) {
+    this.updateBrick(brickId, (b) => {
+      if (char === null) {
+        const { grid: _grid, ...rest } = b
+        return rest
+      }
+      return { ...b, grid: { ...b.grid, char } }
+    })
+  }
+
+  /**
+   * Stage variables and lists some borrowed code reads (Score, Racing's laps to win), added when missing. The Stage's
+   * workspace declares them too, so they show in its Variables.
+   */
+  ensureStageData(variables: ReadonlyArray<{ id: string; name: string; value: Value }>, lists: ReadonlyArray<{ id: string; name: string }> = []) {
+    const d = this.state.project.design
+    const program = d.stage.program
+    const newVars = variables.filter((v) => !program.variables.some((x) => x.id === v.id))
+    const newLists = lists.filter((l) => !program.lists.some((x) => x.id === l.id))
+    if (!newVars.length && !newLists.length) return
+    const raw = this.state.project.workspaces[STAGE_ID]
+    const ws = (typeof raw === 'string' ? JSON.parse(raw) : raw && typeof raw === 'object' ? structuredClone(raw) : { blocks: { languageVersion: 0, blocks: [] } }) as { variables?: Array<{ id: string; name: string; type?: string }> }
+    ws.variables = [...(ws.variables ?? []), ...newVars.map((v) => ({ id: v.id, name: v.name })), ...newLists.map((l) => ({ id: l.id, name: l.name, type: 'list' }))]
+    this.setDesign({ ...d, stage: { ...d.stage, program: { ...program, variables: [...program.variables, ...newVars.map((v) => ({ id: v.id, name: v.name, value: v.value }))], lists: [...program.lists, ...newLists.map((l) => ({ id: l.id, name: l.name, value: [] }))] } } },
+      { ...this.state.project.workspaces, [STAGE_ID]: ws })
+  }
+
   /** The project's own name (the header's title, and its name in My projects). */
   renameProject(name: string) {
     const clean = name.trim().slice(0, 80)
@@ -526,7 +594,8 @@ export class StudioStore {
     const d = this.state.project.design
     const workspaces = { ...this.state.project.workspaces }
     delete workspaces[brickId]
-    this.setDesign({ ...d, bricks: d.bricks.filter((b) => b.id !== brickId), copies: d.copies.filter((c) => c.brickId !== brickId) }, workspaces)
+    const { player, ...rest } = d
+    this.setDesign({ ...rest, ...(player && player !== brickId ? { player } : {}), bricks: d.bricks.filter((b) => b.id !== brickId), copies: d.copies.filter((c) => c.brickId !== brickId) }, workspaces)
     const s = this.state
     this.set({
       selectedBrickId: s.selectedBrickId === brickId ? (d.bricks.find((b) => b.id !== brickId)?.id ?? STAGE_ID) : s.selectedBrickId,

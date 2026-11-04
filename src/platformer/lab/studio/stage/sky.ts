@@ -3,7 +3,7 @@
  * that used to live here: every painted cell is a brick drawn with its own costume (stage/gridCells.ts, renderer.ts).
  */
 import { Atlas } from '../../../render/atlas'
-import type { StageBounds } from '../../core/contracts'
+import { TILE_SIZE, type StageBounds } from '../../core/contracts'
 import { getCameraZoom, worldToScreen, type Camera, type Viewport } from './camera'
 
 let atlas: Atlas | null = null
@@ -166,4 +166,36 @@ export function drawGrass(ctx: CanvasRenderingContext2D, bounds: StageBounds, ca
   } catch {
     /* plain grass */
   }
+}
+
+// ---------------------------------------------------------------- Start from nothing's paper and night
+
+/** Start from nothing's plain paper (docs/qa/blank-2d), and the faint grid on it: one line per 16-step cell. */
+export const PAPER = '#fcfaf5'
+export const PAPER_GRID = '#ede7da'
+export const NIGHT = '#1f2a44'
+export const NIGHT_GRID = '#2b3858'
+
+/** A plain backdrop with the cell grid on it, lines a pixel wide whatever the zoom. */
+export function drawPaper(ctx: CanvasRenderingContext2D, bounds: StageBounds, camera: Camera, viewport: Viewport, rect: { x: number; y: number; w: number; h: number }, night = false): void {
+  ctx.save()
+  ctx.fillStyle = night ? NIGHT : PAPER
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+  ctx.beginPath()
+  ctx.rect(rect.x, rect.y, rect.w, rect.h)
+  ctx.clip()
+  ctx.fillStyle = night ? NIGHT_GRID : PAPER_GRID
+  const zoom = getCameraZoom(camera, viewport)
+  // Too small to see: no grid.
+  if (zoom * TILE_SIZE >= 6) {
+    for (let x = bounds.left + TILE_SIZE; x < bounds.right; x += TILE_SIZE) {
+      const [sx] = worldToScreen(camera, viewport, x, bounds.top)
+      ctx.fillRect(Math.round(sx), rect.y, 1, rect.h)
+    }
+    for (let y = bounds.bottom + TILE_SIZE; y < bounds.top; y += TILE_SIZE) {
+      const [, sy] = worldToScreen(camera, viewport, bounds.left, y)
+      ctx.fillRect(rect.x, Math.round(sy), rect.w, 1)
+    }
+  }
+  ctx.restore()
 }

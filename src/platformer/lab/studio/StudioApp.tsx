@@ -44,7 +44,7 @@ export interface StudioRoute {
   draft?: string
   fresh: boolean
   /** The address's game (/2d/hackable-race): what a new project is, and which newest one opens. Absent: the Platformer. */
-  kit?: 'race'
+  kit?: 'race' | 'blank'
   /** Open the project's room at once (the owner, after inviting classmates to play). */
   together?: boolean
 }
@@ -118,7 +118,7 @@ async function open(route: StudioRoute): Promise<Opening> {
 function fixAddress(opened: Opened) {
   if (opened.kind === 'new') return
   const path = window.location.pathname.replace(/\/+$/, '')
-  if (path !== '/2d/hackable' && path !== '/2d/hackable-race') return
+  if (path !== '/2d/hackable' && path !== '/2d/hackable-race' && path !== '/2d/hackable-blank') return
   const href = opened.kind === 'local' ? hackableHref.local(opened.id, kitIn(opened.project)) : hackableHref.world(opened.world.id, kitIn(opened.project))
   if (new URL(href, window.location.origin).pathname !== path) settle(href)
 }
@@ -631,7 +631,7 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
           <MenuItem
             icon={<Users size={18} />}
             label="Play together"
-            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : 'Open a room and send the link: everyone plays your game, each with their own Hero.'}
+            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : `Open a room and send the link: everyone plays your game, each with their own ${designKit(store.getState().project.design) === 'blank' ? 'player' : 'Hero'}.`}
             onSelect={() => void startRoom()}
           />
         )}

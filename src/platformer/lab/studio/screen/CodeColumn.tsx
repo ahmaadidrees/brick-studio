@@ -9,6 +9,7 @@ import { BRICK_TEMPLATES, type BrickTemplate } from '../templates'
 import { BrickName } from './BrickName'
 import { PowersBar } from './PowersBar'
 import { screensFor, type KitScreens } from '../kitScreens'
+import { JobStarts } from '../blank/JobCard'
 import '../assets/light.css'
 
 const TABS: ReadonlyArray<{ id: EditorTab; label: string }> = [
@@ -56,13 +57,15 @@ export function CodeColumn({ store, templates: given }: { store: StudioStore; te
           <span className="cl-tabs-ind" aria-hidden="true" data-at={TABS.findIndex((t) => t.id === tab)} data-of={3} />
         </div>
       </header>
-      {/* A kit without powers (Hackable Racing) has no "+ Power"; a power a brick already has (from a file) still shows. */}
-      {!brick.grid && (screens.powers || !!brick.powers?.length) && <PowersBar store={store} brick={brick} canAdd={screens.powers} />}
+      {/* A kit without powers (Hackable Racing) has no "+ Power"; a power a brick already has (from a file) still shows.
+          A game from nothing lists jobs here too, and tiles can have jobs (a Wall). */}
+      {(!brick.grid || screens.fromNothing) && !isStage && (screens.powers || !!brick.powers?.length) && <PowersBar store={store} brick={brick} canAdd={screens.powers} jobs={screens.fromNothing} />}
       <div className="cl-code-body">
         {tab === 'code' && <CodeEditor store={store} docked />}
         {tab === 'costumes' && <CostumeEditor store={store} />}
         {tab === 'sounds' && <SoundPanel store={store} />}
-        {tab === 'code' && fresh && templates.length > 0 && <div className="cl-start cl-fade" role="group" aria-label="Start from a brick that works">
+        {tab === 'code' && fresh && screens.fromNothing && <JobStarts store={store} brick={brick} />}
+        {tab === 'code' && fresh && !screens.fromNothing && templates.length > 0 && <div className="cl-start cl-fade" role="group" aria-label="Start from a brick that works">
           <span>Drag blocks under the hat, or start from a brick that works:</span>
           <div className="cl-row">
             {templates.map((t) => <button key={t.id} type="button" className="cl-chip-btn" title={t.blurb} onClick={() => startBrickFromTemplate(store, brick.id, t)}>{t.label}</button>)}

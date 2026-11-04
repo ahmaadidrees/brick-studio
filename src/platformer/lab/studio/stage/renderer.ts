@@ -12,7 +12,7 @@ import { boundsFor, opaqueRect, transformOf } from '../../core/geometry'
 import { getCameraZoom, snapToGrid, worldToScreen, type Camera, type Viewport } from './camera'
 import { parseGridCopyId, TILE_SIZE } from '../../core/contracts'
 import { SELECTED_OUTLINE, cellCostumeIndex, drawCellOutline, gridBrickIndex, visibleCells } from './gridCells'
-import { drawGrass, drawSky } from './sky'
+import { drawGrass, drawPaper, drawSky } from './sky'
 
 /** The Brickgineers look: cream outside the level, a sky-blue level. */
 const OUTSIDE = '#efe9da'
@@ -69,14 +69,21 @@ export interface RenderOptions {
   prevPoses?: Map<string, TargetPose>
   /** Interpolation weight in [0, 1). */
   interpAlpha?: number
-  /** Behind the level, under any Stage backdrop: the day sky and hills (the default), or Racing's grass (kitScreens). */
-  background?: 'sky' | 'grass'
+  /**
+   * Behind the level, under any Stage backdrop: the day sky and hills (the default), Racing's grass (kitScreens), or a
+   * Start from nothing game's paper (with the grid) or night.
+   */
+  background?: 'sky' | 'grass' | 'paper' | 'night'
 }
 
 /** The level's background, under the Stage backdrop. */
 function drawBackground(ctx: CanvasRenderingContext2D, opts: RenderOptions, bounds: StageBounds, rect: { x: number; y: number; w: number; h: number }): void {
   if (opts.background === 'grass') {
     drawGrass(ctx, bounds, opts.camera, opts.viewport)
+    return
+  }
+  if (opts.background === 'paper' || opts.background === 'night') {
+    drawPaper(ctx, bounds, opts.camera, opts.viewport, rect, opts.background === 'night')
     return
   }
   ctx.fillStyle = SKY

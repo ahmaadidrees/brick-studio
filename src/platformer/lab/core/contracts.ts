@@ -153,6 +153,11 @@ export interface SnappedPower {
    * changed them. Missing on snaps made before it was recorded.
    */
   fingerprint?: string
+  /**
+   * Start from nothing (docs/qa/blank-2d): this power is one of the built-in jobs (studio/blank/jobs.ts), named by its
+   * job id ('player', 'wall', ...), and for the Player job its way of moving ('player:walk'). Missing: a power.
+   */
+  job?: string
 }
 
 export interface BrickDef {
@@ -200,17 +205,28 @@ export interface CopyPlacement {
  * Which Hackable game a project is (docs/qa/hackable-modes): the Platformer, Racing or 3D. Every kit shares this core's
  * scheduler, blocks and save format; a kit adds its own blocks, lifecycle and Stage on top.
  */
-export type KitId = 'platformer' | 'race' | '3d'
-export const KIT_IDS: readonly KitId[] = ['platformer', 'race', '3d']
+export type KitId = 'platformer' | 'race' | '3d' | 'blank'
+export const KIT_IDS: readonly KitId[] = ['platformer', 'race', '3d', 'blank']
 export const isKitId = (value: unknown): value is KitId => typeof value === 'string' && (KIT_IDS as readonly string[]).includes(value)
 /** A design's kit. Missing means the Platformer, so every save made before kits opens unchanged. */
 export const designKit = (design: Pick<LevelDesign, 'kit'>): KitId => design.kit ?? 'platformer'
+
+/** The plain backdrops a Start from nothing game can have (the Stage card): paper with a grid, sky, grass, night. */
+export type Backdrop = 'paper' | 'sky' | 'grass' | 'night'
+export const BACKDROPS: readonly Backdrop[] = ['paper', 'sky', 'grass', 'night']
 
 export interface LevelDesign {
   id: string
   name: string
   /** Which Hackable game this is. Missing means the Platformer; the studio never writes 'platformer' itself. */
   kit?: KitId
+  /**
+   * Start from nothing (kit `blank`, docs/qa/blank-2d): the id of the brick that is the player (its job made it so, or
+   * "Make this the player"). The kits name their player by its own id instead (the Hero, the Car). Missing: no player.
+   */
+  player?: string
+  /** Start from nothing: what the Stage draws behind everything (the Stage card). Missing means plain paper. */
+  backdrop?: Backdrop
   /** The level is the stage (decision 2): fencing, edge, random position. */
   bounds: StageBounds
   /** Holds global variables/lists, stage scripts and backdrops. */
@@ -544,6 +560,8 @@ export interface World {
    * Like `bricks` it is shared between copies and never changed in place; an edit replaces it.
    */
   design?: LevelDesign
+  /** Start from nothing: the player brick's id (LevelDesign.player) when the game started. Rooms read `design` first. */
+  player?: string
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives

@@ -37,10 +37,10 @@ export function gameStart(game: GameId, defaults: Readonly<Record<GameId, Builde
 }
 
 /**
- * "Start from nothing" (an empty stage to draw your own bricks on). Off until Blank 2D exists: set this to its
- * address and the landing card and the picker card both appear.
+ * "Start from nothing" (an empty stage to draw your own bricks on, docs/qa/blank-2d): a new Start from nothing game.
+ * The landing card and the picker card appear while this is set (null hides them both); both stay outlined.
  */
-export const FROM_NOTHING_HREF: string | null = null
+export const FROM_NOTHING_HREF: string | null = '/2d/hackable-blank?new=1'
 
 /** A new 3D build. */
 export const BUILD_3D_HREF = '/build?new=1'

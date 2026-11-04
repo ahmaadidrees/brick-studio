@@ -11,6 +11,10 @@ import { isSingleton } from '../builder/limits'
 import { cellCount, removeCell, selectedCell } from '../builder/cells'
 import { isCatalogBrick, originalBrickName } from '../builder/catalog'
 import { BrickName } from './BrickName'
+import { screensFor } from '../kitScreens'
+import { hasJobOrCode } from '../blank/blankRules'
+import { GiveJob, JobChips } from '../blank/JobCard'
+import '../blank/blank.css'
 import '../race/raceBuild.css'
 
 /**
@@ -57,6 +61,10 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
   const finish = brick.grid?.finish !== undefined
   // A brick that points a way (a boost pad) turns like a finish line (parity bucket A).
   const pointsAWay = brick.grid?.way !== undefined
+  // A game from nothing (docs/qa/blank-2d): a brick with no code asks for a job; one with a job says which.
+  const fromNothing = screensFor(design).fromNothing
+  const needsJob = fromNothing && !hasJobOrCode(brick)
+  const isThePlayer = fromNothing && design.player === brick.id
 
   const remove = () => {
     setMenu(false)
@@ -87,18 +95,20 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
         <span className="cl-thumb" aria-hidden="true"><CostumeThumb asset={brick.costumes[0]?.asset} box={36} /></span>
         <span className="cl-inspector-title">
           <BrickName store={store} brick={brick} size="md" readOnly={builtIn} />
-          <span className="cl-muted">{builtIn ? 'Built-in · ' : ''}{details}</span>
+          <span className="cl-muted">{isThePlayer ? 'The player · ' : builtIn ? 'Built-in · ' : ''}{details}</span>
         </span>
         <div className="cl-menu-wrap">
           <button type="button" className="cl-icon-btn" aria-label="Brick actions" aria-expanded={menu} onClick={() => setMenu(!menu)}><MoreHorizontal size={18} /></button>
           {menu && <div className="cl-menu cl-pop" role="group" aria-label="Brick actions menu">
             {store.canResetBrick(brick.id) && <button type="button" onClick={() => { setMenu(false); setConfirm(true) }}>Back to the original</button>}
+            {fromNothing && !brick.grid && !isThePlayer && <button type="button" onClick={() => { setMenu(false); store.setPlayer(brick.id) }}>Make this the player</button>}
             {!single && <button type="button" onClick={remove} aria-label={`Remove this ${brick.name}`}><Trash2 size={16} /> Remove this one</button>}
           </div>}
         </div>
         <button type="button" className="cl-icon-btn" aria-label="Close" title="Close (Esc)" onClick={() => store.closeCard()}><X size={18} /></button>
       </header>
 
+      {needsJob ? <GiveJob store={store} brick={brick} noCode={noCode} /> : <>
       <div className="cl-tabs" role="tablist" aria-label="Brick details">
         <button type="button" role="tab" aria-selected={shownTab === 'sliders'} onClick={() => store.setCardTab('sliders')}>Sliders</button>
         <button type="button" role="tab" aria-selected={shownTab === 'look'} onClick={() => store.setCardTab('look')}>Look</button>
@@ -110,6 +120,7 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
           <ul className="cl-costumes" aria-label="Costumes">{brick.costumes.map((costume) => <li key={costume.name}><CostumeThumb asset={costume.asset} box={56} /><span>{costume.name}</span></li>)}</ul>
           {!noCode && <button type="button" className="cl-btn" onClick={() => { store.setScreen('code', brick.id); store.setEditorTab('costumes') }}>Change costumes</button>}
         </> : <>
+          {fromNothing && <JobChips store={store} brick={brick} noCode={noCode} />}
           {perCopy && <div className="cl-seg" role="group" aria-label="Which ones change">
             <button type="button" aria-pressed={scope === 'all'} onClick={() => store.setSliderScope('all')}>Every {brick.name}</button>
             <button type="button" aria-pressed={scope === 'one'} onClick={() => store.setSliderScope('one')}>Just this one</button>
@@ -142,6 +153,7 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
       {!noCode && <button type="button" className="cl-btn cl-btn-primary cl-open-code" title="See inside: its code and costumes (or double-click the brick)" onClick={() => store.setScreen('code', brick.id)}>
         <Code2 size={17} aria-hidden="true" /> See inside
       </button>}
+      </>}
       {noCode && <p className="cl-note">Code needs a bigger screen. Sliders and Look work here; open this level on a laptop, Chromebook or tablet to change its code.</p>}
 
       {confirm && <div className="cl-confirm cl-pop" role="dialog" aria-modal="true" aria-label="Back to the original?">

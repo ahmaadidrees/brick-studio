@@ -1733,6 +1733,15 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       hat: 'cap',
       tooltip: 'Runs when this brick stops standing on something: it jumped, fell or walked off an edge.',
     },
+    // Start from nothing's Game category (docs/qa/blank-2d, core/game.ts).
+    {
+      type: 'game_touchingplayer',
+      message0: 'touching the player?',
+      category: 'game',
+      colour: CATEGORY_COLORS.game,
+      output: 'Boolean',
+      tooltip: 'True when I touch the player: the brick with the Player job (or made the player from its menu), any copy of it.',
+    },
     // Racing extension (Hackable Racing R1): built in, like touching. Laps count from the finish line (core/race.ts).
     {
       type: 'race_groundunder',

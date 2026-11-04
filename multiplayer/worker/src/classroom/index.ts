@@ -549,11 +549,11 @@ export type WorldFormat = 'brick' | '2d' | 'hackable';
 /** A Hackable project (Code Lab): its save envelope, wrapped so it says what it is. */
 export const HACKABLE_FORMAT = 'brickgineers-hackable';
 /** A Hackable project's game: its design's `kit` (app: src/platformer/lab/kits.ts). Missing means the Platformer. */
-export type HackableKit = 'platformer' | 'race' | '3d';
-const HACKABLE_KIT_NAMES: Record<HackableKit, string> = { platformer: 'Hackable Platformer', race: 'Hackable Racing project', '3d': 'Hackable 3D project' };
+export type HackableKit = 'platformer' | 'race' | '3d' | 'blank';
+const HACKABLE_KIT_NAMES: Record<HackableKit, string> = { platformer: 'Hackable Platformer', race: 'Hackable Racing project', '3d': 'Hackable 3D project', blank: 'Own game (Start from nothing)' };
 function hackableKit(row: Row): HackableKit {
   const kit = row.doc_hackable_kit ?? (isHackableDocument(row.document) ? (row.document as { save?: { design?: { kit?: unknown } } }).save?.design?.kit : undefined);
-  return kit === 'race' || kit === '3d' ? kit : 'platformer';
+  return kit === 'race' || kit === '3d' || kit === 'blank' ? kit : 'platformer';
 }
 /** "This is a Hackable Platformer. Open it there.", naming the project's own game. */
 const notHackableHere = (kit: HackableKit) => `This is a ${HACKABLE_KIT_NAMES[kit]}. Open it there.`;
@@ -578,7 +578,7 @@ function hackableDocument(value: unknown): Row {
  * A world's kit: 'race' for race tracks and Hackable Racing, '3d' for Hackable 3D; absent for platformers, Hackable
  * Platformers and 3D builds (so older apps see nothing new). `format` says which builder each one opens in.
  */
-export function worldKit(row: Row): 'race' | '3d' | undefined {
+export function worldKit(row: Row): 'race' | '3d' | 'blank' | undefined {
   if (worldFormat(row) === 'hackable') {
     const kit = hackableKit(row);
     return kit === 'platformer' ? undefined : kit;

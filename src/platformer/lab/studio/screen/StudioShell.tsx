@@ -14,16 +14,21 @@ import { ensureTiles } from '../builder/ensureTiles'
 import { limitedStore } from '../builder/limits'
 import { builderSession } from '../builder/session'
 import { BuildDrawer, PaintStrip } from './BuildDrawer'
+import type { BrickKind } from './NewBrickSheet'
+import { giveJob } from '../blank/jobs'
 import { CodeColumn } from './CodeColumn'
 import { Inspector } from './Inspector'
 import { LevelBricks } from './LevelBricks'
 import { FirstRunTips, HelpSheet } from './StudioHelp'
+import { BuildScore, EmptyStage, NextStepLine } from '../blank/BlankBuild'
 import { markTipsSeen, tipsSeen } from './firstRunTips'
 import type { BrickTemplate } from '../templates'
 import '../builder/builder.css'
 import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
+/** After + New brick in a game from nothing: Tiles start solid (the Wall job, which comes off like any job). */
+const onBrickMade = (store: StudioStore, brickId: string, kind?: BrickKind) => { if (kind === 'tiles') giveJob(store, brickId, 'wall') }
 const LEAVE_WAIT_MS = 5000
 /** How long the small-screen brick card ignores touches after it opens (longer than a tap's trailing click). */
 const INSPECTOR_SETTLE_MS = 400
@@ -147,7 +152,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
     // Play needs the kit's player (the Hero, the Car). Without one, say so kindly and stay put instead of starting a level
     // where nothing moves.
     const design = store.getState().project.design
-    if (next === 'play' && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
+    if (next === 'play' && screensFor(design).playNeedsPlayer && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
     setNote(null)
     setSheet(false)
     if (next !== 'build') setErasing(false)
@@ -238,7 +243,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
       <div className="cl-body">
         <div className="cl-slot cl-slot-drawer" inert={screen !== 'build' || (phone && !sheet) ? true : undefined}>
-          <BuildDrawer store={store} history={history} erasing={erasing} onErasing={setErasing} onPicked={phone ? () => setSheet(false) : undefined} />
+          <BuildDrawer store={store} history={history} erasing={erasing} onErasing={setErasing} onPicked={phone ? () => setSheet(false) : undefined} onBrickMade={(id, kind) => onBrickMade(store, id, kind)} />
         </div>
 
         <div className="cl-slot cl-slot-code" inert={screen !== 'code' ? true : undefined}>
@@ -249,12 +254,16 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           <div className="cl-stage-frame">
             <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
             {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} />}
+            {screen === 'build' && screens.fromNothing && <EmptyStage store={store} onMade={(id, kind) => onBrickMade(store, id, kind)} />}
+            {screen === 'build' && screens.fromNothing && <BuildScore store={store} />}
           </div>
           {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'build' && parts.BuildChip && <parts.BuildChip store={store} />}
           {screen === 'play' && <parts.PlayHud store={store} />}
           {screen === 'play' && touch && runtime && !paused && <parts.TouchControls runtime={runtime} store={store} />}
-          {tips && screen === 'build' && <FirstRunTips phone={phone} noCode={noCode} copy={screens.copy} onClose={() => setTips(false)} />}
+          {tips && screen === 'build' && !screens.fromNothing && <FirstRunTips phone={phone} noCode={noCode} copy={screens.copy} onClose={() => setTips(false)} />}
+          {/* A game from nothing has the next-step line instead of the tips. */}
+          {screen === 'build' && screens.fromNothing && <NextStepLine store={store} />}
         </div>
 
         {/* Phones and a Duo: the Bricks sheet is closed most of the time, so Undo and Erase stay out here in their own

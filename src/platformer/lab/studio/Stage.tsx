@@ -43,7 +43,8 @@ import {
   type TargetPose,
 } from './stage/renderer'
 import { StageControls } from './stage/StageControls'
-import { isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
+import { backgroundOf, isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
+import { BLANK_COLS, BLANK_ROWS } from './blank/blankProject'
 import './stage/stage.css'
 
 /** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
@@ -117,7 +118,8 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   const design = useStudio(store, (s) => s.project.design)
   // The kit's screens: whom Play's camera follows, how wide, and what the level's background is.
   const screens = screensFor(design)
-  const background = screens.background
+  // Start from nothing picks its own backdrop in the Stage card.
+  const background = backgroundOf(design)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const erasing = tools?.erasing ?? false
@@ -242,10 +244,12 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     setPlayFree(false)
   }, [mode])
 
-  const playCameraMode: PlayCameraMode = playChoice ?? defaultPlayCameraMode(design.bounds, viewport)
+  // A game from nothing on one screen shows the whole stage, like Scratch; a bigger one follows its player.
+  const oneScreen = screens.fromNothing && design.bounds.right - design.bounds.left <= BLANK_COLS * TILE_SIZE && design.bounds.top - design.bounds.bottom <= BLANK_ROWS * TILE_SIZE
+  const playCameraMode: PlayCameraMode = playChoice ?? (oneScreen ? 'whole' : defaultPlayCameraMode(design.bounds, viewport))
 
   // The follow camera eases after the player like the classic game's (stage/camera.ts FollowRig): a new one each Play.
-  const rigKind = screens.kit === 'race' ? 'top' : 'side'
+  const rigKind = screens.kit === 'race' || screens.kit === 'blank' ? 'top' : 'side'
   const rigRef = useRef<{ rig: FollowRig; at: number } | null>(null)
   useEffect(() => {
     rigRef.current = null

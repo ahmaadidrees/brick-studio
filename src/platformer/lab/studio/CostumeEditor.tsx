@@ -16,7 +16,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
-import type { Costume } from '../core/contracts'
+import { designKit, TILE_SIZE, type Costume } from '../core/contracts'
 import { DESIGN_LIMITS } from '../core/project'
 import { blankImage, costumeFromImage, type PixelImage } from './pixels'
 import { STAGE_ID, useStudio, type StudioStore } from './store'
@@ -74,6 +74,8 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
       : s.project.design.bricks.find((b) => b.id === s.selectedBrickId)
   )
   const bounds = useStudio(store, (s) => s.project.design.bounds)
+  // A game from nothing draws on one 16-step cell, so a drawn brick fills one cell of its grid (docs/qa/blank-2d).
+  const brickSide = useStudio(store, (s) => (designKit(s.project.design) === 'blank' ? TILE_SIZE : 32))
 
   // Level view size for stage backdrops: 480 × 360
   const levelViewWidth = Math.min(bounds.right - bounds.left, 480)
@@ -82,8 +84,8 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
   // A brick or stage with no costume yet shows a blank one to paint on. It is only added to the project once the
   // kid paints (or adds another), so just opening Costumes never changes the project.
   const unpainted = !!brick && brick.costumes.length === 0
-  const blankWidth = isStage ? levelViewWidth : 32
-  const blankHeight = isStage ? levelViewHeight : 32
+  const blankWidth = isStage ? levelViewWidth : brickSide
+  const blankHeight = isStage ? levelViewHeight : brickSide
   const blankName = isStage ? 'Sky' : brick?.name ?? 'costume1'
   const placeholder = useMemo<Costume | null>(
     () =>
@@ -159,7 +161,7 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
     if (isStage) {
       setZoom(1)
     } else {
-      setZoom(img.width <= 32 ? 14 : img.width <= 64 ? 8 : 4)
+      setZoom(img.width <= 16 ? 22 : img.width <= 32 ? 14 : img.width <= 64 ? 8 : 4)
     }
   }, [costumeKey, currentCostume?.asset, isStage])
 
