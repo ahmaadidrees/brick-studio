@@ -140,6 +140,7 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
   checkId(design.id, 'id', push)
   checkName(design.name, 'name', push)
   if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race or 3d.')
+  if (design.pits !== undefined && typeof design.pits !== 'boolean') push('bad-value', 'pits', 'Pits must be true or false.')
   checkSeed(design.seed, push)
   checkBounds(design.bounds, push)
 

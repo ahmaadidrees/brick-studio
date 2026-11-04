@@ -294,7 +294,7 @@ describe('The Hero brick is built from open blocks', () => {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
       // 1 flag script, 19 "every tick" scripts (the basics, the feel scripts and Move), 4 bump hats (wall slide and run
       // meter, left and right), 4 broadcast hats (boing, stomped, hero hurt, bounce), and the one My Block: move and collide.
-      expect(ws.getTopBlocks(false)).toHaveLength(29)
+      expect(ws.getTopBlocks(false)).toHaveLength(30)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -371,6 +371,7 @@ describe('The Hero brick is built from open blocks', () => {
       'Wall slide (part 2)',
       'Top fall speed',
       'Move',
+      'Fall into a pit',
     ])
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
     expect(flag.body.some((s) => s.opcode === 'control_forever')).toBe(false)

@@ -225,6 +225,12 @@ export interface LevelDesign {
    * Play every filled cell becomes a painted-copy target of that brick (see GridSpec). Missing means no grid.
    */
   tiles?: TileLayer
+  /**
+   * The bottom of the level is open (parity bucket A, 2026-11-03): whatever falls off it falls into a pit, like the
+   * classic Platformer, and the Hero's own blocks notice and get hurt. Missing means a solid floor: levels saved before
+   * the Hero knew about pits, Racing tracks, and test rooms.
+   */
+  pits?: boolean
 }
 
 // ---------------------------------------------------------------- grid bricks (step 7, docs/qa/code-lab-core/STEP7.md)

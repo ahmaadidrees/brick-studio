@@ -3,7 +3,7 @@
  * fire the green flag). The UI talks to this module, not to the lane files.
  */
 import { clonePrimitives } from './clones'
-import { designKit, type KitId, type LevelDesign, type PrimitiveTable } from './contracts'
+import { DEFAULT_PHYSICS, designKit, type KitId, type LevelDesign, type PrimitiveTable } from './contracts'
 import { dataPrimitives } from './data'
 import { looksPrimitives, onGreenFlagLooks, onStopAllLooks } from './looks'
 import { motionPrimitives } from './motion'
@@ -70,7 +70,10 @@ export function createRuntime(design: LevelDesign): Runtime {
   const kit = designKit(design)
   const engine = KIT_ENGINES[kit]
   if (!engine) throw new Error(`This version cannot run ${kit} projects yet.`)
-  return new Runtime(instantiate(design), engine.primitives, engine.lifecycle)
+  const world = instantiate(design)
+  // A level with pits has no floor: falling off the bottom is falling out of the level (the sides stay walls).
+  if (design.pits === true) world.physics = { ...DEFAULT_PHYSICS, walls: { ...DEFAULT_PHYSICS.walls, bottom: false } }
+  return new Runtime(world, engine.primitives, engine.lifecycle)
 }
 
 /** Play: always restarts from the saved design, then fires the green flag. */

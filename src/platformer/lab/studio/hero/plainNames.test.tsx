@@ -2,8 +2,8 @@
  * The Hero's variables in plain words (2026-11-01): "p speed" is now "full run speed", and so on. Saved Heroes must open
  * and play exactly as before, their sliders must work, and no block may end up pointing at a variable that is not there.
  *
- * `hero-before-plain-names.json` is the starter Hero as main b0d43fe made it, just before the names changed: the same
- * blocks as today's Hero, with the old names.
+ * `hero-before-plain-names.json` is the starter Hero as main b0d43fe made it, just before the names changed, with the old
+ * names. Its blocks are the Hero just before pits (2026-11-03, '88bce6fb'), so it now also upgrades to today's blocks.
  */
 import * as Blockly from 'blockly/core'
 import 'blockly/blocks'
@@ -19,7 +19,7 @@ import { buildEditorContext } from '../code/context'
 import { projectFromText } from '../persist/hackableSave'
 import { parseSaveText } from '../persist/repairSave'
 import { exportProjectJson } from '../persist/projectIo'
-import { canResetBrick, upgradeUntouchedHero, workspaceFingerprint } from '../remix'
+import { canResetBrick, EARLIER_HERO_FINGERPRINTS, upgradeUntouchedHero, workspaceFingerprint } from '../remix'
 import { createStarterProject } from '../starter'
 import { StudioStore, type StudioProject } from '../store'
 import { KnobsCard } from '../workshop/KnobsCard'
@@ -118,21 +118,22 @@ describe('the plain names', () => {
     expect(HERO_KNOBS.every((k) => k.hint.length > 8 && k.hint.length < 90)).toBe(true)
   })
 
-  it('the saved Hero from just before has exactly the old names, and the same blocks as today\'s Hero', () => {
+  it('the saved Hero from just before has exactly the old names, and the same blocks as the Hero just before pits', () => {
     const current = createStarterProject()
     const fresh = names(heroOf(current).program.variables)
     const old = names((plainNamesHero as unknown as { program: { variables: Array<{ id: string; name: string }> } }).program.variables)
     expect(Object.keys(old)).toEqual(Object.keys(fresh))
     for (const id of Object.keys(fresh)) expect(old[id], id).toBe(HERO_OLD_VARIABLE_NAMES[id] ?? fresh[id])
     expect(Object.keys(HERO_OLD_VARIABLE_NAMES).every((id) => HERO_OLD_VARIABLE_NAMES[id] !== fresh[id])).toBe(true)
-    const print = workspaceFingerprint(current.workspaces[HERO_BRICK_ID])
+    const print = '88bce6fb'
+    expect(EARLIER_HERO_FINGERPRINTS).toContain(print)
     expect(workspaceFingerprint(plainNamesHero.workspace)).toBe(print)
     expect(workspaceFingerprint(throughBlockly(plainNamesHero.workspace))).toBe(print)
   })
 })
 
 describe('an untouched Hero saved with the old names', () => {
-  it('opens with the plain names, the kid\'s slider values, the very same blocks and program', () => {
+  it('opens with the plain names, the kid\'s slider values, and today\'s blocks and program', () => {
     const old = savedWith(plainNamesHero, { walk_top: 4, p_top: 9 })
     const up = upgradeUntouchedHero(old)
     expect(up).not.toBe(old)
@@ -141,9 +142,9 @@ describe('an untouched Hero saved with the old names', () => {
     expect(names((up.workspaces[HERO_BRICK_ID] as Ws).variables)).toEqual(names((fresh.workspaces[HERO_BRICK_ID] as Ws).variables))
     expect(heroOf(up).program.variables.map((v) => v.value)).toEqual(heroOf(old).program.variables.map((v) => v.value))
     expect(heroOf(up).program.variables.find((v) => v.id === 'p_top')!.value).toBe(9)
-    expect(heroOf(up).program.scripts).toEqual(heroOf(old).program.scripts)
-    expect(heroOf(up).program.procedures).toEqual(heroOf(old).program.procedures)
-    expect((up.workspaces[HERO_BRICK_ID] as Ws).blocks).toEqual((old.workspaces[HERO_BRICK_ID] as Ws).blocks)
+    expect(heroOf(up).program.scripts).toEqual(heroOf(fresh).program.scripts)
+    expect(heroOf(up).program.procedures).toEqual(heroOf(fresh).program.procedures)
+    expect((up.workspaces[HERO_BRICK_ID] as Ws).blocks).toEqual((fresh.workspaces[HERO_BRICK_ID] as Ws).blocks)
     expect(validateDesign(up.design)).toEqual([])
     expectNoMissingVariables(up)
     // Opening it again changes nothing more.
@@ -205,18 +206,16 @@ describe('a Hero the kid changed keeps the names it has', () => {
   })
 
   it('a brick that reads a Hero variable by its old name ("p speed of Hero") keeps working: the names stay', () => {
-    const project = savedWith(plainNamesHero)
-    const walker = project.workspaces.brick_walker as Ws
-    walker.blocks.blocks.push({ type: 'sensing_of', id: 'reads_p', x: 0, y: 900, fields: { PROPERTY: 'p speed', OBJECT: 'Hero' } })
-    expect(upgradeUntouchedHero(project)).toBe(project)
-    // An earlier Hero upgrades its blocks, and keeps the old names for the same reason.
-    const earlier = savedWith(feelScriptsHero as unknown as Fixture)
-    ;(earlier.workspaces.brick_walker as Ws).blocks.blocks.push({ type: 'sensing_of', id: 'reads_p', x: 0, y: 900, fields: { PROPERTY: 'p speed', OBJECT: 'Hero' } })
-    const up = upgradeUntouchedHero(earlier)
-    expect(up).not.toBe(earlier)
-    expect(heroOf(up).program.variables.find((v) => v.id === 'p_top')!.name).toBe('p speed')
-    expect((up.workspaces[HERO_BRICK_ID] as Ws).variables.find((v) => v.id === 'p_top')!.name).toBe('p speed')
-    expectNoMissingVariables(up)
+    // Earlier Heroes (this one included, since pits) upgrade their blocks, and keep the old names for that reader.
+    for (const fixture of [plainNamesHero, feelScriptsHero] as unknown as Fixture[]) {
+      const earlier = savedWith(fixture)
+      ;(earlier.workspaces.brick_walker as Ws).blocks.blocks.push({ type: 'sensing_of', id: 'reads_p', x: 0, y: 900, fields: { PROPERTY: 'p speed', OBJECT: 'Hero' } })
+      const up = upgradeUntouchedHero(earlier)
+      expect(up).not.toBe(earlier)
+      expect(heroOf(up).program.variables.find((v) => v.id === 'p_top')!.name).toBe('p speed')
+      expect((up.workspaces[HERO_BRICK_ID] as Ws).variables.find((v) => v.id === 'p_top')!.name).toBe('p speed')
+      expectNoMissingVariables(up)
+    }
   })
 
   it('its sliders still show the plain words, and say what the variable is called in its code', () => {

@@ -164,6 +164,9 @@ export const HERO_MORE_TUNING_COUNT = HERO_KNOB_GROUPS.reduce((n, g) => n + g.kn
  */
 export const HERO_START = { x: 60, y: 24 } as const
 
+/** Below this y the Hero has fallen into a pit (its box top is a tile below the bottom of the level, which is y 0). */
+export const PIT_Y = -24
+
 /** The Hero's own working memory. Not knobs: they change every tick. */
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'steer', name: 'steer' }, // -1 left, 0 none, 1 right (with the wall-jump lock applied)
@@ -612,6 +615,13 @@ export function createHeroWorkspace(): WorkspaceJson {
   receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
   // Hurt (by a Walker, Spikes or Lava): back to where I started this level, standing still.
   receive('hero hurt', 'When I get hurt: go back to where I started', [goTo(v('start_x'), v('start_y')), setX(0), setY(0)])
+  // Pits (parity bucket A, 2026-11-03): a Platformer level has no floor (LevelDesign.pits), so dropping off the bottom
+  // is falling into a pit. The old Hero died once its top was a tile below the level; the box top is 6 above my y.
+  later(() =>
+    tick('basics', 'Fall into a pit: when I drop below the bottom of the level, I get hurt', [
+      when(lt({ block: blk('motion_yposition') }, PIT_Y), [goTo(v('start_x'), v('start_y')), setX(0), setY(0)]),
+    ]),
+  )
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
   receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(key('space'), [setY(11)], [setY(6.5)])])

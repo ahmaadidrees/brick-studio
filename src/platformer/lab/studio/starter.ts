@@ -527,6 +527,8 @@ export function createStarterProject(): StudioProject {
     name: 'Starter Platformer',
     seed: 12345,
     bounds: { left: 0, right: 960, bottom: 0, top: 360 },
+    // The gap at columns 20-22 is a real pit: fall in and the Hero is hurt (heroBrick.ts, "Fall into a pit").
+    pits: true,
     stage: stageBrick,
     tiles: createStarterTiles(),
     bricks: [hero.brick, walker.brick, coin.brick, spring.brick, goal.brick, ...gridBricks.map((g) => g.brick)],

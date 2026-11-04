@@ -1,5 +1,5 @@
 /** Catalog bricks are copied into each level. A remix changes that level's definition, never the catalog. */
-import type { BrickDef } from '../core/contracts'
+import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
@@ -232,9 +232,10 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
 /**
  * Earlier built-in Heroes' blocks, as generated and after a trip through the editor: the two My Blocks versions, and the
  * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
- * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits.
+ * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits. '88bce6fb' is the Hero just
+ * before pits (2026-11-03).
  */
-export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65']
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65', '88bce6fb']
 
 let currentHeroFingerprint: string | undefined
 
@@ -248,6 +249,26 @@ let currentHeroFingerprint: string | undefined
  * loses its variable either way. A Hero with other blocks keeps the names it has (`HERO_OLD_VARIABLE_NAMES`).
  */
 export function upgradeUntouchedHero(project: StudioProject): StudioProject {
+  return withPits(upgradeHeroBlocks(project))
+}
+
+/**
+ * A Platformer whose Hero is the built-in one that knows about pits gets an open floor (LevelDesign.pits). A Hero a kid
+ * changed may not have the "Fall into a pit" script, so its level keeps the solid floor it was built on; so does a
+ * level that already says either way.
+ */
+function withPits(project: StudioProject): StudioProject {
+  const design = project.design
+  if (design.pits !== undefined || designKit(design) !== 'platformer') return project
+  const hero = design.bricks.find((b) => b.id === 'brick_hero')
+  const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
+  if (!hero || !original) return project
+  currentHeroFingerprint ??= workspaceFingerprint(original.workspace)
+  if (workspaceFingerprint(project.workspaces[hero.id]) !== currentHeroFingerprint) return project
+  return { ...project, design: { ...design, pits: true } }
+}
+
+function upgradeHeroBlocks(project: StudioProject): StudioProject {
   const hero = project.design.bricks.find((b) => b.id === 'brick_hero')
   const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
   if (!hero || !original) return project
@@ -255,6 +276,8 @@ export function upgradeUntouchedHero(project: StudioProject): StudioProject {
   currentHeroFingerprint ??= workspaceFingerprint(original.workspace)
   if (fingerprint === currentHeroFingerprint) return plainHeroNames(project, hero)
   if (!EARLIER_HERO_FINGERPRINTS.includes(fingerprint)) return project
+  // A kid who renamed one of its variables has made the Hero their own, like changing a block.
+  if (renamedByKid(project, hero)) return project
   const tuned = new Map(hero.program.variables.map((v) => [v.id, v.value]))
   const fresh = clone(original)
   // A brick that reads a Hero variable by its old name ("p speed of Hero") keeps it working: the Hero keeps old names.
@@ -267,6 +290,15 @@ export function upgradeUntouchedHero(project: StudioProject): StudioProject {
     design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? upgraded : b)) },
     workspaces: { ...project.workspaces, [hero.id]: workspace },
   }
+}
+
+/** Whether a variable of this Hero has a name that is neither today's nor its name before the plain words. */
+function renamedByKid(project: StudioProject, hero: BrickDef): boolean {
+  const fresh = new Map(catalogOriginal(hero)!.brick.program.variables.map((v) => [v.id, v.name]))
+  const workspace = workspaceObject(project.workspaces[hero.id])
+  const declared = record(workspace) && Array.isArray(workspace.variables) ? workspace.variables.filter(record) : []
+  const own = (id: unknown, name: unknown) => typeof id === 'string' && fresh.has(id) && name !== fresh.get(id) && name !== HERO_OLD_VARIABLE_NAMES[id]
+  return hero.program.variables.some((v) => own(v.id, v.name)) || declared.some((v) => own(v.id, v.name))
 }
 
 /**
