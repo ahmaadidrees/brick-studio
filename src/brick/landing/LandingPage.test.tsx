@@ -136,7 +136,7 @@ describe('one way in each', () => {
   it('links the 3D card to the 3D builder, with its picture described', () => {
     render(<LandingPage />)
     const games = section('Pick a start. Make it anything.')
-    expect(within(games).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Platformer', 'Racing', 'Build in 3D'])
+    expect(within(games).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Platformer', 'Racing', 'Start from nothing', 'Build in 3D'])
     expect(within(games).getByRole('link', { name: 'Start building in 3D' })).toHaveAttribute('href', '/build')
     expect(within(games).getByRole('img', { name: /stacked like stairs/ })).toHaveAttribute('src', '/brand/media/build-3d-stairs-880.webp')
   })
@@ -146,14 +146,14 @@ describe('one way in each', () => {
     expect(screen.getByRole('link', { name: 'Start building in 3D' })).toHaveAttribute('href', '/studio')
   })
 
-  it('keeps "Start from nothing" off until Blank 2D has an address', () => {
+  it('links "Start from nothing" to a new Blank 2D game, and hides it when it has no address', () => {
     render(<LandingPage />)
+    expect(screen.getByRole('link', { name: 'Start from nothing' })).toHaveAttribute('href', '/2d/hackable-blank?new=1')
+    expect(screen.getByText(/and you can begin from an empty stage\./)).toBeInTheDocument()
+    cleanup()
+    render(<LandingPage fromNothingHref={null} />)
     expect(screen.queryByText('Start from nothing')).toBeNull()
     expect(screen.queryByText(/empty stage/)).toBeNull()
-    cleanup()
-    render(<LandingPage fromNothingHref="/2d/blank?new=1" />)
-    expect(screen.getByRole('link', { name: 'Start from nothing' })).toHaveAttribute('href', '/2d/blank?new=1')
-    expect(screen.getByText(/and you can begin from an empty stage\./)).toBeInTheDocument()
   })
 
   it('points a returning kid at My projects only when something is saved on this computer, never touching it', () => {

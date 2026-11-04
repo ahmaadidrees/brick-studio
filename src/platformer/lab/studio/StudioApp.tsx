@@ -624,7 +624,7 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
           <MenuItem
             icon={<Users size={18} />}
             label="Play together"
-            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : 'Open a room and send the link: everyone plays your game, each with their own Hero.'}
+            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : `Open a room and send the link: everyone plays your game, each with their own ${designKit(store.getState().project.design) === 'blank' ? 'player' : 'Hero'}.`}
             onSelect={() => void startRoom()}
           />
         )}

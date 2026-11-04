@@ -20,7 +20,7 @@ import { CodeColumn } from './CodeColumn'
 import { Inspector } from './Inspector'
 import { LevelBricks } from './LevelBricks'
 import { FirstRunTips, HelpSheet } from './StudioHelp'
-import { EmptyStage, NextStepLine } from '../blank/BlankBuild'
+import { BuildScore, EmptyStage, NextStepLine } from '../blank/BlankBuild'
 import { markTipsSeen, tipsSeen } from './firstRunTips'
 import type { BrickTemplate } from '../templates'
 import '../builder/builder.css'
@@ -245,6 +245,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
             <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
             {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} />}
             {screen === 'build' && screens.fromNothing && <EmptyStage store={store} onMade={(id, kind) => onBrickMade(store, id, kind)} />}
+            {screen === 'build' && screens.fromNothing && <BuildScore store={store} />}
           </div>
           {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'build' && parts.BuildChip && <parts.BuildChip store={store} />}

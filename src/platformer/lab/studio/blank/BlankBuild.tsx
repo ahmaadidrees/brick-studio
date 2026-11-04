@@ -15,6 +15,8 @@ import { BORROW_SHELVES, BORROWABLE, borrowedBrick, type Borrowable } from './bo
 import { hideNextStep, nextStep, nextStepHidden } from './nextStep'
 import { layoutOf, resizedLayout, whatResizeLoses } from './stageLayout'
 import { NewBrickSheet, type BrickKind } from '../screen/NewBrickSheet'
+import { BlankScore } from './BlankHud'
+import { scoreVariableId } from './blankRules'
 import './blank.css'
 
 /** Board 1: an empty stage has one obvious action. */
@@ -35,6 +37,16 @@ export function EmptyStage({ store, onMade }: { store: StudioStore; onMade?: (br
     )}
     <NewBrickSheet store={store} open={sheet !== null} startAt={sheet ?? 'look'} onClose={() => setSheet(null)} onMade={onMade} />
   </>
+}
+
+/** Board 3c: once a Collect job keeps a Score, it shows on the stage in Build too, at its starting value. */
+export function BuildScore({ store }: { store: StudioStore }) {
+  const start = useStudio(store, (s) => {
+    const id = scoreVariableId(s.project.design)
+    const value = id ? s.project.design.stage.program.variables.find((v) => v.id === id)?.value : undefined
+    return id ? Number(value) || 0 : null
+  })
+  return start === null ? null : <BlankScore score={start} />
 }
 
 /** Board 4a: one dark line at the bottom of the stage, naming the next step. × hides it for good. */
