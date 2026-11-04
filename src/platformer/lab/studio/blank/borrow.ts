@@ -101,9 +101,34 @@ export function aimAtThePlayer<T>(code: T): T {
   return rewriteReferences(code, KIT_HERO, PLAYER_MENU) as T
 }
 
-/** The borrowed brick, ready to add: a free name and, for a grid brick, a free character. */
-export function borrowedBrick(design: Pick<LevelDesign, 'bricks'>, item: Borrowable): { brick: Omit<BrickDef, 'id'>; workspace: unknown } {
-  const made = item.make()
+/**
+ * A borrowed brick's own variables and lists keep the kit's ids ("b_speed", "car_top"), and a project's ids must all
+ * differ (core/project.ts validateDesign), so a second Walker, or a Walker and a Spiky, made a save that would not open
+ * again. Each id the game already uses gets a fresh one, the same in the brick's program and in its blocks.
+ */
+function withFreshIds(design: Pick<LevelDesign, 'bricks'> & Partial<Pick<LevelDesign, 'stage'>>, made: { brick: Omit<BrickDef, 'id'>; workspace: unknown }) {
+  const taken = new Set<string>()
+  for (const b of design.stage ? [design.stage, ...design.bricks] : design.bricks) for (const d of [...b.program.variables, ...b.program.lists]) taken.add(d.id)
+  const own = [...made.brick.program.variables, ...made.brick.program.lists].map((d) => d.id)
+  const clashing = own.filter((id) => taken.has(id))
+  if (!clashing.length) return made
+  const used = new Set([...taken, ...own])
+  let program = JSON.stringify(made.brick.program)
+  let workspace = JSON.stringify(made.workspace ?? null)
+  for (const id of clashing) {
+    let n = 2
+    while (used.has(`${id}_${n}`)) n++
+    const fresh = `${id}_${n}`
+    used.add(fresh)
+    program = program.split(JSON.stringify(id)).join(JSON.stringify(fresh))
+    workspace = workspace.split(JSON.stringify(id)).join(JSON.stringify(fresh))
+  }
+  return { brick: { ...made.brick, program: JSON.parse(program) as BrickDef['program'] }, workspace: JSON.parse(workspace) as unknown }
+}
+
+/** The borrowed brick, ready to add: a free name, ids of its own and, for a grid brick, a free character. */
+export function borrowedBrick(design: Pick<LevelDesign, 'bricks'> & Partial<Pick<LevelDesign, 'stage'>>, item: Borrowable): { brick: Omit<BrickDef, 'id'>; workspace: unknown } {
+  const made = withFreshIds(design, item.make())
   const brick = item.player ? made.brick : { ...made.brick, program: aimAtThePlayer(made.brick.program) }
   const workspace = item.player ? made.workspace : aimAtThePlayer(made.workspace)
   const name = freeBrickName(brick.name, design.bricks.map((b) => b.name))

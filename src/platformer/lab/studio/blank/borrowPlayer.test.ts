@@ -13,6 +13,7 @@ import { createStarterProject } from '../starter'
 import { createRaceStarterProject } from '../race/raceProject'
 import { PLATFORMER_EXTRAS, RACE_EXTRAS } from '../builtins/extras'
 import { StudioStore } from '../store'
+import { exportProjectJson, importProjectJson } from '../persist/projectIo'
 import { createBlankProject } from './blankProject'
 import { BORROWABLE, aimAtThePlayer, borrowedBrick } from './borrow'
 import { giveJob } from './jobs'
@@ -208,5 +209,29 @@ describe('Kit games are unchanged', () => {
   it('aimAtThePlayer touches only menus that name the Hero, never broadcasts or other text', () => {
     const code = { fields: { TOUCHINGOBJECTMENU: 'Hero', BROADCAST_OPTION: 'Hero', TEXT: 'Hero' }, inputs: { MESSAGE: { kind: 'lit', value: 'Hero' } } }
     expect(aimAtThePlayer(code)).toEqual({ fields: { TOUCHINGOBJECTMENU: PLAYER_MENU, BROADCAST_OPTION: 'Hero', TEXT: 'Hero' }, inputs: { MESSAGE: { kind: 'lit', value: 'Hero' } } })
+  })
+})
+
+describe('Borrowing the same kind of brick twice', () => {
+  it('a second Walker, a Car twice, or a Walker and a Spiky still save and open again (each brick has ids of its own)', () => {
+    const store = new StudioStore(createBlankProject())
+    for (const id of ['walker', 'walker', 'spiky', 'flyer', 'shellbug', 'car', 'car', 'racer', 'checkpoint', 'checkpoint']) {
+      const item = BORROWABLE.find((b) => b.id === id)!
+      const made = borrowedBrick(store.getState().project.design, item)
+      if (item.needs) store.ensureStageData(item.needs.variables ?? [], item.needs.lists ?? [])
+      store.addBrickFrom(made.brick, made.workspace)
+    }
+    const design = store.getState().project.design
+    expect(validateDesign(design)).toEqual([])
+    const reopened = importProjectJson(exportProjectJson(store.getState().project), 'blank')
+    expect(reopened.ok).toBe(true)
+    // The second Walker's blocks and program agree on its own speed slider.
+    const walkers = design.bricks.filter((b) => b.name.startsWith('Walker'))
+    expect(walkers).toHaveLength(2)
+    const [a, b] = walkers.map((w) => w.program.variables.find((v) => v.name === 'speed')!.id)
+    expect(a).not.toBe(b)
+    const second = walkers[1]!
+    expect(JSON.stringify(store.getState().project.workspaces[second.id])).toContain(JSON.stringify(b))
+    expect(JSON.stringify(store.getState().project.workspaces[second.id])).not.toContain(JSON.stringify(a))
   })
 })
