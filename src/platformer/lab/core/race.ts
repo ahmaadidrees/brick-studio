@@ -24,6 +24,8 @@
  */
 import { TILE_SIZE, parseGridCopyId, type BrickDef, type LapState, type PrimitiveCtx, type PrimitiveTable, type RuntimeApi, type Stmt, type Target, type TileLayer, type World } from './contracts'
 import { atan2Deg } from './detmath'
+import { costumeOf, opaqueRect } from './geometry'
+import { nudgeTarget } from './platformer'
 
 // ------------------------------------------------------------------------------------------------ the loop
 
@@ -185,9 +187,55 @@ function progress(s: LapState, length: number): number {
   return s.lap * length + (behindLine ? s.d - length : s.d)
 }
 
-/** Count laps for every racer, after the tick's scripts have moved them. Lap hats run on the next tick. */
+/** How much of the speed toward each other two bumping cars trade (classic raceRun.ts bumpCars). */
+const BUMP_TRADE = 0.6
+
+/**
+ * Cars bump each other, like the classic race (raceRun.ts bumpCars; parity bucket A, 2026-11-03): two racers closer than
+ * their two radii (half the smaller side of each one's box; the Car's is 5.5, classic's CAR_RADIUS) are pushed apart,
+ * half each along the line between them, never into anything solid, and when they were closing in they trade 0.6 of
+ * that speed. A rule of the Racing kit, like lap counting: it runs after the tick's scripts and the physics step, in
+ * world order, with only + - * / and a square root, so every player of a room bumps the same.
+ */
+export function bumpRacers(world: World): void {
+  const racers = world.targets.filter(isRacer)
+  // Half the smaller side of its picture's opaque box, at its size, whichever way it points.
+  const radius = (t: Target): number => {
+    const costume = costumeOf(world, t)
+    if (!costume) return 0
+    const r = opaqueRect(costume)
+    return (Math.min(r.right - r.left, r.bottom - r.top) / 2) * (t.size / 100)
+  }
+  for (let i = 0; i < racers.length; i++) {
+    for (let j = i + 1; j < racers.length; j++) {
+      const a = racers[i]!
+      const b = racers[j]!
+      const reach = radius(a) + radius(b)
+      const dx = b.x - a.x
+      const dy = b.y - a.y
+      const d = Math.sqrt(dx * dx + dy * dy)
+      if (d <= 0 || d >= reach) continue
+      const nx = dx / d
+      const ny = dy / d
+      const push = (reach - d) / 2
+      nudgeTarget(world, a, -nx * push, -ny * push)
+      nudgeTarget(world, b, nx * push, ny * push)
+      if (!a.body || !b.body) continue
+      const rel = (b.body.vx - a.body.vx) * nx + (b.body.vy - a.body.vy) * ny
+      if (rel < 0) {
+        a.body.vx += nx * rel * BUMP_TRADE
+        a.body.vy += ny * rel * BUMP_TRADE
+        b.body.vx -= nx * rel * BUMP_TRADE
+        b.body.vy -= ny * rel * BUMP_TRADE
+      }
+    }
+  }
+}
+
+/** Bump cars apart, then count laps for every racer, after the tick's scripts have moved them. Lap hats run next tick. */
 export function raceStep(runtime: RuntimeApi): void {
   const world = runtime.world
+  bumpRacers(world)
   const loop = raceLoopOf(world)
   if (!loop.ok) return
   for (const t of world.targets) {

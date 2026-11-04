@@ -402,6 +402,18 @@ function indexFor(world: World): SolidIndex {
   return index
 }
 
+/**
+ * Move a target by (dx, dy), x then y, stopping flush against anything solid, as "move [x] by (n) until I hit
+ * something" does, but for a kit's own rules (Racing's bumps, core/race.ts). Its own index, read now: it runs after the
+ * physics step, and must not leave a stale one for the next tick's scripts.
+ */
+export function nudgeTarget(world: World, target: Target, dx: number, dy: number): void {
+  const P = world.physics ?? DEFAULT_PHYSICS
+  const index = buildIndex(world)
+  if (dx) sweepX(world, index, target, dx, P)
+  if (dy) sweepY(world, index, target, dy, P)
+}
+
 function moveSelf(ctx: PrimitiveCtx): void {
   const t = ctx.target
   if (t.isStage) return
