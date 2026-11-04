@@ -16,9 +16,10 @@ describe('brick sections: which scripts fold into "How I move"', () => {
     expect(movement.length).toBeGreaterThan(20)
     for (const b of movement) expect(of(b), readLabel(b.data)).toBe('how-i-move')
     const rest = tops.filter((b) => !movement.includes(b))
-    // The level-start script, the four receivers and the "move and collide" definition stay out of the section.
+    // The level-start script, the five receivers (the fifth, checkpoint, since parity B) and the "move and collide"
+    // definition stay out of the section.
     expect(rest.map((b) => b.type).sort()).toEqual([
-      'event_whenbroadcastreceived', 'event_whenbroadcastreceived', 'event_whenbroadcastreceived', 'event_whenbroadcastreceived',
+      'event_whenbroadcastreceived', 'event_whenbroadcastreceived', 'event_whenbroadcastreceived', 'event_whenbroadcastreceived', 'event_whenbroadcastreceived',
       'event_whenflagclicked', 'procedures_definition',
     ])
     for (const b of rest) expect(of(b)).toBeNull()
@@ -78,7 +79,7 @@ describe('brick sections: the Car\'s "How I drive"', () => {
     for (const b of driving) expect(ofCar(b), readLabel(b.data)).toBe('how-i-drive')
     const rest = tops.filter((b) => !driving.includes(b))
     expect(rest.map((b) => readLabel(b.data).split(':')[0])).toEqual([
-      'When the race starts', 'When the countdown says go', 'Drive and bounce off barriers', 'When I finish my last lap',
+      'When the race starts', 'When the countdown says go', 'Drive and bounce off barriers', 'How bouncy is what I hit', 'When I finish my last lap',
     ])
     for (const b of rest) expect(ofCar(b)).toBeNull()
   })

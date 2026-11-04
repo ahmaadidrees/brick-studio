@@ -293,9 +293,9 @@ describe('The Hero brick is built from open blocks', () => {
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
       // 1 flag script, 22 "every tick" scripts (the basics, the feel scripts, Move, and since parity A the pit, getting hurt
-      // and safe time), 4 bump hats (wall slide and run meter, left and right), 4 broadcast hats (boing, stomped, hero
-      // hurt, bounce), and the one My Block: move and collide.
-      expect(ws.getTopBlocks(false)).toHaveLength(32)
+      // and safe time), 4 bump hats (wall slide and run meter, left and right), 5 broadcast hats (boing, stomped, hero
+      // hurt, bounce, and since parity B checkpoint), and the one My Block: move and collide.
+      expect(ws.getTopBlocks(false)).toHaveLength(33)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -339,6 +339,8 @@ describe('The Hero brick is built from open blocks', () => {
       'motion_xposition', 'motion_yposition', 'control_wait_until',
       // parity bucket A: getting hurt stops with an Ouch, pops away, comes back and blinks
       'sound_play', 'looks_seteffectto', 'looks_changeeffectby', 'looks_cleargraphiceffects', 'looks_hide', 'looks_show', 'operator_mod',
+      // parity bucket B: slide past a corner I bump my head on
+      'platformer_slipcorner',
     ])
     expect([...opcodes].filter((o) => !known.has(o))).toEqual([])
     expect(JSON.stringify(workspace)).toContain('"GRAVITY":"off"')
@@ -414,7 +416,7 @@ describe('The Hero brick is built from open blocks', () => {
     expect(text).not.toContain('platformer_touchingtile')
     expect(text).not.toContain('tile:')
     expect(brick.program.scripts.some((s) => s.hat.opcode === 'platformer_whenbump' && String(s.hat.fields.BRICK).startsWith('tile:'))).toBe(false)
-    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'event_whenbroadcastreceived').map((s) => s.hat.fields.BROADCAST_OPTION)).toEqual(['boing', 'stomped', 'hero hurt', 'bounce'])
+    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'event_whenbroadcastreceived').map((s) => s.hat.fields.BROADCAST_OPTION)).toEqual(['boing', 'stomped', 'hero hurt', 'bounce', 'checkpoint'])
     const bounce = brick.program.scripts.find((s) => s.hat.fields.BROADCAST_OPTION === 'bounce')!
     const branch = bounce.body[0]!
     expect(branch.opcode).toBe('control_if_else')

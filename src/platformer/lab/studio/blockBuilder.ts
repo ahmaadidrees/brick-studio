@@ -76,6 +76,9 @@ export class Blocks {
   heroY(): Conn {
     return { block: this.blk('sensing_of', { fields: { PROPERTY: 'y position', OBJECT: 'Hero' } }) }
   }
+  myX(): Conn {
+    return { block: this.blk('motion_xposition') }
+  }
   myY(): Conn {
     return { block: this.blk('motion_yposition') }
   }
@@ -160,6 +163,10 @@ export class Blocks {
   bump(label: string, side: string, body: BlockJson[], brick = '_any_'): BlockJson {
     return this.script(label, this.blk('platformer_whenbump', { fields: { SIDE: side, BRICK: brick } }), body)
   }
+  /** `over and over` (platformer_everytick): runs once per tick while the level plays. */
+  everyTick(label: string, body: BlockJson[]): BlockJson {
+    return this.script(label, this.blk('platformer_everytick'), body)
+  }
   startAsClone(label: string, body: BlockJson[]): BlockJson {
     return this.script(label, this.blk('control_start_as_clone'), body)
   }
@@ -169,11 +176,35 @@ export class Blocks {
   nextCostume(): BlockJson {
     return this.blk('looks_nextcostume')
   }
+  /** "move me with [my own blocks]" ('self') or "[the Platformer]" ('platformer'). */
+  setMover(who: 'self' | 'platformer'): BlockJson {
+    return this.blk('platformer_setmover', { fields: { MOVER: who } })
+  }
+  /** "move [x] by (n) and carry what stands on me". */
+  moveCarry(axis: 'x' | 'y', by: Conn | number): BlockJson {
+    return this.blk('platformer_movecarry', { fields: { AXIS: axis }, inputs: { DISTANCE: this.as(by) } })
+  }
+  not(c: Conn): Conn {
+    return { block: this.blk('operator_not', { inputs: { OPERAND: c } }) }
+  }
+  lt(a: Conn | number, b: Conn | number): Conn {
+    return { block: this.blk('operator_lt', { inputs: { OPERAND1: this.as(a), OPERAND2: this.as(b) } }) }
+  }
+  and(a: Conn, b: Conn): Conn {
+    return { block: this.blk('operator_and', { inputs: { OPERAND1: a, OPERAND2: b } }) }
+  }
+  or(a: Conn, b: Conn): Conn {
+    return { block: this.blk('operator_or', { inputs: { OPERAND1: a, OPERAND2: b } }) }
+  }
   setSolid(value: string): BlockJson {
     return this.blk('platformer_setsolid', { fields: { SOLID: value } })
   }
   changeY(dy: number): BlockJson {
     return this.blk('motion_changeyby', { inputs: { DY: this.num(dy) } })
+  }
+  /** `change y by (dy)` with any value, a reporter too. */
+  changeYBy(dy: Conn | number): BlockJson {
+    return this.blk('motion_changeyby', { inputs: { DY: this.as(dy) } })
   }
   wait(seconds: number): BlockJson {
     return this.blk('control_wait', { inputs: { DURATION: this.num(seconds) } })

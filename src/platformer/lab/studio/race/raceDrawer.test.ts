@@ -3,6 +3,7 @@
  * the Platformer's Brick are both 'B') never mislabels or misselects anything.
  */
 import { describe, expect, it } from 'vitest'
+import { RACE_EXTRAS, extraOriginal } from '../builtins/extras'
 import { KIT_SCREENS } from '../kitScreens'
 import { activeEntryId, brickEntryId, drawerEntries, gridEntryId, standardKeyOf } from '../builder/catalog'
 import { createStarterProject } from '../starter'
@@ -16,8 +17,8 @@ const race = () => createRaceStarterProject().design
 const BANNED = /\b(tick|ticks|sprite|kit)\b/i
 
 describe('the race drawer', () => {
-  it('groups Track, Racers, Start and My bricks', () => {
-    expect(KIT_SCREENS.race.drawer.categories.map((c) => c.label)).toEqual(['Track', 'Racers', 'Start', 'My bricks'])
+  it('groups Track, Racers, Start, Scenery and My bricks', () => {
+    expect(KIT_SCREENS.race.drawer.categories.map((c) => c.label)).toEqual(['Track', 'Racers', 'Start', 'Scenery', 'My bricks'])
     const entries = raceDrawerEntries(race().bricks)
     expect(entries.map((e) => [e.name, e.category])).toEqual([
       ['Road', 'track'],
@@ -26,12 +27,15 @@ describe('the race drawer', () => {
       ['Barrier', 'track'],
       ['Boost pad', 'track'],
       ['Finish line', 'track'],
+      // Parity bucket B: the classic kit's bricks, offered before the track has them.
+      ...RACE_EXTRAS.filter((x) => x.category === 'track').map((x) => [extraOriginal(x.id)!.brick.name, 'track']),
       ['Car', 'racers'],
       ['Computer racer', 'racers'],
       ['Starter', 'start'],
+      ...RACE_EXTRAS.filter((x) => x.category === 'scenery').map((x) => [extraOriginal(x.id)!.brick.name, 'scenery']),
     ])
-    // Every entry arms the level's own brick, by id.
-    for (const e of entries) expect(e.id).toBe(brickEntryId(e.brick!.id))
+    // Every entry arms the level's own brick, by id; an offer adds one.
+    for (const e of entries) expect(e.id).toBe(e.brick ? brickEntryId(e.brick.id) : `extra:${RACE_EXTRAS.find((x) => extraOriginal(x.id)!.brick.name === e.name)!.id}`)
   })
 
   it('gives every built-in brick a short, plain hint', () => {

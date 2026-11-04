@@ -208,7 +208,7 @@ describe('Starter level (starter.ts)', () => {
     it('Hero keeps its program and answers boing, stomped, hero hurt and bounce; it has no spikes, lava or ? block code', () => {
       const hero = brickOf(project(), 'brick_hero')
       const received = hero.program.scripts.filter((s) => s.hat.opcode === 'event_whenbroadcastreceived').map((s) => s.hat.fields.BROADCAST_OPTION)
-      expect(received).toEqual(['boing', 'stomped', 'hero hurt', 'bounce'])
+      expect(received).toEqual(['boing', 'stomped', 'hero hurt', 'bounce', 'checkpoint'])
       const text = JSON.stringify(project().workspaces.brick_hero)
       expect(text).not.toContain('platformer_touchingtile')
       expect(text).not.toContain('tile:')

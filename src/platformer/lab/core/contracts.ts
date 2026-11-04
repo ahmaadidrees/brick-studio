@@ -382,6 +382,11 @@ export interface SavedBump {
   otherId: string | null
   /** The solid's brick, so its name is still known if it is gone by the time the bump is told. */
   otherBrickId?: string
+  /**
+   * Self-move (parity bucket B): how much of the move was left when it stopped, signed, and on which axis, so "slip past
+   * a corner" can finish it. Missing on bumps told by the engine and on saves made before.
+   */
+  rest?: { axis: 'x' | 'y'; by: number }
 }
 
 /** Hackable Racing: one racer's progress round the loop (core/race.ts). */

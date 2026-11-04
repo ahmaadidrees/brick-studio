@@ -14,8 +14,9 @@ describe('drawer catalog', () => {
   it('has no fixed tiles: Terrain and Blocks list the standard grid bricks by category, in order, whether or not the level has them', () => {
     const entries = drawerEntries([])
     expect(entries.filter((e) => e.category === 'terrain').map((e) => e.name)).toEqual(['Ground', 'Hard block', 'Spikes', 'Lava', 'One-way platform'])
-    expect(entries.filter((e) => e.category === 'blocks').map((e) => e.name)).toEqual(['Brick', '? block', 'Bounce block'])
-    expect(entries.every((e) => e.id.startsWith('grid:') && !e.brick)).toBe(true)
+    expect(entries.filter((e) => e.category === 'blocks').map((e) => e.name)).toEqual(['Brick', '? block', 'Bounce block', 'Moving platform', 'Up-down platform'])
+    // Parity bucket B: the other built-in bricks are offered too (builtins/extras.ts), added when picked.
+    expect(entries.every((e) => (e.id.startsWith('grid:') || e.id.startsWith('extra:')) && !e.brick)).toBe(true)
   })
   it('a standard grid brick the level has is that brick (no second entry); a kid\'s own grid brick is under My bricks; other bricks sort by name', () => {
     const q = { ...fakeGridTemplate('qblock').brick, id: 'q1' }

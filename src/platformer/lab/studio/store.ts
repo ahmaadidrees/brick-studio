@@ -11,6 +11,8 @@ import { deterministicStringify } from '../core/save'
 import { designKit, parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
 import { screensFor } from './kitScreens'
+import { freshExtra } from './builtins/extras'
+import { withLength } from './builder/levelLength'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, powerProblem, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
@@ -414,6 +416,31 @@ export class StudioStore {
     this.setWorkspace(id, workspace)
     this.set({ selectedBrickId: id, brushBrickId: id, brushTile: null })
     return id
+  }
+
+  /** Build's length chip: make the level `cols` tiles long (builder/levelLength.ts; it never loses a brick). */
+  setLevelLength(cols: number) {
+    const d = this.state.project.design
+    const next = withLength(d, cols)
+    if (next !== d) this.setDesign(next)
+  }
+
+  /**
+   * Add a built-in brick the level doesn't have yet (builtins/extras.ts) under its catalog id, armed and selected, so
+   * it stays a built-in brick. Returns its id, or null for an unknown brick. A level that has it already just arms it.
+   */
+  addCatalogBrick(catalogId: string): string | null {
+    const d = this.state.project.design
+    if (d.bricks.some((b) => b.id === catalogId)) {
+      this.set({ selectedBrickId: catalogId, brushBrickId: catalogId, brushTile: null })
+      return catalogId
+    }
+    const fresh = freshExtra(catalogId, new Set(d.bricks.flatMap((b) => (b.grid ? [b.grid.char] : []))))
+    if (!fresh) return null
+    this.setDesign({ ...d, bricks: [...d.bricks, fresh.brick] }, { ...this.state.project.workspaces, [catalogId]: fresh.workspace })
+    this.setWorkspace(catalogId, fresh.workspace)
+    this.set({ selectedBrickId: catalogId, brushBrickId: catalogId, brushTile: null })
+    return catalogId
   }
 
   /**

@@ -5,8 +5,10 @@ import { useStudio, type StudioStore } from '../store'
 import {
   NEW_BRICK_ID,
   brickIdOf,
+  extraIdOf,
   gridKeyOf,
   isBrickEntry,
+  isExtraEntry,
   isGridEntry,
   standardTemplate,
 } from '../builder/catalog'
@@ -75,6 +77,9 @@ export function BuildDrawer({ store, history, erasing, onErasing, onPicked }: Pr
         const template = standardTemplate(gridKeyOf(id))
         if (template) store.addBrickFrom(template.brick, template.workspace)
       }
+    } else if (isExtraEntry(id)) {
+      // A built-in brick the level doesn't have yet (a Moving platform, a Checkpoint...): add it, armed.
+      store.addCatalogBrick(extraIdOf(id))
     }
     onPicked?.()
   }

@@ -32,9 +32,10 @@ describe('the Car’s card', () => {
     expect(within(card).getAllByRole('slider').map((s) => s.getAttribute('aria-label'))).toEqual(['top speed', 'acceleration', 'steering', 'grip'])
     const presets = within(card).getByRole('group', { name: 'How it drives' })
     expect(within(presets).getAllByRole('button').map((b) => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([['Kart', 'true'], ['Drifty', 'false'], ['On rails', 'false']])
-    const more = within(card).getByRole('button', { name: 'More sliders (15)' })
+    // 19 since parity bucket B added four for bumping into things (tire stacks, bumpers, trees and stands).
+    const more = within(card).getByRole('button', { name: 'More sliders (19)' })
     fireEvent.click(more)
-    expect(within(card).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Speed', 'Steering', 'Grass, dirt and ice', 'Boost pads'])
+    expect(within(card).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Speed', 'Steering', 'Grass, dirt and ice', 'Boost pads', 'Bumping into things'])
     expect(within(card).getAllByRole('slider')).toHaveLength(CAR_KNOBS.length)
     // Plain words only: "boost ticks" shows as "boost time", and no hint says how the code names it.
     expect(within(card).getByRole('slider', { name: 'boost time' })).toBeTruthy()
