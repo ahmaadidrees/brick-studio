@@ -33,7 +33,7 @@ export const KNOWN_BLOCK_TYPES: readonly string[] = [
   'operator_add', 'operator_and', 'operator_contains', 'operator_divide', 'operator_equals', 'operator_gt',
   'operator_join', 'operator_length', 'operator_letter_of', 'operator_lt', 'operator_mathop', 'operator_mod',
   'operator_multiply', 'operator_not', 'operator_or', 'operator_random', 'operator_round', 'operator_subtract',
-  'platformer_changespeed', 'platformer_everytick', 'platformer_hitsomething', 'platformer_moveuntilhit',
+  'platformer_changespeed', 'platformer_everytick', 'platformer_hitsomething', 'platformer_movecarry', 'platformer_moveuntilhit',
   'platformer_onground', 'platformer_setgravity', 'platformer_setmover', 'platformer_setonground',
   'platformer_setsolid', 'platformer_setspeed', 'platformer_slipcorner', 'platformer_speed', 'platformer_tellhit', 'platformer_whenbump',
   'platformer_whenland', 'platformer_whenleaveground',

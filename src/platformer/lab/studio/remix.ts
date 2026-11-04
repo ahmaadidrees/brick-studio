@@ -3,6 +3,7 @@ import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
+import { createExtrasProject } from './builtins/extras'
 import { boostCostume, boostCostumeR1 } from './race/raceTrack'
 import { HERO_DEFAULT_CHANGES, HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
@@ -11,9 +12,10 @@ type Original = { brick: BrickDef; workspace: unknown }
 
 /**
  * The built-in bricks of every kit's starter (docs/qa/hackable-modes/R1-SCREENS.md): the Platformer's and Hackable
- * Racing's. Their ids never collide, so one catalog serves both. Each starter is built the first time it is needed.
+ * Racing's, plus the Platformer bricks a level adds from the drawer (builtins/extras.ts, parity bucket B). Their ids
+ * never collide, so one catalog serves all. Each is built the first time it is needed.
  */
-const STARTERS: ReadonlyArray<() => StudioProject> = [createStarterProject, createRaceStarterProject]
+const STARTERS: ReadonlyArray<() => StudioProject> = [createStarterProject, createRaceStarterProject, createExtrasProject]
 const originals: Array<Map<string, Original> | undefined> = []
 
 function catalogOf(index: number): Map<string, Original> {

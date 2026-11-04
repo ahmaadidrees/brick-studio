@@ -482,6 +482,44 @@ function tellHit(ctx: PrimitiveCtx): void {
   world.toldBumps = list
 }
 
+/**
+ * "move [x] by (n) and carry what stands on me" (parity bucket B, the classic moving platforms, world.ts PLATFORM and
+ * player.ts riding). Moves this brick by n, through anything (like "change x by"), and takes along everything standing
+ * on its top: bodies that fall or move themselves, not going up, whose box bottom is on my box top. Each rider moves the
+ * same way but stops at solids, as "move until I hit something" would. Riders are found before I move, in world order.
+ */
+function moveCarrying(ctx: PrimitiveCtx): void {
+  const t = ctx.target
+  if (t.isStage) return
+  const n = toNumber(ctx.arg('DISTANCE'))
+  if (!Number.isFinite(n) || n === 0) return
+  const world = ctx.runtime.world
+  const me = targetBounds(world, t)
+  const riders: Target[] = []
+  if (me && t.visible) {
+    for (const o of world.targets) {
+      const body = o.body
+      if (o === t || o.isStage || !o.visible || !body || !(body.gravity || body.selfMove) || body.vy > 0) continue
+      const box = targetBounds(world, o)
+      if (!box || Math.abs(box.bottom - me.top) > 1e-6 || !overlapsOpen(box.left, box.right, me.left, me.right)) continue
+      riders.push(o)
+    }
+  }
+  const axis = axisOf(ctx)
+  if (axis === 'x') t.x += n
+  else t.y += n
+  ctx.runtime.requestRedraw()
+  if (riders.length === 0) return
+  // A brick the solids index saw standing still is somewhere else now: index again.
+  if (!movesThisTick(t)) frameIndex.delete(world)
+  const P = world.physics ?? DEFAULT_PHYSICS
+  const index = indexFor(world)
+  for (const r of riders) {
+    if (axis === 'x') sweepX(world, index, r, n, P)
+    else sweepY(world, index, r, n, P)
+  }
+}
+
 export const selfMovePrimitives: PrimitiveTable = {
   platformer_setmover(ctx) {
     if (ctx.target.isStage) return
@@ -494,6 +532,7 @@ export const selfMovePrimitives: PrimitiveTable = {
   platformer_hitsomething: (ctx) => !!ctx.target.lastHit,
   platformer_tellhit: tellHit,
   platformer_slipcorner: slipCorner,
+  platformer_movecarry: moveCarrying,
   platformer_setonground(ctx) {
     if (ctx.target.isStage) return
     bodyOf(ctx.target).onGround = ctx.field('ONGROUND') !== 'no'

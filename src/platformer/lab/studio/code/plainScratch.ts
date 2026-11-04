@@ -311,6 +311,10 @@ function selfMoveCards(): PlainScratchCard[] {
       ]),
     ]),
   ])
+  // Carry: the platform moves and tells; whoever stands on it moves the same way.
+  const lift = b.flag([b.forever([b.changeX(b.v(V.xSpeed)), b.blk('event_broadcast', { inputs: { BROADCAST_INPUT: b.text('platform moved') } })])])
+  const ride = b.blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: 'platform moved' } })
+  ride.next = { block: b.sCond(b.touching('Platform'), [b.changeX({ block: b.blk('sensing_of', { fields: { PROPERTY: 'x speed', OBJECT: 'Platform' } }) })]) }
   return [
     {
       opcode: 'platformer_setmover',
@@ -355,6 +359,16 @@ function selfMoveCards(): PlainScratchCard[] {
         'The Platformer block does it with boxes, only when the corner overlaps you by a few steps, and only if the rest of the move is clear.',
       workspace: workspace([place(slip, 20, 20)], [V.ySpeed]),
       extras: { ...NO_EXTRAS, variables: [V.ySpeed], bricks: ['Ceiling'] },
+    },
+    {
+      opcode: 'platformer_movecarry',
+      name: 'carry what stands on me',
+      explanation:
+        'A moving platform takes you along when you stand on it. ' +
+        'In plain Scratch the platform broadcasts how far it moved, and the Hero listens: if it is touching the platform, it moves the same way. ' +
+        'The Platformer block does it in one go, for everything standing on top, and stops a rider at walls.',
+      workspace: workspace([place(lift, 20, 20), place(ride, 20, 200)], [V.xSpeed]),
+      extras: { ...NO_EXTRAS, variables: [V.xSpeed], bricks: ['Platform'], messages: ['platform moved'] },
     },
     {
       opcode: 'platformer_setonground',

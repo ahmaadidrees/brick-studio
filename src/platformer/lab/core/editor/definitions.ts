@@ -1666,6 +1666,19 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       tooltip: 'Starts "when I bump" on this brick and on the brick it hit, a moment later, just like the Platformer does when it stops a brick.',
     },
     {
+      type: 'platformer_movecarry',
+      message0: 'move %1 by %2 and carry what stands on me',
+      args0: [
+        { type: 'field_dropdown', name: 'AXIS', options: axisOptions },
+        { type: 'input_value', name: 'DISTANCE' },
+      ],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: 'Moves this brick through anything, like "change x by", and takes along whatever is standing on top of it (a Hero, a Walker). Moving platforms and lifts use it.',
+    },
+    {
       type: 'platformer_slipcorner',
       message0: 'slip past a corner up to %1 steps',
       args0: [{ type: 'input_value', name: 'STEPS' }],
