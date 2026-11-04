@@ -99,3 +99,55 @@ describe('the race HUD, read from the beginner race', () => {
     expect([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal)).toEqual(['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd'])
   })
 })
+
+describe('race times (parity bucket A, 2026-11-03)', () => {
+  /** Run a race to the end, hearing "go" the way RaceHud does, and read the HUD every tick. */
+  function timedRace(design: LevelDesign, maxTicks = 4000) {
+    const runtime = play(design)
+    let start: number | null = null
+    runtime.onBroadcast((m) => { if (start === null && m === 'go') start = runtime.world.tick })
+    const huds: RaceHudState[] = []
+    for (let tick = 1; tick <= maxTicks; tick++) {
+      runtime.step()
+      const hud = readRaceHud(runtime.world, design, start)
+      huds.push(hud)
+      if (hud.finished) break
+    }
+    return { runtime, huds, start: start as number | null }
+  }
+
+  it('has no clock before "go", then counts the game\'s own ticks; it stops when the Car finishes', { timeout: 30_000 }, () => {
+    const { runtime, huds, start } = timedRace(selfDrivingRace())
+    expect(start).not.toBeNull()
+    expect(huds[0]!.time).toBeNull()
+    const last = huds.at(-1)!
+    const car = raceCarOf(runtime.world, selfDrivingRace())!
+    const ticks = raceLapState(car)!.lapTicks
+    expect(last.time).toBe(ticks[2]! - start!)
+    // Best lap: the shortest of the three, the first counted from "go".
+    const laps = [ticks[0]! - start!, ticks[1]! - ticks[0]!, ticks[2]! - ticks[1]!]
+    expect(last.bestLap).toBe(Math.min(...laps))
+    // The results show the Car's time.
+    expect(last.standings.find((s) => s.you)!.time).toBe(last.time)
+  })
+
+  it('shows live standings for every racer while the race is on, the Car marked, in place order', () => {
+    const design = createBeginnerRace()
+    const runtime = play(design)
+    let start: number | null = null
+    runtime.onBroadcast((m) => { if (start === null && m === 'go') start = runtime.world.tick })
+    for (let i = 0; i < 6 * 30; i++) runtime.step()
+    const hud = readRaceHud(runtime.world, design, start)
+    expect(hud.live.map((s) => s.place)).toEqual([1, 2, 3])
+    expect(hud.live.filter((s) => s.you)).toHaveLength(1)
+    expect(hud.live.find((s) => s.you)!.place).toBe(hud.place)
+    expect(hud.live.every((s) => s.lap === 1)).toBe(true)
+    expect(readRaceHud(runtime.world, design, null).live).toEqual([])
+  })
+
+  it('formats times like the classic HUD', async () => {
+    const { formatRaceTime } = await import('./raceHudState')
+    expect(formatRaceTime(30 * 41.3)).toBe('41.3s')
+    expect(formatRaceTime(0)).toBe('0.0s')
+  })
+})

@@ -11,13 +11,17 @@ import { isPlayerBrick } from '../../kitScreens'
 import { RACE_GLOBALS } from '../carBrick'
 import { STARTER_BRICK_ID } from '../raceTrack'
 
-/** One line of the results card. */
+/** One line of the results card, or of the live standings. */
 export interface RaceStanding {
   place: number
   name: string
   /** Over the line (on the results list); false: still racing. */
   done: boolean
   you: boolean
+  /** The lap this racer is on (live standings). */
+  lap?: number
+  /** Ticks from "go" to crossing the line for the last time, when known (results). */
+  time?: number | null
 }
 
 export interface RaceHudState {
@@ -36,11 +40,20 @@ export interface RaceHudState {
   noLaps: string | null
   /** Everyone in order once the Car finishes: the results list first, then whoever is still racing. Empty before. */
   standings: RaceStanding[]
+  /** Ticks since "go", stopped when the Car finishes; null before the race starts (or when the start was not seen). */
+  time: number | null
+  /** The Car's fastest lap so far, in ticks; null before its first lap. */
+  bestLap: number | null
+  /** Everyone in race order while the race is on (classic's standings box). Empty before "go" or with one racer. */
+  live: RaceStanding[]
 }
 
 /** Longer than this, the Starter is not counting down (it is showing the results, or a kid's own message). */
 const COUNTDOWN_MAX = 12
 const DEFAULT_LAPS = 3
+
+/** A race time like the classic HUD's: seconds to a tenth ("41.3s"). */
+export const formatRaceTime = (ticks: number): string => `${(Math.max(0, ticks) / 30).toFixed(1)}s`
 
 export const ordinal = (n: number): string => n + (['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) % 10 === 1 ? 0 : n % 10] || 'th')
 
@@ -62,7 +75,16 @@ export function raceCarOf(world: World, design: LevelDesign): Target | undefined
   return world.targets.find((t) => !t.isStage && !t.isClone && players.has(t.brickId))
 }
 
-export function readRaceHud(world: World, design: LevelDesign): RaceHudState {
+/** The ticks each lap took, from "go" (the lap ticks are when each lap ended). */
+function lapTimes(lapTicks: readonly number[], start: number): number[] {
+  return lapTicks.map((t, i) => t - (i === 0 ? start : lapTicks[i - 1]!))
+}
+
+/**
+ * `startTick` is the tick the race said "go" (RaceHud hears the broadcast), so the clock is the game's own ticks: it
+ * never drifts, and every player of a room sees the same times.
+ */
+export function readRaceHud(world: World, design: LevelDesign, startTick: number | null = null): RaceHudState {
   const car = raceCarOf(world, design)
   const starter = world.targets.find((t) => isStarter(world, t))
   const said = starter?.bubble?.text.trim() ?? ''
@@ -85,14 +107,38 @@ export function readRaceHud(world: World, design: LevelDesign): RaceHudState {
   // After the line `my place` can be passed by a later finisher (R1-engine.md), so a finished Car's place is its line.
   const place = car ? (finished ? finishers.indexOf(carName) + 1 : racePlace(world, car)) : 0
 
+  const started = startTick !== null && startTick <= world.tick
+  /** A racer's time over the line: from "go" to the end of its last lap. */
+  const finishTime = (t: Target | undefined): number | null => {
+    const ticks = t ? raceLapState(t)?.lapTicks : undefined
+    return started && ticks && ticks.length >= laps ? ticks[laps - 1]! - startTick! : null
+  }
+  const byName = (name: string) => racers.find((t) => racerName(world, t) === name) ?? (car && racerName(world, car) === name ? car : undefined)
+
   let standings: RaceStanding[] = []
   if (car && finished) {
-    standings = finishers.map((name, i) => ({ place: i + 1, name, done: true, you: name === carName }))
+    standings = finishers.map((name, i) => ({ place: i + 1, name, done: true, you: name === carName, time: finishTime(byName(name)) }))
     const still = racers
       .filter((t) => !finishers.includes(racerName(world, t)))
       .sort((a, b) => racePlace(world, a) - racePlace(world, b))
     for (const t of still) standings.push({ place: standings.length + 1, name: racerName(world, t), done: false, you: false })
   }
 
-  return { countdown, lap: Math.min(done + 1, laps), laps, place, racers: racers.length, finished, noLaps, standings }
+  // The clock stops when the Car crosses the line for the last time.
+  const time = !started ? null : finished ? finishTime(car) ?? world.tick - startTick! : world.tick - startTick!
+  const carLaps = started && car ? lapTimes(raceLapState(car)?.lapTicks ?? [], startTick!) : []
+  const bestLap = carLaps.length ? Math.min(...carLaps) : null
+
+  let live: RaceStanding[] = []
+  if (started && !noLaps && racers.length > 1) {
+    live = racers
+      .map((t) => ({ t, place: racePlace(world, t) }))
+      .sort((a, b) => a.place - b.place)
+      .map(({ t }, i) => {
+        const lapsDone = raceLapState(t)?.lap ?? 0
+        return { place: i + 1, name: racerName(world, t), done: lapsDone >= laps, you: t === car, lap: Math.min(lapsDone + 1, laps) }
+      })
+  }
+
+  return { countdown, lap: Math.min(done + 1, laps), laps, place, racers: racers.length, finished, noLaps, standings, time, bestLap, live }
 }

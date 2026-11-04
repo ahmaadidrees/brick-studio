@@ -75,11 +75,17 @@
 .builder-word:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
 
 /* Play feedback (PlayFeedback.tsx): the coin counter matches the pill the real builder draws on its canvas. */
-.play-coins {
+/* The coins and the time, side by side in the top left. */
+.play-hud {
   position: absolute;
   z-index: var(--z-hud, 30);
   top: var(--space-3, 12px);
   left: max(var(--space-3, 12px), env(safe-area-inset-left));
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.play-coins {
   display: flex;
   align-items: center;
   gap: 8px;

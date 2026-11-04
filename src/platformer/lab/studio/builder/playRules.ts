@@ -94,6 +94,36 @@ export const NO_GOAL_NOTE = 'There is no Goal yet, so there is nowhere to finish
  * The Stage's variable called "coins", read live from the running game, or null if the level has none (then no counter
  * is shown). Looks the variable up by its name, so it works for any project.
  */
+/** Ticks a second: the runtime's fixed step. */
+export const TICKS_PER_SECOND = 30
+
+/** A play time like the classic game's timer: minutes, then seconds to a tenth ("0:07.3"). */
+export function formatPlayTime(ticks: number): string {
+  const s = Math.max(0, ticks) / TICKS_PER_SECOND
+  const m = Math.floor(s / 60)
+  return `${m}:${(s - m * 60).toFixed(1).padStart(4, '0')}`
+}
+
+/**
+ * Best clear times, per level, for as long as the page is open (like the classic game's best time on a kid's own
+ * level). A level is known by its painted cells and placed copies, so changing the level starts a new best.
+ */
+const bestTimes = new Map<string, number>()
+const levelKey = (design: LevelDesign): string => JSON.stringify([design.id, design.tiles?.data ?? null, design.copies.map((c) => [c.brickId, c.x, c.y])])
+
+/** The best time for this level so far (ticks), or null. */
+export function bestTime(design: LevelDesign): number | null {
+  return bestTimes.get(levelKey(design)) ?? null
+}
+
+/** Record a clear; true when it beats an earlier best (the first clear is not a "new best": there was none). */
+export function recordClear(design: LevelDesign, ticks: number): boolean {
+  const key = levelKey(design)
+  const old = bestTimes.get(key)
+  if (old === undefined || ticks < old) bestTimes.set(key, ticks)
+  return old !== undefined && ticks < old
+}
+
 export function readCoins(runtime: Runtime, design: LevelDesign): number | null {
   const decl = design.stage.program.variables.find((v) => isNamed(v.name, COINS_VARIABLE))
   if (!decl) return null

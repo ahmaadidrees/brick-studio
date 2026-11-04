@@ -190,3 +190,35 @@ describe('the words the builder listens for are the ones the bricks use', () => 
     expect(checkLevelForPlay(bare)).toEqual({ hero: false, goal: false })
   })
 })
+
+describe('the time (parity bucket A, 2026-11-03)', () => {
+  it('formats like the classic timer, and keeps a best time per level for as long as the page is open', async () => {
+    const { bestTime, formatPlayTime, recordClear } = await import('./playRules')
+    expect(formatPlayTime(0)).toBe('0:00.0')
+    expect(formatPlayTime(30 * 75.25)).toBe('1:15.3')
+    // Its own level id: other tests here clear the starter level too.
+    const design = { ...createStarterProject().design, id: 'best_time_test' }
+    const other = { ...design, copies: design.copies.map((c) => (c.id === 'copy_goal' ? { ...c, x: c.x - 16 } : c)) }
+    expect(bestTime(design)).toBeNull()
+    expect(recordClear(design, 600)).toBe(false)
+    expect(recordClear(design, 700)).toBe(false)
+    expect(bestTime(design)).toBe(600)
+    expect(recordClear(design, 500)).toBe(true)
+    expect(bestTime(design)).toBe(500)
+    expect(bestTime(other)).toBeNull()
+  })
+
+  it('shows the time while playing, and the time and best on "You made it!"', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<StudioShell store={store} />)
+    startPlay(store)
+    expect(screen.getByRole('timer').textContent).toMatch(/0:00\.0/)
+    const runtime = store.getState().runtime!
+    for (let i = 0; i < 90; i++) runtime.step()
+    act(() => {
+      runtime.broadcast(COURSE_CLEAR)
+    })
+    const dialog = screen.getByRole('dialog', { name: 'You made it' })
+    expect(dialog.textContent).toMatch(/Time 0:03\.0/)
+  })
+})

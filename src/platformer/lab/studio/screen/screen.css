@@ -316,7 +316,7 @@
 .cl-phone[data-screen='play'] .stage-view-tools { flex-wrap: nowrap; gap: 6px; padding: 6px; overflow-x: auto; scrollbar-width: none; }
 .cl-phone[data-screen='play'] .stage-view-btn { padding: 0 8px; font-size: 13px; white-space: nowrap; }
 /* ...and the coin count goes under that row instead of over Pause. */
-.cl-phone[data-screen='play'] .play-coins { top: 64px; }
+.cl-phone[data-screen='play'] .play-hud { top: 64px; }
 
 /* Powers row in Code (PowersBar.tsx) */
 /* Inside a brick's code, Powers step aside: they belong to the brick, not to the script on screen. */
