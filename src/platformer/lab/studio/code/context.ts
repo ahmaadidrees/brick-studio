@@ -1,3 +1,4 @@
+import { designKit } from '../../core/contracts'
 import type { EditorContext, VariableItem, ListItem } from '../../core/editor/context'
 import type { StudioStore } from '../store'
 import { STAGE_ID } from '../store'
@@ -181,6 +182,8 @@ export function buildEditorContext(store: StudioStore, live: LiveEditor = {}): E
     getSounds: () => sounds,
     getBackdrops: () => backdrops,
     isStage,
+    // The kit's own menus and colours (a 3D project's speed menus have z, and its Platformer blocks are the 3D ones).
+    kit: designKit(state.project.design),
     ...(live.onVariableMenu ? { onVariableMenu: live.onVariableMenu } : {}),
   }
 }
