@@ -115,10 +115,16 @@ describe('players in a room (docs/qa/hackable-rooms M0)', () => {
     const one = addPlayer(rt, { num: 1, name: 'Maya' }, spawn)!
     const two = addPlayer(rt, { num: 2, name: 'Sam' }, spawn)!
     rt.pressKey('up arrow', 1)
-    run(rt, 150)
+    // Sam pressed nothing: his Car never has the gas on. (Since cars bump each other, parity bucket A, Maya's Car,
+    // spawned behind his, can still shove it along, so where it ends up says nothing about his keys.)
+    let samGas = 0
+    for (let i = 0; i < 150; i++) {
+      rt.step()
+      samGas = Math.max(samGas, Number(two.variables.car_gas))
+    }
     const moved = (t: typeof one) => Math.hypot(t.x - spawn.x, t.y - spawn.y)
     expect(moved(one)).toBeGreaterThan(40)
-    // Sam pressed nothing: still near the start, wherever the countdown left it.
-    expect(moved(two)).toBeLessThan(moved(one) / 2)
+    expect(Number(one.variables.car_gas)).toBe(1)
+    expect(samGas).toBe(0)
   })
 })

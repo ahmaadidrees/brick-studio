@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { CopyPlacement, LevelDesign, Target } from '../core/contracts'
 import { TILE_SIZE } from '../core/contracts'
+import { targetBounds } from '../core/geometry'
 import { activeQuestion, type AskPrompt } from '../core/sensing'
 import { StudioStore, useStudio } from './store'
 import { FixedStepAccumulator } from './stage/accumulator'
@@ -9,6 +10,7 @@ import { AudioManager } from './stage/audio'
 import {
   clampCamera,
   defaultPlayCameraMode,
+  FollowRig,
   buildCamera,
   buildFitCamera,
   fitCamera,
@@ -59,8 +61,12 @@ export function followTargetOf(design: LevelDesign, targets: readonly Target[]):
   return targets.find((t) => !t.isStage && !t.isClone && players.has(t.brickId))
 }
 
-/** Seen from above (Racing), the screen's shorter side shows this many steps (22 bricks), whichever way it is held. */
-export const TOP_DOWN_SHORT_SIDE = 360
+/**
+ * Seen from above (Racing), the screen's shorter side shows this many steps (15 bricks), whichever way it is held. The
+ * classic race view picks a whole-pixel scale that shows 224 to 256 px on the short side on laptops, Chromebooks,
+ * tablets and phones; 360 made the cars about 1.5 times smaller than classic (parity bucket A, 2026-11-03).
+ */
+export const TOP_DOWN_SHORT_SIDE = 240
 
 /**
  * The follow camera's width in steps for a kit. The descriptor's own number wins; a race is seen from above, so it
@@ -238,21 +244,37 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
 
   const playCameraMode: PlayCameraMode = playChoice ?? defaultPlayCameraMode(design.bounds, viewport)
 
+  // The follow camera eases after the player like the classic game's (stage/camera.ts FollowRig): a new one each Play.
+  const rigKind = screens.kit === 'race' ? 'top' : 'side'
+  const rigRef = useRef<{ rig: FollowRig; at: number } | null>(null)
+  useEffect(() => {
+    rigRef.current = null
+  }, [runtime, playCameraMode, rigKind])
+
   /** The camera for this moment: Build uses the free camera; Play follows its mode unless the kid took over. */
   const computePlayCamera = useCallback(
-    (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
+    (world: Parameters<typeof targetBounds>[0], alpha = 1): Camera => {
       if (playFree) return camera
       if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
       // In a room, our own Hero (everyone else's is someone else's to follow).
       const mine = room && room.me ? world.targets.find((t) => t.player === room.me && !t.isClone) : undefined
       const first = mine ?? followTargetOf(design, world.targets)
-      const point = first ?? {
-        x: (world.bounds.left + world.bounds.right) / 2,
-        y: (world.bounds.bottom + world.bounds.top) / 2,
-      }
-      return followCamera(world.bounds, viewport, point, playFollowWidth(screens, world.bounds, viewport))
+      const width = playFollowWidth(screens, world.bounds, viewport)
+      if (!first) return followCamera(world.bounds, viewport, { x: (world.bounds.left + world.bounds.right) / 2, y: (world.bounds.bottom + world.bounds.top) / 2 }, width)
+      // Where the player is drawn this frame (between its last two ticks), and its speed over the last tick.
+      const prev = prevPosesRef.current.get(first.id) ?? first
+      const x = prev.x + (first.x - prev.x) * alpha
+      const y = prev.y + (first.y - prev.y) * alpha
+      const box = targetBounds(world, first)
+      const feet = rigKind === 'side' && box ? y - (first.y - box.bottom) : y
+      const now = typeof performance !== 'undefined' ? performance.now() : 0
+      const held = rigRef.current
+      const frames = held ? Math.min(4, Math.max(0, ((now - held.at) * 60) / 1000)) : 0
+      const rig = held?.rig ?? new FollowRig(rigKind)
+      rigRef.current = { rig, at: now }
+      return rig.follow({ x, y: feet, vx: first.x - prev.x, vy: first.y - prev.y, onGround: !!first.body?.onGround }, world.bounds, viewport, width, frames)
     },
-    [playFree, camera, playCameraMode, viewport, design, screens, room],
+    [playFree, camera, playCameraMode, viewport, design, screens, room, rigKind],
   )
 
   /** Camera used for pointer maths. */
@@ -375,7 +397,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
           const canvas = canvasRef.current
           const ctx = canvas?.getContext('2d')
           if (ctx) {
-            const playCamera = computePlayCamera(game.world)
+            const playCamera = computePlayCamera(game.world, prevPosesRef.current.size ? fraction : 1)
             playCamRef.current = playCamera
             renderPlayMode(ctx, game.world, { camera: playCamera, viewport, background, prevPoses: prevPosesRef.current, interpAlpha: prevPosesRef.current.size ? fraction : 1 })
           }
@@ -423,7 +445,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
       if (canvas) {
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          const playCamera = computePlayCamera(runtime.world)
+          const playCamera = computePlayCamera(runtime.world, alpha)
           playCamRef.current = playCamera
           renderPlayMode(ctx, runtime.world, {
             camera: playCamera,

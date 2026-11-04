@@ -55,6 +55,8 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
   const details = single ? 'One per level: place it again to move it.' : `${count} in this level`
   const spec = knobSpecFor(brick)
   const finish = brick.grid?.finish !== undefined
+  // A brick that points a way (a boost pad) turns like a finish line (parity bucket A).
+  const pointsAWay = brick.grid?.way !== undefined
 
   const remove = () => {
     setMenu(false)
@@ -113,7 +115,8 @@ export function Inspector({ store, history, compact = false, noCode = compact }:
             <button type="button" aria-pressed={scope === 'one'} onClick={() => store.setSliderScope('one')}>Just this one</button>
           </div>}
           {finish && <FinishArrow store={store} history={history} brick={brick} />}
-          {single ? <KnobsCard store={store} brickId={brick.id} compact /> : finish && knobs.length === 0 ? null : knobs.length === 0
+          {pointsAWay && <WayArrow store={store} history={history} brick={brick} />}
+          {single ? <KnobsCard store={store} brickId={brick.id} compact /> : (finish || pointsAWay) && knobs.length === 0 ? null : knobs.length === 0
             ? <p className="cl-muted cl-empty">No sliders yet. In Code, make a variable and turn on “Show as a slider”.</p>
             : <div className="cl-sliders" role="group" aria-label="Sliders">
               {knobs.map((v) => {
@@ -180,5 +183,23 @@ function FinishArrow({ store, history, brick }: { store: StudioStore; history?: 
       <button type="button" className="cl-btn" aria-label={`Turn the arrow (it points ${FINISH_WAY[now]})`} onClick={turn}><RotateCw size={16} aria-hidden="true" /> Turn</button>
     </span>
     <small className="cl-muted">Laps count when cars cross the line this way.</small>
+  </div>
+}
+
+/** A boost pad's way (`grid.way`): the pad's arrow, and Turn. Cars boost only when they drive that way. */
+function WayArrow({ store, history, brick }: { store: StudioStore; history?: History; brick: BrickDef }) {
+  const now = FINISH_TURN[finishIndex(brick.grid?.way ?? 90)]
+  const next = FINISH_TURN[(finishIndex(now) + 1) % 4]
+  const turn = () => {
+    history?.push({ undo: () => store.setGridWay(brick.id, now), redo: () => store.setGridWay(brick.id, next) })
+    store.setGridWay(brick.id, next)
+  }
+  return <div className="cl-finish" role="group" aria-label="Boost pad arrow">
+    <span className="cl-slider-name">It boosts cars going {FINISH_WAY[now]}</span>
+    <span className="cl-slider-control">
+      <ArrowUp size={28} aria-hidden="true" className="cl-finish-arrow" style={{ transform: `rotate(${now}deg)` }} />
+      <button type="button" className="cl-btn" aria-label={`Turn the arrow (it points ${FINISH_WAY[now]})`} onClick={turn}><RotateCw size={16} aria-hidden="true" /> Turn</button>
+    </span>
+    <small className="cl-muted">Cars driving another way get no boost.</small>
   </div>
 }

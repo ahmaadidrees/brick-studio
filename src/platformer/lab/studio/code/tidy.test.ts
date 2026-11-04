@@ -106,7 +106,7 @@ describe('turning a script off', () => {
       setScriptOff(coyote, true)
       expect(isScriptOff(coyote)).toBe(true)
       const saved = Blockly.serialization.workspaces.save(ws)
-      expect(ws.getTopBlocks(false)).toHaveLength(29)
+      expect(ws.getTopBlocks(false)).toHaveLength(32)
       const off = compileWorkspace(saved, { variables: heroVariables() })
       expect(off.program.scripts).toHaveLength(brick.program.scripts.length - 1)
       setScriptOff(coyote, false)

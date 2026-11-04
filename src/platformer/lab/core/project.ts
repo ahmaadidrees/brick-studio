@@ -140,6 +140,7 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
   checkId(design.id, 'id', push)
   checkName(design.name, 'name', push)
   if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race or 3d.')
+  if (design.pits !== undefined && typeof design.pits !== 'boolean') push('bad-value', 'pits', 'Pits must be true or false.')
   checkSeed(design.seed, push)
   checkBounds(design.bounds, push)
 
@@ -211,7 +212,7 @@ function checkGrid(brick: BrickDef, path: string, chars: Set<string>, push: Push
     push('bad-value', `${path}.grid`, 'Grid must be an object.')
     return
   }
-  const { char, autotile, finish } = grid as { char?: unknown; autotile?: unknown; finish?: unknown }
+  const { char, autotile, finish, way } = grid as { char?: unknown; autotile?: unknown; finish?: unknown; way?: unknown }
   if (typeof char !== 'string' || char.length !== 1 || char === '.' || hasControlChar(char) || char === ' ') {
     push('bad-value', `${path}.grid.char`, 'A grid brick needs one character that is not "." (that means empty).')
   } else if (chars.has(char)) {
@@ -220,6 +221,9 @@ function checkGrid(brick: BrickDef, path: string, chars: Set<string>, push: Push
   if (autotile !== undefined && typeof autotile !== 'boolean') push('bad-value', `${path}.grid.autotile`, 'Autotile must be true or false.')
   if (finish !== undefined && !(finish === 0 || finish === 90 || finish === 180 || finish === -90)) {
     push('bad-value', `${path}.grid.finish`, 'A finish line points right (90), up (0), down (180) or left (-90).')
+  }
+  if (way !== undefined && !(way === 0 || way === 90 || way === 180 || way === -90)) {
+    push('bad-value', `${path}.grid.way`, 'A grid brick points right (90), up (0), down (180) or left (-90).')
   }
   if (brick.limit !== undefined) push('bad-value', `${path}.limit`, 'A grid brick has no limit: it is painted as many times as you like.')
 }
@@ -878,7 +882,8 @@ function gridTargets(design: LevelDesign, bricks: Record<string, BrickDef>): Tar
         isStage: false,
         x: left + col * TILE_SIZE + TILE_SIZE / 2,
         y: bottom + row * TILE_SIZE + TILE_SIZE / 2,
-        direction: 90,
+        // A brick that points a way (a boost pad) faces it; every other cell faces right.
+        direction: brick.grid?.way ?? 90,
         size: 100,
         visible: true,
         costumeIndex: covered ? 1 : 0,

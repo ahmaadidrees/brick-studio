@@ -225,6 +225,12 @@ export interface LevelDesign {
    * Play every filled cell becomes a painted-copy target of that brick (see GridSpec). Missing means no grid.
    */
   tiles?: TileLayer
+  /**
+   * The bottom of the level is open (parity bucket A, 2026-11-03): whatever falls off it falls into a pit, like the
+   * classic Platformer, and the Hero's own blocks notice and get hurt. Missing means a solid floor: levels saved before
+   * the Hero knew about pits, Racing tracks, and test rooms.
+   */
+  pits?: boolean
 }
 
 // ---------------------------------------------------------------- grid bricks (step 7, docs/qa/code-lab-core/STEP7.md)
@@ -251,6 +257,12 @@ export interface GridSpec {
    * right, 0 up, 180 down, -90 left). Laps count from it (core/race.ts). Missing means an ordinary brick.
    */
   finish?: number
+  /**
+   * Hackable Racing (parity bucket A, 2026-11-03): this grid brick points a way, like a boost pad: its cells face this
+   * Scratch direction (so its art turns, and `direction of` the brick says it), and the Car's own blocks boost only when
+   * they drive that way. Missing means its cells face right (90), as every cell did before.
+   */
+  way?: number
 }
 
 export const gridCopyId = (col: number, row: number): string => `cell:${col}:${row}`

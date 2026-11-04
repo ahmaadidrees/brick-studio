@@ -350,6 +350,13 @@ export class StudioStore {
     this.updateBrick(brickId, (b) => ({ ...b, grid: { ...b.grid!, finish: direction } }))
   }
 
+  /** Hackable Racing: which way this grid brick points (`grid.way`, a boost pad). Bricks that point no way are left alone. */
+  setGridWay(brickId: string, direction: FinishDirection) {
+    const brick = this.brick(brickId)
+    if (!brick?.grid || brick.grid.way === undefined || !FINISH_DIRECTIONS.includes(direction) || brick.grid.way === direction) return
+    this.updateBrick(brickId, (b) => ({ ...b, grid: { ...b.grid!, way: direction } }))
+  }
+
   // ------------------------------------------------------------ bricks
 
   brick(brickId: string): BrickDef | undefined {

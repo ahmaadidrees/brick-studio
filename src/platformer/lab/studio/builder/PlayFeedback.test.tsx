@@ -6,7 +6,9 @@ import { createStarterProject, STARTER_GOAL } from '../starter'
 import { builtInPowers } from '../powers/powers'
 import { StudioStore } from '../store'
 import { StudioShell } from '../screen/StudioShell'
-import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins } from './playRules'
+import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, HERO_OUCH, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins, saysOuch } from './playRules'
+import { HERO_OUCH as HERO_SAYS } from '../hero/heroBrick'
+import beforePits from '../hero/__fixtures__/hero-before-pits.json'
 
 afterEach(cleanup)
 
@@ -18,9 +20,9 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(store.getState().mode).toBe('play')
-    const hint = screen.getByText(/Space jumps/)
+    const hint = screen.getByText(/Space, X or K jumps/)
     expect(hint.textContent).toMatch(/move/)
-    expect(hint.textContent).toMatch(/hold X to run/)
+    expect(hint.textContent).toMatch(/hold Z or J to run/)
     expect(hint.textContent).not.toMatch(/Shift/) // the Hero runs on X (heroBrick.ts "read keys")
     expect(screen.getByRole('status', { name: 'Coins: 0' })).toBeTruthy()
     // a Coin was collected: the Stage's variable changes, the counter follows
@@ -40,19 +42,40 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByRole('status', { name: /Coins/ })).toBeNull()
-    expect(screen.getByText(/Space jumps/)).toBeTruthy()
+    expect(screen.getByText(/Space, X or K jumps/)).toBeTruthy()
   })
 
-  it('"Try again" when the Hero is hurt (hero hurt broadcast), and it goes away by itself', async () => {
+  it('"Try again" when the Hero says ouch (it really got hurt, not while it blinks safe), and it goes away by itself', async () => {
+    expect(HERO_OUCH).toBe(HERO_SAYS)
     const store = new StudioStore(createStarterProject())
+    expect(saysOuch(store.getState().project.design)).toBe(true)
     render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByText(/Try again/)).toBeNull()
+    // "hero hurt" alone may be ignored (the Hero blinks, safe): the Hero says ouch when it is hurt.
+    act(() => {
+      store.getState().runtime!.broadcast(HERO_HURT)
+    })
+    expect(screen.queryByText(/Try again/)).toBeNull()
+    act(() => {
+      store.getState().runtime!.broadcast(HERO_OUCH)
+    })
+    expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
+    await waitForElementToBeRemoved(() => screen.queryByText(/Ouch/), { timeout: 3000 })
+  })
+
+  it('a Hero from before that never says ouch: "Try again" on hero hurt, as before', () => {
+    const project = createStarterProject()
+    project.design.bricks.find((b) => b.id === 'brick_hero')!.program = structuredClone(beforePits.program) as never
+    project.workspaces.brick_hero = structuredClone(beforePits.workspace)
+    const store = new StudioStore(project)
+    expect(saysOuch(store.getState().project.design)).toBe(false)
+    render(<StudioShell store={store} />)
+    startPlay(store)
     act(() => {
       store.getState().runtime!.broadcast(HERO_HURT)
     })
     expect(screen.getByText(/Ouch! Back to the start. Try again!/)).toBeTruthy()
-    await waitForElementToBeRemoved(() => screen.queryByText(/Ouch/), { timeout: 3000 })
   })
 
   it('"You made it!" when the Goal says course clear, with Play again and Keep building', () => {
@@ -86,12 +109,12 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     expect(screen.getByText(NO_HERO_MESSAGE)).toBeTruthy()
   })
 
-  it('names a snapped power\'s own key in the hint (Dash: Z)', () => {
+  it('names a snapped power\'s own key in the hint (Dash: C)', () => {
     const store = new StudioStore(createStarterProject())
     store.snapPower('brick_hero', builtInPowers().find((p) => p.id === 'dash')!)
     render(<StudioShell store={store} />)
     startPlay(store)
-    expect(screen.getByText(/Space jumps/).textContent).toMatch(/hold X to run · Z for Dash/)
+    expect(screen.getByText(/Space, X or K jumps/).textContent).toMatch(/hold Z or J to run · C for Dash/)
   })
 
   it('Play with no Goal plays, and the hint says there is nowhere to finish', () => {
@@ -165,5 +188,37 @@ describe('the words the builder listens for are the ones the bricks use', () => 
     expect(checkLevelForPlay(design)).toEqual({ hero: true, goal: true })
     const bare = { ...design, copies: design.copies.filter((c) => c.brickId !== 'brick_hero' && c.brickId !== 'brick_goal') }
     expect(checkLevelForPlay(bare)).toEqual({ hero: false, goal: false })
+  })
+})
+
+describe('the time (parity bucket A, 2026-11-03)', () => {
+  it('formats like the classic timer, and keeps a best time per level for as long as the page is open', async () => {
+    const { bestTime, formatPlayTime, recordClear } = await import('./playRules')
+    expect(formatPlayTime(0)).toBe('0:00.0')
+    expect(formatPlayTime(30 * 75.25)).toBe('1:15.3')
+    // Its own level id: other tests here clear the starter level too.
+    const design = { ...createStarterProject().design, id: 'best_time_test' }
+    const other = { ...design, copies: design.copies.map((c) => (c.id === 'copy_goal' ? { ...c, x: c.x - 16 } : c)) }
+    expect(bestTime(design)).toBeNull()
+    expect(recordClear(design, 600)).toBe(false)
+    expect(recordClear(design, 700)).toBe(false)
+    expect(bestTime(design)).toBe(600)
+    expect(recordClear(design, 500)).toBe(true)
+    expect(bestTime(design)).toBe(500)
+    expect(bestTime(other)).toBeNull()
+  })
+
+  it('shows the time while playing, and the time and best on "You made it!"', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<StudioShell store={store} />)
+    startPlay(store)
+    expect(screen.getByRole('timer').textContent).toMatch(/0:00\.0/)
+    const runtime = store.getState().runtime!
+    for (let i = 0; i < 90; i++) runtime.step()
+    act(() => {
+      runtime.broadcast(COURSE_CLEAR)
+    })
+    const dialog = screen.getByRole('dialog', { name: 'You made it' })
+    expect(dialog.textContent).toMatch(/Time 0:03\.0/)
   })
 })

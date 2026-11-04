@@ -389,14 +389,14 @@ describe('the inspector in the shell', () => {
     store.selectCopy(copy.id)
     render(<StudioShell store={store} />)
     fireEvent.click(screen.getByRole('button', { name: 'Just this one' }))
-    fireEvent.change(screen.getByRole('slider', { name: 'speed' }), { target: { value: '1' } })
+    fireEvent.change(screen.getByRole('slider', { name: 'speed' }), { target: { value: '2' } })
     const speedId = store.getState().project.design.bricks.find((b) => b.id === 'brick_walker')!.program.variables.find((v) => v.name === 'speed')!.id
     const knob = () => store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]
-    expect(knob()).toBe(1)
+    expect(knob()).toBe(2)
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(knob()).toBe(copy.knobs?.[speedId])
     fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
-    expect(knob()).toBe(1)
+    expect(knob()).toBe(2)
     fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove this Walker' }))
     expect(store.getState().project.design.copies.some((c) => c.id === copy.id)).toBe(false)

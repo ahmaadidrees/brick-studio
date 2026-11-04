@@ -22,7 +22,8 @@
  *
  * The y axis points up in Code Lab and down in the old engine, so a jump is a positive y speed here.
  */
-import type { BrickDef, VariableDecl } from '../../core/contracts'
+import type { BrickDef, Sound, VariableDecl } from '../../core/contracts'
+import { getSoundLibrary } from '../assets/soundLibrary'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { costumeFromImage, imageFromRows } from '../pixels'
 import { labelData, readLabel } from '../code/layers'
@@ -96,7 +97,7 @@ export interface HeroKnob {
 export const HERO_KNOBS: readonly HeroKnob[] = [
   // Running
   { id: 'walk_top', name: 'walk speed', hint: 'How fast I walk.', value: 1.5 * SPEED, from: 'walkMax 1.5 px/frame x 2' },
-  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold x.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
+  { id: 'run_top', name: 'run speed', hint: 'How fast I run when you hold Z or J.', value: 2.5 * SPEED, from: 'runMax 2.5 px/frame x 2' },
   { id: 'p_top', name: 'full run speed', hint: 'My fastest run, once the run meter is full.', value: 3.5 * SPEED, from: 'pMax 3.5 px/frame x 2' },
   { id: 'walk_push', name: 'walk speed-up', hint: 'How quickly I get up to walking speed.', value: engine(0.0547) * ACCEL, from: 'walkAccel 0.0547 (14/256) px/frame^2 x 4' },
   { id: 'run_push', name: 'run speed-up', hint: 'How quickly I get up to running speed.', value: engine(0.0625) * ACCEL, from: 'runAccel 0.0625 (16/256) px/frame^2 x 4' },
@@ -119,7 +120,7 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'walk_jump_from', name: 'speed for walk jump', hint: 'How fast I must go to get the walk jump.', value: 1 * SPEED, from: 'speed 1 px/frame (player.ts tier 1) x 2' },
   { id: 'run_jump_from', name: 'speed for run jump', hint: 'How fast I must go to get the run jump.', value: 2.25 * SPEED, from: 'speed 2.25 px/frame (player.ts tier 2) x 2' },
   { id: 'p_jump_from', name: 'speed for full run jump', hint: 'How fast I must go to get the full run jump.', value: 3.25 * SPEED, from: 'speed 3.25 px/frame (player.ts tier 3) x 2' },
-  { id: 'hold_slow', name: 'float gravity', hint: 'Lighter gravity while I go up and you hold space.', value: engine(0.125) * ACCEL, from: 'holdSlow 0.125 (32/256) px/frame^2 x 4' },
+  { id: 'hold_slow', name: 'float gravity', hint: 'Lighter gravity while I go up and you hold jump.', value: engine(0.125) * ACCEL, from: 'holdSlow 0.125 (32/256) px/frame^2 x 4' },
   { id: 'hold_fast', name: 'run float gravity', hint: 'The same, for a jump from a run.', value: engine(0.135) * ACCEL, from: 'holdFast 0.135 (35/256) px/frame^2 x 4' },
   { id: 'fall_gravity', name: 'gravity', hint: 'How hard I get pulled down.', value: engine(0.375) * ACCEL, from: 'fallGravity 0.375 (96/256) px/frame^2 x 4' },
   { id: 'max_fall', name: 'top fall speed', hint: 'The fastest I can fall.', value: 4.25 * SPEED, from: 'maxFall 4.25 px/frame x 2' },
@@ -127,11 +128,25 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'early_ticks', name: 'early jump time', hint: 'How long before I land a jump press still counts. 30 is one second.', value: 3, from: 'bufferFrames 5: the old Hero counts a press up to 4 frames (2 ticks) before landing; 3 here counts 2 ticks' },
   // Walls
   { id: 'wall_slide', name: 'wall slide speed', hint: 'How fast I slide down a wall.', value: 1.0 * SPEED, from: 'wallSlideMax 1.0 px/frame x 2' },
-  { id: 'wall_shed', name: 'wall grab slowdown', hint: 'How much speed I lose when I grab a wall.', value: 0.75 * SPEED, from: 'least fall speed shed per frame while grabbing a wall, 0.75 px/frame x 2' },
+  // A speed shed every frame is a change per frame, like an acceleration (x 4). Until parity bucket A it was x 2 (1.5), so
+  // the slide settled at 3.5 a tick (105 px/s) instead of the old Hero's 60 px/s (HERO_DEFAULT_CHANGES).
+  { id: 'wall_shed', name: 'wall grab slowdown', hint: 'How much speed I lose when I grab a wall.', value: 0.75 * ACCEL, from: 'least fall speed shed per frame while grabbing a wall, 0.75 px/frame each frame x 4' },
   { id: 'wall_push', name: 'wall jump sideways', hint: 'How hard a wall jump pushes me away from the wall.', value: 2.0 * SPEED, from: 'wallJumpX 2.0 px/frame x 2' },
   { id: 'wall_up', name: 'wall jump up', hint: 'How high a wall jump sends me.', value: 4.0 * SPEED, from: 'wallJumpY 4.0 px/frame x 2' },
   { id: 'wall_lock_ticks', name: 'wall jump no-steer time', hint: 'How long after a wall jump I can\'t steer back to the wall. 30 is one second.', value: 5, from: 'wallJumpLock 9 frames / 2 = 4.5, rounded up' },
   { id: 'wall_late_ticks', name: 'wall late jump time', hint: 'How long after I leave a wall I can still wall jump. 30 is one second.', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
+  // Getting hurt (parity bucket A, 2026-11-03): the old Hero's death and respawn, player.ts
+  { id: 'hurt_stop', name: 'hurt stop time', hint: 'How long I stand still when I get hurt. 30 is one second.', value: 30 * TICKS, from: 'DEATH_PAUSE 30 frames / 2' },
+  { id: 'hurt_back', name: 'time to come back', hint: 'How long after I get hurt I come back at the start. 30 is one second.', value: 150 * TICKS, from: 'DEATH_TICKS 150 frames / 2' },
+  { id: 'safe_time', name: 'safe time', hint: 'How long I blink after coming back, when nothing can hurt me. 30 is one second.', value: 120 * TICKS, from: 'RESPAWN_INVULN 120 frames / 2' },
+]
+
+/**
+ * Knob defaults that changed since a Hero was saved. An upgraded Hero whose value is still the old default gets the new
+ * one; a value the kid moved stays (remix.ts upgradeHeroBlocks).
+ */
+export const HERO_DEFAULT_CHANGES: ReadonlyArray<{ id: string; from: number; to: number }> = [
+  { id: 'wall_shed', from: 0.75 * SPEED, to: 0.75 * ACCEL },
 ]
 
 /**
@@ -152,6 +167,7 @@ export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobId
   },
   { id: 'falling', label: 'Falling', knobIds: ['max_fall'] },
   { id: 'walls', label: 'Walls', knobIds: ['wall_slide', 'wall_shed', 'wall_push', 'wall_up', 'wall_lock_ticks', 'wall_late_ticks'] },
+  { id: 'hurt', label: 'Getting hurt', knobIds: ['hurt_stop', 'hurt_back', 'safe_time'] },
 ]
 
 /** How many tuning numbers are tucked under "More sliders". */
@@ -164,11 +180,29 @@ export const HERO_MORE_TUNING_COUNT = HERO_KNOB_GROUPS.reduce((n, g) => n + g.kn
  */
 export const HERO_START = { x: 60, y: 24 } as const
 
+/** The Spring's launch speeds (the old springHigh 6.75 and springLow 4.5 px/frame, in ticks with the tick correction). */
+export const SPRING_HIGH = 6.75 * SPEED + (engine(0.125) * ACCEL) / 4
+export const SPRING_LOW = 4.5 * SPEED + (engine(0.375) * ACCEL) / 4
+
+/** Below this y the Hero has fallen into a pit (its box top is a tile below the bottom of the level, which is y 0). */
+export const PIT_Y = -24
+
+/** The sound the Hero plays when it gets hurt, and what it says (the Play screen's "Ouch!" listens for it). */
+export const HERO_OUCH_SOUND = 'Ouch'
+export const HERO_OUCH = 'ouch'
+
+let ouchSound: Sound | undefined
+/** The sound library's "hit", named Ouch. */
+export function createHeroOuchSound(): Sound {
+  ouchSound ??= { ...getSoundLibrary().find((s) => s.name === 'hit')!, name: HERO_OUCH_SOUND }
+  return { ...ouchSound }
+}
+
 /** The Hero's own working memory. Not knobs: they change every tick. */
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'steer', name: 'steer' }, // -1 left, 0 none, 1 right (with the wall-jump lock applied)
   { id: 'raw_steer', name: 'arrow' }, // -1 left, 0 none, 1 right (just the arrow keys)
-  { id: 'running', name: 'running' }, // 1 while x is held
+  { id: 'running', name: 'running' }, // 1 while z or j (run) is held
   { id: 'way', name: 'way' }, // sign of x speed
   { id: 'speed', name: 'speed' }, // |x speed|, then the new speed
   { id: 'cap', name: 'top speed now' },
@@ -195,6 +229,8 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'gravity_now', name: 'gravity now' },
   { id: 'start_x', name: 'start x' }, // where I start this level (where I first stand): getting hurt sends me back here
   { id: 'start_y', name: 'start y' },
+  { id: 'hurt_time', name: 'hurt time' }, // 0 while I'm fine; counts up from 1 while I'm hurt
+  { id: 'safe', name: 'safe time left' }, // counts down after I come back; nothing hurts me (but pits) until 0
 ]
 
 /**
@@ -307,6 +343,12 @@ export function createHeroWorkspace(): WorkspaceJson {
   const not = (a: Conn): Conn => ({ block: blk('operator_not', { inputs: { OPERAND: a } }) })
   const abs = (a: Conn): Conn => ({ block: blk('operator_mathop', { fields: { OPERATOR: 'abs' }, inputs: { NUM: a } }) })
   const key = (k: string): Conn => ({ block: blk('sensing_keypressed', { fields: { KEY_OPTION: k } }) })
+  // The classic keys (parity bucket A, 2026-11-03): A and D beside the arrows, Space, X or K to jump, Z or J to run. The
+  // first key keeps the block (and id) the Hero always had; its partners are joined on with "or" blocks added later.
+  const keys = (first: string, ...more: string[]): Conn => {
+    const one = key(first)
+    return later(() => more.reduce<Conn>((either, k) => or(either, key(k)), one))
+  }
   const onGround = (): Conn => ({ block: blk('platformer_onground') })
   const xSpeed = (): Conn => ({ block: blk('platformer_speed', { fields: { AXIS: 'x' } }) })
   const ySpeed = (): Conn => ({ block: blk('platformer_speed', { fields: { AXIS: 'y' } }) })
@@ -392,16 +434,16 @@ export function createHeroWorkspace(): WorkspaceJson {
     'When the level starts: I do my own gravity and my own moving, and remember where I start',
   )
 
-  tick('basics', 'Read the arrow keys, x and space', [
+  tick('basics', 'Read the keys: arrows or A and D to walk, Z or J to run, Space, X or K to jump', [
     set('raw_steer', 0),
-    when(key('right arrow'), [set('raw_steer', 1)]),
-    when(key('left arrow'), [change('raw_steer', -1)]), // both arrows cancel out
+    when(keys('right arrow', 'd'), [set('raw_steer', 1)]),
+    when(keys('left arrow', 'a'), [change('raw_steer', -1)]), // both ways at once cancel out
     set('steer', v('raw_steer')),
     set('running', 0),
-    when(key('x'), [set('running', 1)]),
-    // "space just pressed" is only true on the first tick space is down, so holding it never jumps twice.
+    when(keys('z', 'j'), [set('running', 1)]),
+    // "space just pressed" is only true on the first tick jump is down, so holding it never jumps twice.
     set('pressed', 0),
-    either(key('space'), [when(eq(v('space_down'), 0), [set('pressed', 1)]), set('space_down', 1)], [set('space_down', 0)]),
+    either(keys('space', 'x', 'k'), [when(eq(v('space_down'), 0), [set('pressed', 1)]), set('space_down', 1)], [set('space_down', 0)]),
     when(eq(v('pressed'), 1), [set('buffer', 1)]),
   ])
 
@@ -434,7 +476,7 @@ export function createHeroWorkspace(): WorkspaceJson {
     set('wall_hit', 0), // the bump hats set it again later this tick if we are still pushing
   ])
 
-  tick('feel', 'Run with x: a higher top speed and a stronger push, and p speed once the run meter is full', [
+  tick('feel', 'Run with Z or J: a higher top speed and a stronger push, and p speed once the run meter is full', [
     when(eq(v('running'), 1), [
       either(
         onGround(),
@@ -550,8 +592,8 @@ export function createHeroWorkspace(): WorkspaceJson {
 
   tick('basics', 'Forget an old jump press, one tick at a time', [when(gt(v('buffer'), 0), [change('buffer', -1)])])
 
-  tick('feel', 'Hold to jump higher: gravity is lighter while I rise with space held', [
-    when(and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), key('space')), [set('gravity_now', v('hold'))]),
+  tick('feel', 'Hold to jump higher: gravity is lighter while I rise with jump held', [
+    when(and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), keys('space', 'x', 'k')), [set('gravity_now', v('hold'))]),
   ])
 
   tick('basics', 'Gravity: pull me down every tick', [changeY(sub(0, v('gravity_now'))), when(not(gt(ySpeed(), 0)), [set('jumping', 0)])])
@@ -576,7 +618,9 @@ export function createHeroWorkspace(): WorkspaceJson {
 
   // The plumbing, open: what the Platformer would do for me, as blocks. Peek or go inside "move and collide" to read
   // it; change a block to make it your own (bounce off walls, slide on ice, remember a wall for a wall jump).
-  tick('basics', 'Move: walls and floors stop me (go inside to see how)', [call('move and collide')])
+  const moveAndCollide = call('move and collide')
+  // While I'm hurt (parity bucket A) the "Getting hurt" script moves me instead.
+  tick('basics', 'Move: walls and floors stop me (go inside to see how)', [later(() => when(eq(v('hurt_time'), 0), [moveAndCollide]))])
   const hit = (): Conn => ({ block: blk('platformer_hitsomething') })
   const moveUntilHit = (axis: 'x' | 'y', by: Conn): Json => blk('platformer_moveuntilhit', { fields: { AXIS: axis }, inputs: { DISTANCE: by } })
   const plumbing = blk('procedures_definition', {
@@ -606,15 +650,68 @@ export function createHeroWorkspace(): WorkspaceJson {
   const goTo = (x: Conn | number, y: Conn | number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
   const receive = (message: string, label: string, body: Json[]): Json =>
     place('basics', blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message }, next: sub1(body) }), label)
-  // The Spring: one big upward speed (gravity keeps pulling it down).
-  receive('boing', 'When a Spring says boing: fly up', [setY(14)])
+  // The Spring, like the old Hero's (parity bucket A, 2026-11-03): springHigh 6.75 px/frame with jump held, springLow 4.5
+  // without, times 2 for ticks plus the quarter-gravity tick correction (as the jump powers above), and it counts as a
+  // jump, so holding jump floats me up much higher. The Spring says boing on every tick I touch it: only the first one
+  // (while I'm not already going up) throws me. The high launch keeps the block the old one-speed launch had.
+  const springHigh = setY(SPRING_HIGH)
+  receive(
+    'boing',
+    'When a Spring says boing: fly up, much higher if I hold jump',
+    later(() => [
+      when(not(gt(ySpeed(), 0)), [either(keys('space', 'x', 'k'), [springHigh], [setY(SPRING_LOW)]), set('jumping', 1), set('hold', v('hold_slow'))]),
+    ]),
+  )
   // A stomped Walker: a small bounce.
   receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
-  // Hurt (by a Walker, Spikes or Lava): back to where I started this level, standing still.
-  receive('hero hurt', 'When I get hurt: go back to where I started', [goTo(v('start_x'), v('start_y')), setX(0), setY(0)])
+  // Hurt (by a Walker, Spikes or Lava). Since parity bucket A (2026-11-03) it is timed like the old Hero's: I stop with
+  // an "Ouch", pop away, come back where I started this level after 2.5 seconds, and blink for a while, safe. "Getting
+  // hurt" below does it; this only starts it, unless I'm hurt already or still safe. (Going back to the start keeps its
+  // old blocks.) The old Hero also hopped up as it fell away; this one pops in place and hides, so a Walker it is
+  // touching never sees it above and counts a stomp.
+  const backToStart = [goTo(v('start_x'), v('start_y')), setX(0), setY(0)]
+  const startHurt = (): Json => set('hurt_time', 1)
+  receive('hero hurt', 'When I get hurt: start getting hurt, unless I am safe', later(() => [when(and(eq(v('hurt_time'), 0), eq(v('safe'), 0)), [startHurt()])]))
+  later(() => {
+    const yPosition = (): Conn => ({ block: blk('motion_yposition') })
+    const effect = (type: 'looks_seteffectto' | 'looks_changeeffectby', value: number): Json =>
+      blk(type, { fields: { EFFECT: 'ghost' }, inputs: { [type === 'looks_seteffectto' ? 'VALUE' : 'CHANGE']: as(value) } })
+    // Pits: a Platformer level has no floor (LevelDesign.pits), so dropping off the bottom is falling into a pit. The
+    // old Hero died once its top was a tile below the level (my box top is 6 above my y). Even safe time doesn't help.
+    tick('basics', 'Fall into a pit: when I drop below the bottom of the level, I get hurt', [
+      when(and(lt(yPosition(), PIT_Y), eq(v('hurt_time'), 0)), [startHurt()]),
+    ])
+    tick('basics', 'Getting hurt: stop with an Ouch, pop away, then come back where I started', [
+      when(gt(v('hurt_time'), 0), [
+        when(eq(v('hurt_time'), 1), [
+          blk('sound_play', { fields: { SOUND_MENU: HERO_OUCH_SOUND } }),
+          blk('event_broadcast', { inputs: { BROADCAST_INPUT: { shadow: { type: 'text', id: idSource.next(), fields: { TEXT: HERO_OUCH } } } } }),
+          effect('looks_seteffectto', 0),
+        ]),
+        change('hurt_time', 1),
+        // After the stop: pop (fade out fast), then hide, so nothing touches me until I come back.
+        when(gt(v('hurt_time'), v('hurt_stop')), [effect('looks_changeeffectby', 20)]),
+        when(gt(v('hurt_time'), add(v('hurt_stop'), 5)), [blk('looks_hide')]),
+        when(gt(v('hurt_time'), v('hurt_back')), [
+          set('hurt_time', 0),
+          blk('looks_cleargraphiceffects'),
+          blk('looks_show'),
+          ...backToStart,
+          set('meter', 0),
+          set('safe', v('safe_time')),
+        ]),
+      ]),
+    ])
+    tick('basics', 'Safe time: after I come back I blink, and nothing can hurt me', [
+      when(gt(v('safe'), 0), [
+        change('safe', -1),
+        either(gt({ block: blk('operator_mod', { inputs: { NUM1: v('safe'), NUM2: as(4) } }) }, 1), [effect('looks_seteffectto', 70)], [effect('looks_seteffectto', 0)]),
+      ]),
+    ])
+  })
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
-  receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(key('space'), [setY(11)], [setY(6.5)])])
+  receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(keys('space', 'x', 'k'), [setY(11)], [setY(6.5)])])
 
   for (const [block, text] of labels) withLabel(block, text)
 
@@ -633,7 +730,7 @@ export function createHeroBrick(): { brick: BrickDef; workspace: WorkspaceJson; 
   const variables = heroVariables()
   const { program, diagnostics } = compileWorkspace(workspace, { variables })
   return {
-    brick: { id: HERO_BRICK_ID, name: 'Hero', costumes: [createHeroCostume()], sounds: [], program, limit: 1 },
+    brick: { id: HERO_BRICK_ID, name: 'Hero', costumes: [createHeroCostume()], sounds: [createHeroOuchSound()], program, limit: 1 },
     workspace,
     diagnostics,
   }
@@ -645,13 +742,24 @@ export const HERO_MOVEMENT_HATS: readonly string[] = ['platformer_everytick', 'p
 let movementLabels: ReadonlySet<string> | undefined
 
 /**
+ * Movement scripts' labels before the classic keys (parity bucket A, 2026-11-03). A Hero a kid changed keeps them, and
+ * its scripts still fold into "How I move".
+ */
+export const HERO_EARLIER_MOVEMENT_LABELS: readonly string[] = [
+  'Read the arrow keys, x and space',
+  'Run with x: a higher top speed and a stronger push, and p speed once the run meter is full',
+  'Hold to jump higher: gravity is lighter while I rise with space held',
+]
+
+/**
  * The labels of the Hero's movement scripts (the basics and feel scripts above), read from `createHeroWorkspace` itself so
- * the list can never drift. The code editor folds the scripts with these labels into one "How I move" entry.
+ * the list can never drift, plus their earlier labels. The code editor folds the scripts with these labels into one
+ * "How I move" entry.
  */
 export function heroMovementLabels(): ReadonlySet<string> {
   if (!movementLabels) {
     const tops = (createHeroWorkspace().blocks as { blocks: Array<{ type: string; data?: string }> }).blocks
-    movementLabels = new Set(tops.filter((b) => HERO_MOVEMENT_HATS.includes(b.type)).map((b) => readLabel(b.data)).filter(Boolean))
+    movementLabels = new Set([...tops.filter((b) => HERO_MOVEMENT_HATS.includes(b.type)).map((b) => readLabel(b.data)).filter(Boolean), ...HERO_EARLIER_MOVEMENT_LABELS])
   }
   return movementLabels
 }

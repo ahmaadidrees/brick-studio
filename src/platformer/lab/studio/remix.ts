@@ -1,9 +1,10 @@
 /** Catalog bricks are copied into each level. A remix changes that level's definition, never the catalog. */
-import type { BrickDef } from '../core/contracts'
+import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
-import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
+import { boostCostume, boostCostumeR1 } from './race/raceTrack'
+import { HERO_DEFAULT_CHANGES, HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
 
 type Original = { brick: BrickDef; workspace: unknown }
@@ -232,11 +233,101 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
 /**
  * Earlier built-in Heroes' blocks, as generated and after a trip through the editor: the two My Blocks versions, and the
  * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
- * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits.
+ * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits. '88bce6fb' is the Hero just
+ * before pits (2026-11-03).
  */
-export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65']
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65', '88bce6fb']
 
 let currentHeroFingerprint: string | undefined
+
+/**
+ * Built-in bricks other than the Hero, by catalog id: the fingerprints of their blocks as earlier versions made them
+ * (as generated; Blockly's own save keeps the same fingerprint). The first entry of each is what production had before
+ * parity bucket A (2026-11-03).
+ */
+export const EARLIER_BUILT_IN_FINGERPRINTS: Readonly<Record<string, readonly string[]>> = {
+  // R1 as shipped: before W A S D and boost pads that point a way.
+  brick_car: ['f3157bf8'],
+  // R1 as shipped: before steering and braking like the classic computer driver.
+  brick_racer: ['3f8004eb'],
+}
+
+/**
+ * What a save opens with: every untouched built-in brick moved to today's original (the Hero by `upgradeUntouchedHero`,
+ * the rest here). A built-in brick whose blocks are exactly an earlier original, with its variables still named as
+ * that original named them, gets today's blocks; the values the kid set on its sliders, its costumes, sounds and name
+ * stay. A brick with any other blocks, a renamed variable, or a remix is the kid's and is left as it is.
+ */
+export function upgradeUntouchedBricks(project: StudioProject): StudioProject {
+  return upgradeUntouchedHero(withBoostWays(upgradeBuiltIns(project)))
+}
+
+/**
+ * Boost pads point a way since parity bucket A (`grid.way`). A race track saved before has a pad that points nowhere:
+ * it points the way its finish line does (the R1 beginner track's pad sits just after the line), or right. Its R1
+ * picture, if nobody repainted it, becomes today's (R1's chevrons pointed left).
+ */
+function withBoostWays(project: StudioProject): StudioProject {
+  const design = project.design
+  if (designKit(design) !== 'race') return project
+  const pad = design.bricks.find((b) => (b.remixOf ?? b.id) === 'brick_boost' && b.grid && b.grid.way === undefined)
+  if (!pad) return project
+  const way = design.bricks.find((b) => b.grid?.finish !== undefined)?.grid?.finish ?? 90
+  const old = boostCostumeR1()
+  const costumes = pad.costumes.map((c) => (c.asset === old.asset ? { ...boostCostume(), name: c.name } : c))
+  const updated: BrickDef = { ...pad, costumes, grid: { ...pad.grid!, way } }
+  return { ...project, design: { ...design, bricks: design.bricks.map((b) => (b.id === pad.id ? updated : b)) } }
+}
+
+/**
+ * Slider defaults a built-in brick changed. A brick with today's blocks whose slider still holds the old default gets the
+ * new one; a value the kid moved, and a copy's own value ("Just this one"), stay.
+ */
+export const BUILT_IN_DEFAULT_CHANGES: Readonly<Record<string, ReadonlyArray<{ variable: string; from: number; to: number }>>> = {
+  // Parity bucket A (2026-11-03): the classic Walker's 30 steps a second (starter.ts WALKER_SPEED_BEFORE to WALKER_SPEED;
+  // numbers here, not imports: starter.ts is still loading when the studio's store loads this file).
+  brick_walker: [{ variable: 'brick_walker_speed', from: 3, to: 1 }],
+}
+
+function newDefaults(project: StudioProject): StudioProject {
+  let next = project
+  for (const brick of project.design.bricks) {
+    const changes = !brick.remixOf ? BUILT_IN_DEFAULT_CHANGES[brick.id] : undefined
+    const original = changes && catalogOriginal(brick)
+    if (!changes || !original || workspaceFingerprint(project.workspaces[brick.id]) !== workspaceFingerprint(original.workspace)) continue
+    const moved = (v: BrickDef['program']['variables'][number]) => changes.find((c) => c.variable === v.id && v.value === c.from)
+    if (!brick.program.variables.some(moved)) continue
+    const variables = brick.program.variables.map((v) => (moved(v) ? { ...v, value: moved(v)!.to } : v))
+    const updated: BrickDef = { ...brick, program: { ...brick.program, variables } }
+    next = { ...next, design: { ...next.design, bricks: next.design.bricks.map((b) => (b.id === brick.id ? updated : b)) } }
+  }
+  return next
+}
+
+function upgradeBuiltIns(project: StudioProject): StudioProject {
+  return newDefaults(upgradeBuiltInBlocks(project))
+}
+
+function upgradeBuiltInBlocks(project: StudioProject): StudioProject {
+  let next = project
+  for (const brick of project.design.bricks) {
+    const earlier = !brick.remixOf ? EARLIER_BUILT_IN_FINGERPRINTS[brick.id] : undefined
+    if (!earlier || !earlier.includes(workspaceFingerprint(project.workspaces[brick.id]))) continue
+    const original = catalogOriginal(brick)
+    if (!original) continue
+    const fresh = clone(original)
+    const freshNames = new Map(fresh.brick.program.variables.map((v) => [v.id, v.name]))
+    if (brick.program.variables.some((v) => freshNames.has(v.id) && freshNames.get(v.id) !== v.name)) continue
+    const tuned = new Map(brick.program.variables.map((v) => [v.id, v.value]))
+    const variables = fresh.brick.program.variables.map((v) => (tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+    const upgraded: BrickDef = { ...brick, program: { ...fresh.brick.program, variables } }
+    next = {
+      design: { ...next.design, bricks: next.design.bricks.map((b) => (b.id === brick.id ? upgraded : b)) },
+      workspaces: { ...next.workspaces, [brick.id]: fresh.workspace },
+    }
+  }
+  return next
+}
 
 /**
  * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly
@@ -248,6 +339,26 @@ let currentHeroFingerprint: string | undefined
  * loses its variable either way. A Hero with other blocks keeps the names it has (`HERO_OLD_VARIABLE_NAMES`).
  */
 export function upgradeUntouchedHero(project: StudioProject): StudioProject {
+  return withPits(upgradeHeroBlocks(project))
+}
+
+/**
+ * A Platformer whose Hero is the built-in one that knows about pits gets an open floor (LevelDesign.pits). A Hero a kid
+ * changed may not have the "Fall into a pit" script, so its level keeps the solid floor it was built on; so does a
+ * level that already says either way.
+ */
+function withPits(project: StudioProject): StudioProject {
+  const design = project.design
+  if (design.pits !== undefined || designKit(design) !== 'platformer') return project
+  const hero = design.bricks.find((b) => b.id === 'brick_hero')
+  const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
+  if (!hero || !original) return project
+  currentHeroFingerprint ??= workspaceFingerprint(original.workspace)
+  if (workspaceFingerprint(project.workspaces[hero.id]) !== currentHeroFingerprint) return project
+  return { ...project, design: { ...design, pits: true } }
+}
+
+function upgradeHeroBlocks(project: StudioProject): StudioProject {
   const hero = project.design.bricks.find((b) => b.id === 'brick_hero')
   const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
   if (!hero || !original) return project
@@ -255,18 +366,33 @@ export function upgradeUntouchedHero(project: StudioProject): StudioProject {
   currentHeroFingerprint ??= workspaceFingerprint(original.workspace)
   if (fingerprint === currentHeroFingerprint) return plainHeroNames(project, hero)
   if (!EARLIER_HERO_FINGERPRINTS.includes(fingerprint)) return project
+  // A kid who renamed one of its variables has made the Hero their own, like changing a block.
+  if (renamedByKid(project, hero)) return project
   const tuned = new Map(hero.program.variables.map((v) => [v.id, v.value]))
   const fresh = clone(original)
   // A brick that reads a Hero variable by its old name ("p speed of Hero") keeps it working: the Hero keeps old names.
   const keepOld = readsByName(project, hero.program.variables.filter((v) => HERO_OLD_VARIABLE_NAMES[v.id] === v.name).map((v) => v.name))
   const named = <T extends { id: string; name: string }>(v: T): T => (keepOld && HERO_OLD_VARIABLE_NAMES[v.id] ? { ...v, name: HERO_OLD_VARIABLE_NAMES[v.id] } : v)
-  const variables = fresh.brick.program.variables.map((v) => named(tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
-  const upgraded: BrickDef = { ...hero, program: { ...fresh.brick.program, variables } }
+  // A value still at a default that has since changed (the wall grab slowdown, parity bucket A) takes the new default.
+  const stale = (id: string) => HERO_DEFAULT_CHANGES.some((c) => c.id === id && tuned.get(id) === c.from)
+  const variables = fresh.brick.program.variables.map((v) => named(tuned.has(v.id) && !stale(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+  // Today's blocks may play a sound the old Hero didn't have ("Ouch"): add it, keeping every sound the kid added.
+  const sounds = [...hero.sounds, ...fresh.brick.sounds.filter((s) => !hero.sounds.some((h) => h.name === s.name))]
+  const upgraded: BrickDef = { ...hero, sounds, program: { ...fresh.brick.program, variables } }
   const workspace = keepOld ? renameWorkspaceVariables(fresh.workspace, named) : fresh.workspace
   return {
     design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? upgraded : b)) },
     workspaces: { ...project.workspaces, [hero.id]: workspace },
   }
+}
+
+/** Whether a variable of this Hero has a name that is neither today's nor its name before the plain words. */
+function renamedByKid(project: StudioProject, hero: BrickDef): boolean {
+  const fresh = new Map(catalogOriginal(hero)!.brick.program.variables.map((v) => [v.id, v.name]))
+  const workspace = workspaceObject(project.workspaces[hero.id])
+  const declared = record(workspace) && Array.isArray(workspace.variables) ? workspace.variables.filter(record) : []
+  const own = (id: unknown, name: unknown) => typeof id === 'string' && fresh.has(id) && name !== fresh.get(id) && name !== HERO_OLD_VARIABLE_NAMES[id]
+  return hero.program.variables.some((v) => own(v.id, v.name)) || declared.some((v) => own(v.id, v.name))
 }
 
 /**

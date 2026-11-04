@@ -32,16 +32,32 @@ interface TrackSpec {
   art: (x: number, y: number) => string
   solid?: boolean
   finish?: number
+  /** A brick that points a way (a boost pad): its cells face it (`grid.way`). */
+  way?: number
 }
+
+/** R1's boost pad art: chevrons that point left ("<"), though cars cross it going right. */
+export const BOOST_ART_R1 = (x: number, y: number): string => (Math.abs(((x + 16 - Math.abs(y - 7.5)) % 8) - 4) < 1.5 ? 'b' : 'a')
 
 const TRACK_SPECS: readonly TrackSpec[] = [
   { key: 'road', name: 'Road', char: 'R', palette: { a: '#4b5563', b: '#52525b' }, art: (x, y) => ((x * 7 + y * 3) % 11 === 0 ? 'b' : 'a') },
   { key: 'dirt', name: 'Dirt', char: 'D', palette: { a: '#a16207', b: '#854d0e' }, art: (x, y) => ((x * 5 + y * 9) % 7 === 0 ? 'b' : 'a') },
   { key: 'ice', name: 'Ice', char: 'I', palette: { a: '#bae6fd', b: '#f0f9ff' }, art: (x, y) => ((x + y) % 9 === 0 ? 'b' : 'a') },
   { key: 'barrier', name: 'Barrier', char: 'X', palette: { a: '#dc2626', b: '#f8fafc' }, art: (x, y) => (Math.floor((x + y) / 4) % 2 ? 'b' : 'a'), solid: true },
-  { key: 'boost', name: 'Boost pad', char: 'B', palette: { a: '#1f2937', b: '#facc15' }, art: (x, y) => (Math.abs(((x + 16 - Math.abs(y - 7.5)) % 8) - 4) < 1.5 ? 'b' : 'a') },
+  // Chevrons pointing right (">"): the cells turn to the pad's way. R1's art pointed left (BOOST_ART_R1).
+  { key: 'boost', name: 'Boost pad', char: 'B', palette: { a: '#1f2937', b: '#facc15' }, art: (x, y) => BOOST_ART_R1(15 - x, y), way: 90 },
   { key: 'finish', name: 'Finish line', char: 'F', palette: { a: '#0f172a', b: '#f8fafc' }, art: (x, y) => ((Math.floor(x / 4) + Math.floor(y / 4)) % 2 ? 'b' : 'a'), finish: 90 },
 ]
+
+/** R1's boost pad picture, to recognise a saved pad nobody repainted (remix.ts turns it to today's). */
+export function boostCostumeR1(): Costume {
+  const spec = TRACK_SPECS.find((s) => s.key === 'boost')!
+  return trackCostume({ ...spec, art: BOOST_ART_R1 })
+}
+
+export function boostCostume(): Costume {
+  return trackCostume(TRACK_SPECS.find((s) => s.key === 'boost')!)
+}
 
 function trackCostume(spec: TrackSpec): Costume {
   const rows = Array.from({ length: TILE_SIZE }, (_, y) => Array.from({ length: TILE_SIZE }, (_, x) => spec.art(x, y)).join(''))
@@ -64,7 +80,7 @@ export function createTrackBrick(key: TrackBrickKey): BrickDef {
     costumes: [trackCostume(spec)],
     sounds: [],
     program: compileWorkspace(trackWorkspace(key)).program,
-    grid: { char: spec.char, ...(spec.finish !== undefined ? { finish: spec.finish } : {}) },
+    grid: { char: spec.char, ...(spec.finish !== undefined ? { finish: spec.finish } : {}), ...(spec.way !== undefined ? { way: spec.way } : {}) },
   }
 }
 

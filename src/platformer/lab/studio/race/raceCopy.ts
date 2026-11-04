@@ -21,7 +21,7 @@ export const RACE_COPY: KitCopy & { help: KitHelp } = {
   player: 'Car',
   noPlayer: 'Place your Car first. Pick the Car in the Bricks drawer, then click the track.',
   // Shown after the ← → keys, like the Platformer's hint.
-  controlsHint: 'steer · up is gas · down is brake',
+  controlsHint: 'steer · up is gas · down is brake · W A S D work too',
   followLabel: 'Follow the Car',
   // Its own key: a kid who saw the Platformer's tips still sees these the first time they open a race track.
   tipsKey: 'brickgineers.hackable-race.tips.v1',
@@ -32,6 +32,6 @@ export const RACE_COPY: KitCopy & { help: KitHelp } = {
     codeSmall: 'On a bigger screen, open the Car’s code. Switch a script off to see how it drives.',
     play: 'Press Play to race your track.',
   },
-  helpPlay: 'Press Play to race. The arrow keys drive: left and right steer, up is gas and down is brake. Finish your laps before the computer racers do. On a touch screen, use the buttons on the screen. Press Build to go back.',
+  helpPlay: 'Press Play to race. The arrow keys (or W A S D) drive: left and right steer, up is gas and down is brake. Finish your laps before the computer racers do. On a touch screen, use the buttons on the screen. Press Build to go back.',
   help: RACE_HELP,
 }

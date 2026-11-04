@@ -227,8 +227,14 @@ function compiled(id: string, name: string, costumes: Costume[], workspace: Work
  *   walk at (speed)   gravity on, point the way I go, set x speed to way x speed
  *   turn around       flip "way", flip direction, set x speed again (a bump already zeroed it, so we can't just negate it)
  *   check for stomp   touching Hero: Hero above -> broadcast stomped, hide; otherwise broadcast hero hurt
+ *
+ * `speed` is in steps per tick: 1 is the classic Walker's 30 steps a second (0.5 px/frame). Before parity bucket A
+ * (2026-11-03) it was 3, three times too fast (WALKER_SPEED_BEFORE, remix.ts upgrades untouched saves).
  */
-export function createWalkerBrick(id: string, name: string, speed = 3): MadeBrick {
+export const WALKER_SPEED = 1
+export const WALKER_SPEED_BEFORE = 3
+
+export function createWalkerBrick(id: string, name: string, speed = WALKER_SPEED): MadeBrick {
   const b = new Blocks(id)
   const speedId = `${id}_speed`
   const wayId = `${id}_way`
@@ -527,6 +533,8 @@ export function createStarterProject(): StudioProject {
     name: 'Starter Platformer',
     seed: 12345,
     bounds: { left: 0, right: 960, bottom: 0, top: 360 },
+    // The gap at columns 20-22 is a real pit: fall in and the Hero is hurt (heroBrick.ts, "Fall into a pit").
+    pits: true,
     stage: stageBrick,
     tiles: createStarterTiles(),
     bricks: [hero.brick, walker.brick, coin.brick, spring.brick, goal.brick, ...gridBricks.map((g) => g.brick)],

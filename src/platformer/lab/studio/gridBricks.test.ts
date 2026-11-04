@@ -463,6 +463,8 @@ describe('on the starter level, through the engine (cells are targets, bumps arr
     const run = (n: number) => { for (let i = 0; i < n; i++) rt.step() }
     run(20)
     // The Walkers patrol the ground under several of these spots and would hurt the Hero; take them out of these tests.
+    // Hidden first: their scripts keep running, and a hidden Walker touches nothing.
+    for (const t of rt.world.targets) if (t.brickId === 'brick_walker') t.visible = false
     rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker')
     return { rt, of, run }
   }
@@ -541,7 +543,8 @@ describe('on the starter level, through the engine (cells are targets, bumps arr
     rt.pressKey('right arrow')
     // Walk until the Hero is sent back (x jumps left of where it was); stop walking in that same tick.
     let sentBack = false
-    for (let i = 0; i < 60 && !sentBack; i++) { const before = h.x; run(1); sentBack = h.x < before - 10 }
+    // Getting hurt takes about 2.5 seconds (a stop and a hop) before the Hero is back at the start.
+    for (let i = 0; i < 150 && !sentBack; i++) { const before = h.x; run(1); sentBack = h.x < before - 10 }
     rt.releaseKey('right arrow')
     expect(sentBack).toBe(true)
     expect([h.x, h.y]).toEqual([60, 24])

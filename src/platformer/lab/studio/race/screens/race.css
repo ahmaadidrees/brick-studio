@@ -30,6 +30,22 @@
   color: #fff;
   font-size: 13px;
 }
+.rc-laps-status { display: inline-flex; align-items: center; gap: 8px; }
+.rc-laps-count { display: inline-flex; align-items: center; gap: 4px; padding-left: 8px; border-left: 1px solid var(--cl-line, #e3ddd0); }
+.rc-laps-count button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--cl-line, #e3ddd0);
+  border-radius: 50%;
+  background: var(--cl-softer, #f6f3ec);
+  color: inherit;
+  cursor: pointer;
+}
+.rc-laps-count button:disabled { opacity: .4; cursor: default; }
+.rc-laps-count b { min-width: 3.4em; text-align: center; font-variant-numeric: tabular-nums; }
 .rc-laps[data-ok='no'] { background: #fff4d6; color: #7a4f00; }
 .rc-laps[data-ok='no'] .rc-laps-dot { background: #d97706; }
 @media (max-width: 640px) {

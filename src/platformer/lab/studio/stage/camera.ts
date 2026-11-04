@@ -236,3 +236,92 @@ export function pinchCamera(start: Camera, viewport: Viewport, from: PinchPoint,
   const zoomed = zoomCameraAt(start, viewport, factor, from.mid)
   return panCamera(zoomed, viewport, to.mid[0] - from.mid[0], to.mid[1] - from.mid[1])
 }
+
+/** What a follow camera needs to know about the player each frame: where it is, how fast it goes, whether it stands. */
+export interface FollowSubject {
+  x: number
+  /** For the side view, the feet (the bottom of the costume), like the classic camera. */
+  y: number
+  /** Steps per tick. */
+  vx: number
+  vy: number
+  onGround: boolean
+}
+
+/** A move longer than this in one frame (respawning, Play again) cuts to the player instead of scrolling (8 tiles). */
+const CUT_DISTANCE = 128
+
+/**
+ * Play's follow camera, ported from the classic game (parity bucket A, 2026-11-03). Classic steps at 60 frames a second
+ * and moves in px/frame; here a step is a pixel, speeds are steps a tick (two frames), and `frames` says how many 60 Hz
+ * frames passed since the last call, so every rate below is the classic per-frame one.
+ *
+ * - side (src/platformer/game/camera.ts): it leads the way you run (up to 40 px, easing in), scrolls after you softly
+ *   and keeps you between 35% and 65% across; up and down it settles on the ground you stand on (you at 28% from the
+ *   bottom) and only chases you in the air when you leave the band from 14% to 75%.
+ * - top (Racing, game/session.ts stepRace): it looks ahead of the car by 16 frames of its speed and eases there.
+ *
+ * View state only: the world never sees it, so it changes nothing in a room.
+ */
+export class FollowRig {
+  private left = 0
+  private bottom = 0
+  private look = 0
+  private snapped = false
+  private lastX = 0
+  private lastY = 0
+
+  constructor(readonly kind: 'side' | 'top') {}
+
+  reset(): void {
+    this.snapped = false
+    this.look = 0
+  }
+
+  follow(subject: FollowSubject, bounds: StageBounds, viewport: Viewport, viewWidth: number, frames: number): Camera {
+    const zoom = viewport.width > 0 && viewWidth > 0 ? viewport.width / viewWidth : 1
+    const w = viewWidth
+    const h = viewport.height / zoom
+    const ease = (perFrame: number) => 1 - Math.pow(1 - perFrame, Math.max(0, frames))
+    const { x: px, y: py } = subject
+    if (this.snapped && Math.hypot(px - this.lastX, py - this.lastY) > CUT_DISTANCE) this.reset()
+    this.lastX = px
+    this.lastY = py
+
+    if (this.kind === 'top') {
+      // vx steps a tick is vx / 2 px a frame; classic looks 16 frames ahead.
+      const wantLeft = px + subject.vx * 8 - w / 2
+      const wantBottom = py + subject.vy * 8 - h / 2
+      if (!this.snapped) {
+        this.left = wantLeft
+        this.bottom = wantBottom
+        this.snapped = true
+      }
+      this.left += (wantLeft - this.left) * ease(0.12)
+      this.bottom += (wantBottom - this.bottom) * ease(0.12)
+    } else {
+      // Classic: look toward vx (px/frame) x 18, at most 40 px, easing 4% a frame.
+      const targetLook = Math.max(-40, Math.min(40, (subject.vx / 2) * 18))
+      this.look += (targetLook - this.look) * ease(0.04)
+      const wantLeft = px + this.look - w / 2
+      const groundBottom = py - h * 0.28
+      if (!this.snapped) {
+        this.left = wantLeft
+        this.bottom = groundBottom
+        this.snapped = true
+      }
+      this.left += (wantLeft - this.left) * ease(0.12)
+      this.left = Math.min(px - w * 0.35, Math.max(px - w * 0.65, this.left))
+      if (subject.onGround) this.bottom += (groundBottom - this.bottom) * ease(0.1)
+      if (py - this.bottom > h * 0.75) this.bottom = py - h * 0.75
+      if (py - this.bottom < h * 0.14) this.bottom = py - h * 0.14
+    }
+
+    // Never past the level's edges; a level smaller than the view sits in the middle.
+    const levelW = bounds.right - bounds.left
+    const levelH = bounds.top - bounds.bottom
+    this.left = levelW <= w ? bounds.left + (levelW - w) / 2 : Math.min(bounds.right - w, Math.max(bounds.left, this.left))
+    this.bottom = levelH <= h ? bounds.bottom + (levelH - h) / 2 : Math.min(bounds.top - h, Math.max(bounds.bottom, this.bottom))
+    return { x: this.left + w / 2, y: this.bottom + h / 2, viewWidth }
+  }
+}

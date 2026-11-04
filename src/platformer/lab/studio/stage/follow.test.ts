@@ -42,14 +42,15 @@ describe('Play’s camera in a race', () => {
     expect([cam.x, cam.y]).toEqual([500, 320])
   })
 
-  it('sees about the same patch of track on any screen: 360 steps across the shorter side', () => {
+  it('sees about the same patch of track on any screen: 240 steps across the shorter side, classic-sized cars', () => {
     const bounds = createBeginnerRace().bounds
     for (const viewport of [{ width: 540, height: 720 }, { width: 1024, height: 700 }, { width: 960, height: 540 }, { width: 375, height: 520 }]) {
       const width = playFollowWidth(KIT_SCREENS.race, bounds, viewport)
       const zoom = getCameraZoom({ x: 0, y: 0, viewWidth: width }, viewport)
       expect(Math.min(viewport.width, viewport.height) / zoom).toBeCloseTo(TOP_DOWN_SHORT_SIDE)
-      // The 11-step Car is at least 10 pixels long.
-      expect(11 * zoom).toBeGreaterThanOrEqual(10)
+      // The 11-step Car is at least 15 pixels long (at 360 it was 11 on a small phone).
+      expect(TOP_DOWN_SHORT_SIDE).toBe(240)
+      expect(11 * zoom).toBeGreaterThanOrEqual(15)
     }
   })
 

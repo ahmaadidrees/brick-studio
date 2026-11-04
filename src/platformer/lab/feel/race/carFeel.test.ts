@@ -5,6 +5,7 @@
  */
 import { writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_CAR_FEEL } from '@brick-studio/platformer-core/engine/car'
 import { CAR_METRICS, hackableCarRunner, measureCar, oldCarRunner, withinTolerance, type CarMetrics } from './carMetrics'
@@ -49,5 +50,6 @@ it('writes RACE_FEEL.md', () => {
     ...rows,
     '',
   ].join('\n')
-  writeFileSync(resolve(dirname(new URL(import.meta.url).pathname), '../../../../../docs/qa/hackable-modes/RACE_FEEL.md'), md)
+  // fileURLToPath, not .pathname: a checkout whose path has a space ("Virtual Legos") would be %20 and not found.
+  writeFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../docs/qa/hackable-modes/RACE_FEEL.md'), md)
 })

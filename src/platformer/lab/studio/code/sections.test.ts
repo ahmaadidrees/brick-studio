@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createHeroWorkspace, HERO_BRICK_ID, heroMovementLabels } from '../hero/heroBrick'
+import { createHeroWorkspace, HERO_BRICK_ID, HERO_EARLIER_MOVEMENT_LABELS, heroMovementLabels } from '../hero/heroBrick'
 import { CAR_BRICK_ID, RACER_BRICK_ID, carDrivingLabels, createCarWorkspace, createRacerWorkspace, racerDrivingLabels } from '../race/carBrick'
 import { readLabel, splitLabel } from './layers'
 import { scriptCount, sectionEntries, sectionOfScript, sectionsForBrick, sectionTitle } from './sections'
@@ -26,7 +26,9 @@ describe('brick sections: which scripts fold into "How I move"', () => {
 
   it('reads the labels from the Hero workspace itself, so they cannot drift', () => {
     const labels = heroMovementLabels()
-    expect(labels.size).toBe(heroTops().filter((b) => of(b) === 'how-i-move').length)
+    // Today's movement scripts, plus the labels they had before the classic keys (a changed Hero keeps those).
+    expect(labels.size).toBe(heroTops().filter((b) => of(b) === 'how-i-move').length + HERO_EARLIER_MOVEMENT_LABELS.length)
+    for (const old of HERO_EARLIER_MOVEMENT_LABELS) expect(sectionOfScript('platformer_everytick', old, hero)).toBe('how-i-move')
     expect(labels.has('Gravity: pull me down every tick')).toBe(true)
     expect(labels.has('When I get hurt: go back to where I started')).toBe(false)
   })
@@ -55,7 +57,7 @@ describe('brick sections: which scripts fold into "How I move"', () => {
   it('counts each section for its entry, and leaves out an empty one', () => {
     expect(sectionEntries(hero, ['how-i-move', null, 'how-i-move', null])).toEqual([{ id: 'how-i-move', title: 'How I move', count: 2 }])
     expect(sectionEntries(hero, [null, null])).toEqual([])
-    expect(sectionEntries(hero, heroTops().map(of))[0].count).toBe(heroMovementLabels().size)
+    expect(sectionEntries(hero, heroTops().map(of))[0].count).toBe(heroMovementLabels().size - HERO_EARLIER_MOVEMENT_LABELS.length)
     expect(sectionTitle(hero, 'how-i-move')).toBe('How I move')
     expect(scriptCount(1)).toBe('1 script')
     expect(scriptCount(23)).toBe('23 scripts')

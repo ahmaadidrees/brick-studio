@@ -90,7 +90,7 @@ describe('Slice 1 remix by default', () => {
     const project = createStarterProject()
     for (const id of ['brick_walker', 'brick_hero', 'brick_ground', 'brick_qblock']) {
       const brick = project.design.bricks.find((b) => b.id === id)!
-      registerEditorBlocks({ getBricks: () => project.design.bricks.map((b) => b.name), getVariables: () => [...brick.program.variables, ...project.design.stage.program.variables], getCostumes: () => brick.costumes.map((c) => c.name), getMessages: () => ['boing', 'stomped', 'hero hurt', 'bounce', 'coin collected', 'course clear'] })
+      registerEditorBlocks({ getBricks: () => project.design.bricks.map((b) => b.name), getVariables: () => [...brick.program.variables, ...project.design.stage.program.variables], getCostumes: () => brick.costumes.map((c) => c.name), getSounds: () => brick.sounds.map((s) => s.name), getMessages: () => ['boing', 'stomped', 'hero hurt', 'bounce', 'coin collected', 'course clear', 'ouch'] })
       const workspace = new Blockly.Workspace()
       try {
         Blockly.serialization.workspaces.load(project.workspaces[id] as object, workspace)
@@ -157,7 +157,7 @@ describe('Slice 1 remix by default', () => {
     expect(validateDesign(project.design)).toEqual([])
     // A later edit cannot corrupt the cached catalog.
     restored.program.variables[0].value = 999
-    expect(catalogOriginal(restored)!.brick.program.variables[0].value).toBe(3)
+    expect(catalogOriginal(restored)!.brick.program.variables[0].value).toBe(1)
   })
 
   it('loads older saves without adding remix provenance, and rejects unsafe provenance ids', () => {

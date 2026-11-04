@@ -9,7 +9,7 @@ import { knobList, sliderRange } from './knobs'
 afterEach(cleanup)
 
 describe('Knobs card', () => {
-  it('Hero: four sliders, then a collapsed "More sliders (N)" with the rest grouped Walking / Running / Jumping / Falling / Walls', () => {
+  it('Hero: four sliders, then a collapsed "More sliders (N)" with the rest grouped Walking / Running / Jumping / Falling / Walls / Getting hurt', () => {
     const store = new StudioStore(createStarterProject())
     render(<KnobsCard store={store} brickId={HERO_BRICK_ID} />)
     const card = screen.getByRole('region', { name: 'Sliders' })
@@ -20,7 +20,7 @@ describe('Knobs card', () => {
     expect(within(card).queryByRole('heading', { name: 'Walking' })).toBeNull()
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    expect(within(card).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls'])
+    expect(within(card).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls', 'Getting hurt'])
     expect(within(card).getAllByRole('slider')).toHaveLength(4 + HERO_MORE_TUNING_COUNT)
     expect(within(within(card).getByRole('region', { name: 'Walls' })).getAllByRole('slider')).toHaveLength(HERO_KNOB_GROUPS.find((g) => g.id === 'walls')!.knobIds.length)
   })

@@ -105,7 +105,7 @@ describe('Build inspector', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     fireEvent.click(screen.getByRole('button', { name: 'Back to the original' }))
     fireEvent.click(screen.getByRole('button', { name: 'Bring it back' }))
-    expect(store.brick(walkerId)!.program.variables.find((v) => v.id === speedId)!.value).toBe(3)
+    expect(store.brick(walkerId)!.program.variables.find((v) => v.id === speedId)!.value).toBe(1)
   })
 
   it('on a phone, sliders and Look stay, and it explains that code needs a bigger screen', () => {
