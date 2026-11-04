@@ -1,0 +1,433 @@
+{
+  "ticks": 1800,
+  "bricks": 500,
+  "rejoinAt": 907,
+  "node": "v22.23.2",
+  "events": 1857,
+  "scenarios": {
+    "room, 500 bricks as scenery": {
+      "applied": [
+        "tick 300: Bounce pad: launch 9 → 12",
+        "tick 750: Build: a 2 × 4 brick dropped (501 bricks)"
+      ],
+      "totals": {
+        "bounces": 2,
+        "coins": 3,
+        "landings": 94
+      },
+      "runs": [
+        {
+          "engine": "Node v22.23.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.024,
+          "finalHash": "5942241065ea9159",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ]
+          }
+        },
+        {
+          "engine": "Node v22.23.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.011,
+          "finalHash": "5942241065ea9159",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ]
+          }
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.015,
+          "finalHash": "5942241065ea9159",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ]
+          }
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.013,
+          "finalHash": "5942241065ea9159",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ]
+          }
+        }
+      ],
+      "rejoin": {
+        "at": 907,
+        "snapshotBytes": 8646,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "room, 500 bricks as targets": {
+      "applied": [
+        "tick 300: Bounce pad: launch 9 → 12",
+        "tick 750: Build: a 2 × 4 brick dropped (501 bricks)"
+      ],
+      "totals": {
+        "bounces": 2,
+        "coins": 3,
+        "landings": 99
+      },
+      "runs": [
+        {
+          "engine": "Node v22.23.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.222,
+          "finalHash": "922ac40e4b1d3a8f",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ]
+          }
+        },
+        {
+          "engine": "Node v22.23.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.318,
+          "finalHash": "922ac40e4b1d3a8f",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ]
+          }
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.276,
+          "finalHash": "922ac40e4b1d3a8f",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ]
+          }
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.357,
+          "finalHash": "922ac40e4b1d3a8f",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ]
+          }
+        }
+      ],
+      "rejoin": {
+        "at": 907,
+        "snapshotBytes": 297150,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    }
+  },
+  "bench": [
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 1.131,
+      "tickAvgMs": 0.025,
+      "tickP95Ms": 0.053,
+      "copyAvgMs": 0.074,
+      "rewind10Ms": 0.412,
+      "fingerprintMs": 0.038,
+      "jsonMs": 0.103,
+      "jsonBytes": 6747
+    },
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 1.427,
+      "tickAvgMs": 0.019,
+      "tickP95Ms": 0.039,
+      "copyAvgMs": 0.074,
+      "rewind10Ms": 0.268,
+      "fingerprintMs": 0.047,
+      "jsonMs": 0.077,
+      "jsonBytes": 6750
+    },
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 504,
+      "playMs": 2.509,
+      "tickAvgMs": 0.542,
+      "tickP95Ms": 0.963,
+      "copyAvgMs": 2.948,
+      "rewind10Ms": 8.284,
+      "fingerprintMs": 3.181,
+      "jsonMs": 1.861,
+      "jsonBytes": 295155
+    },
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2004,
+      "playMs": 10.972,
+      "tickAvgMs": 1.966,
+      "tickP95Ms": 4.007,
+      "copyAvgMs": 12.041,
+      "rewind10Ms": 38.728,
+      "fingerprintMs": 13.686,
+      "jsonMs": 8.137,
+      "jsonBytes": 1164547
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 6.4,
+      "tickAvgMs": 0.039,
+      "tickP95Ms": 0.1,
+      "copyAvgMs": 0.039,
+      "rewind10Ms": 0.414,
+      "fingerprintMs": 0.051,
+      "jsonMs": 0.2,
+      "jsonBytes": 6747
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 2.5,
+      "tickAvgMs": 0.02,
+      "tickP95Ms": 0.1,
+      "copyAvgMs": 0.036,
+      "rewind10Ms": 0.257,
+      "fingerprintMs": 0.046,
+      "jsonMs": 0,
+      "jsonBytes": 6750
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 504,
+      "playMs": 3.7,
+      "tickAvgMs": 0.282,
+      "tickP95Ms": 0.5,
+      "copyAvgMs": 2.1,
+      "rewind10Ms": 5.886,
+      "fingerprintMs": 3.12,
+      "jsonMs": 1.6,
+      "jsonBytes": 295155
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2004,
+      "playMs": 6.5,
+      "tickAvgMs": 0.975,
+      "tickP95Ms": 1.1,
+      "copyAvgMs": 8.055,
+      "rewind10Ms": 20.514,
+      "fingerprintMs": 12.267,
+      "jsonMs": 6.5,
+      "jsonBytes": 1164547
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 40.1,
+      "tickAvgMs": 0.223,
+      "tickP95Ms": 1.3,
+      "copyAvgMs": 0.347,
+      "rewind10Ms": 2.971,
+      "fingerprintMs": 0.379,
+      "jsonMs": 1.8,
+      "jsonBytes": 6747
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 24.3,
+      "tickAvgMs": 0.17,
+      "tickP95Ms": 1.2,
+      "copyAvgMs": 0.43,
+      "rewind10Ms": 1.729,
+      "fingerprintMs": 0.359,
+      "jsonMs": 1.3,
+      "jsonBytes": 6750
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 504,
+      "playMs": 26,
+      "tickAvgMs": 2.37,
+      "tickP95Ms": 3.6,
+      "copyAvgMs": 14.791,
+      "rewind10Ms": 41.686,
+      "fingerprintMs": 22.546,
+      "jsonMs": 12.4,
+      "jsonBytes": 295155
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2004,
+      "playMs": 47.3,
+      "tickAvgMs": 6.47,
+      "tickP95Ms": 8.7,
+      "copyAvgMs": 52.253,
+      "rewind10Ms": 139.657,
+      "fingerprintMs": 79.949,
+      "jsonMs": 38.4,
+      "jsonBytes": 1164547
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 5,
+      "tickAvgMs": 0.023,
+      "tickP95Ms": 0,
+      "copyAvgMs": 0.081,
+      "rewind10Ms": 0.286,
+      "fingerprintMs": 0.013,
+      "jsonMs": 1,
+      "jsonBytes": 6747
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 4,
+      "playMs": 1,
+      "tickAvgMs": 0.013,
+      "tickP95Ms": 0,
+      "copyAvgMs": 0.068,
+      "rewind10Ms": 0.143,
+      "fingerprintMs": 0.017,
+      "jsonMs": 0,
+      "jsonBytes": 6750
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 504,
+      "playMs": 4,
+      "tickAvgMs": 0.171,
+      "tickP95Ms": 1,
+      "copyAvgMs": 2.176,
+      "rewind10Ms": 3.857,
+      "fingerprintMs": 1.037,
+      "jsonMs": 2,
+      "jsonBytes": 295155
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2004,
+      "playMs": 4,
+      "tickAvgMs": 0.344,
+      "tickP95Ms": 1,
+      "copyAvgMs": 8.122,
+      "rewind10Ms": 14.714,
+      "fingerprintMs": 3.813,
+      "jsonMs": 4,
+      "jsonBytes": 1164547
+    }
+  ]
+}
