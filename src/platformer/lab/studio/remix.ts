@@ -1,7 +1,7 @@
 /** Catalog bricks are copied into each level. A remix changes that level's definition, never the catalog. */
 import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
-import { createStarterProject } from './starter'
+import { createStarterProject, WALKER_SPEED, WALKER_SPEED_BEFORE } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
 import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
@@ -259,7 +259,35 @@ export function upgradeUntouchedBricks(project: StudioProject): StudioProject {
   return upgradeUntouchedHero(upgradeBuiltIns(project))
 }
 
+/**
+ * Slider defaults a built-in brick changed. A brick with today's blocks whose slider still holds the old default gets the
+ * new one; a value the kid moved, and a copy's own value ("Just this one"), stay.
+ */
+export const BUILT_IN_DEFAULT_CHANGES: Readonly<Record<string, ReadonlyArray<{ variable: string; from: number; to: number }>>> = {
+  // Parity bucket A (2026-11-03): the classic Walker's 30 steps a second.
+  brick_walker: [{ variable: 'brick_walker_speed', from: WALKER_SPEED_BEFORE, to: WALKER_SPEED }],
+}
+
+function newDefaults(project: StudioProject): StudioProject {
+  let next = project
+  for (const brick of project.design.bricks) {
+    const changes = !brick.remixOf ? BUILT_IN_DEFAULT_CHANGES[brick.id] : undefined
+    const original = changes && catalogOriginal(brick)
+    if (!changes || !original || workspaceFingerprint(project.workspaces[brick.id]) !== workspaceFingerprint(original.workspace)) continue
+    const moved = (v: BrickDef['program']['variables'][number]) => changes.find((c) => c.variable === v.id && v.value === c.from)
+    if (!brick.program.variables.some(moved)) continue
+    const variables = brick.program.variables.map((v) => (moved(v) ? { ...v, value: moved(v)!.to } : v))
+    const updated: BrickDef = { ...brick, program: { ...brick.program, variables } }
+    next = { ...next, design: { ...next.design, bricks: next.design.bricks.map((b) => (b.id === brick.id ? updated : b)) } }
+  }
+  return next
+}
+
 function upgradeBuiltIns(project: StudioProject): StudioProject {
+  return newDefaults(upgradeBuiltInBlocks(project))
+}
+
+function upgradeBuiltInBlocks(project: StudioProject): StudioProject {
   let next = project
   for (const brick of project.design.bricks) {
     const earlier = !brick.remixOf ? EARLIER_BUILT_IN_FINGERPRINTS[brick.id] : undefined

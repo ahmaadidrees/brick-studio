@@ -157,7 +157,7 @@ describe('Slice 1 remix by default', () => {
     expect(validateDesign(project.design)).toEqual([])
     // A later edit cannot corrupt the cached catalog.
     restored.program.variables[0].value = 999
-    expect(catalogOriginal(restored)!.brick.program.variables[0].value).toBe(3)
+    expect(catalogOriginal(restored)!.brick.program.variables[0].value).toBe(1)
   })
 
   it('loads older saves without adding remix provenance, and rejects unsafe provenance ids', () => {

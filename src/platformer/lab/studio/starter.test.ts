@@ -252,7 +252,7 @@ describe('Starter level (starter.ts)', () => {
     const copies = p.design.copies.filter((c) => c.brickId === 'brick_walker')
     expect(copies.map((c) => c.knobs)).toEqual([undefined, undefined])
     const speeds = instantiate(p.design).targets.filter((t) => t.brickId === 'brick_walker').map((t) => t.variables.brick_walker_speed)
-    expect(speeds.sort()).toEqual([3, 3])
+    expect(speeds.sort()).toEqual([1, 1])
   })
 
   it('lays the level out inside the bounds, with the Hero above the ground', () => {
@@ -321,10 +321,11 @@ describe('Starter level (starter.ts)', () => {
       vF.add(fast.body!.vx); vS.add(slow.body!.vx)
       expect([fast.y, slow.y]).toEqual([24, 24])
     }
+    // At the classic 30 steps a second (1 a tick) they cross their lanes in 600 ticks too.
     expect([minF, maxF, minS, maxS]).toEqual([119, 233, 519, 617])
     // 0 appears for the one tick between a bump and the turn-around script (STEP3.md step 7).
-    expect([...vF].sort((a, b) => a - b)).toEqual([-3, 0, 3])
-    expect([...vS].sort((a, b) => a - b)).toEqual([-3, 0, 3])
+    expect([...vF].sort((a, b) => a - b)).toEqual([-1, 0, 1])
+    expect([...vS].sort((a, b) => a - b)).toEqual([-1, 0, 1])
   })
 
   // ---- Play tests that go through the bricks' own code. They need the engine lane (cells become targets running the
@@ -359,7 +360,11 @@ describe('Starter level (starter.ts)', () => {
   })
 
   // The fast Walker patrols x 119..233 on the ground, right under these two blocks, and hurts the Hero if they touch; take it out of the test.
-  const withoutWalkers = (rt: ReturnType<typeof play>) => { rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker') }
+  // Hidden first: its scripts keep running, and a hidden Walker touches nothing.
+  const withoutWalkers = (rt: ReturnType<typeof play>) => {
+    for (const t of rt.world.targets) if (t.brickId === 'brick_walker') t.visible = false
+    rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker')
+  }
 
   it('? block: the Hero jumping into cell:12:3 makes it used and counts one coin; a second jump gives nothing; the coin clone is deleted', () => {
     const { rt, of, run } = fresh()

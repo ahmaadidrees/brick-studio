@@ -57,6 +57,9 @@ export const BRICK_KNOB_SPECS: Readonly<Record<string, BrickKnobSpec>> = {
   brick_hero: { knobs: HERO_KNOBS, groups: HERO_KNOB_GROUPS, oldNames: HERO_OLD_VARIABLE_NAMES },
   [CAR_BRICK_ID]: driverKnobSpec('car'),
   [RACER_BRICK_ID]: driverKnobSpec('racer', RACER_TOP_SPEED),
+  // The Walker walks at the classic 1 step a tick (starter.ts WALKER_SPEED); a range from that alone would be 0 to 2,
+  // so the slider keeps the old reach: up to 6, the old default's range, in half steps.
+  brick_walker: { knobs: [{ id: 'brick_walker_speed', name: 'speed', hint: 'How fast I walk. 1 is the classic Walker.', value: 1, min: 0, max: 6, step: 0.5 }], groups: [] },
 }
 
 /**

@@ -463,6 +463,8 @@ describe('on the starter level, through the engine (cells are targets, bumps arr
     const run = (n: number) => { for (let i = 0; i < n; i++) rt.step() }
     run(20)
     // The Walkers patrol the ground under several of these spots and would hurt the Hero; take them out of these tests.
+    // Hidden first: their scripts keep running, and a hidden Walker touches nothing.
+    for (const t of rt.world.targets) if (t.brickId === 'brick_walker') t.visible = false
     rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker')
     return { rt, of, run }
   }
