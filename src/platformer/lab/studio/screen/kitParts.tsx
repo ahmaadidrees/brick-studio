@@ -12,6 +12,7 @@ import { PlayTouchControls } from './PlayTouchControls'
 import { RaceHud } from '../race/screens/RaceHud'
 import { RaceTouch } from '../race/screens/RaceTouch'
 import { LapsChip } from '../race/screens/LapsChip'
+import { LengthChip } from './LengthChip'
 
 export interface KitParts {
   /** Over the level while it plays: hints, counters, "You made it!". */
@@ -23,7 +24,7 @@ export interface KitParts {
 }
 
 export const KIT_PARTS: Readonly<Record<ScreensKit, KitParts>> = {
-  platformer: { PlayHud: PlayFeedback, TouchControls: PlayTouchControls },
+  platformer: { PlayHud: PlayFeedback, TouchControls: PlayTouchControls, BuildChip: LengthChip },
   race: { PlayHud: RaceHud, TouchControls: RaceTouch, BuildChip: LapsChip },
 }
 
