@@ -1,7 +1,7 @@
 /** Catalog bricks are copied into each level. A remix changes that level's definition, never the catalog. */
 import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
-import { createStarterProject, WALKER_SPEED, WALKER_SPEED_BEFORE } from './starter'
+import { createStarterProject } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
 import { boostCostume, boostCostumeR1 } from './race/raceTrack'
 import { HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
@@ -284,8 +284,9 @@ function withBoostWays(project: StudioProject): StudioProject {
  * new one; a value the kid moved, and a copy's own value ("Just this one"), stay.
  */
 export const BUILT_IN_DEFAULT_CHANGES: Readonly<Record<string, ReadonlyArray<{ variable: string; from: number; to: number }>>> = {
-  // Parity bucket A (2026-11-03): the classic Walker's 30 steps a second.
-  brick_walker: [{ variable: 'brick_walker_speed', from: WALKER_SPEED_BEFORE, to: WALKER_SPEED }],
+  // Parity bucket A (2026-11-03): the classic Walker's 30 steps a second (starter.ts WALKER_SPEED_BEFORE to WALKER_SPEED;
+  // numbers here, not imports: starter.ts is still loading when the studio's store loads this file).
+  brick_walker: [{ variable: 'brick_walker_speed', from: 3, to: 1 }],
 }
 
 function newDefaults(project: StudioProject): StudioProject {

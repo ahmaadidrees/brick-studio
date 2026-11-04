@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { play } from '../core/index'
-import { upgradeUntouchedBricks } from './remix'
+import { BUILT_IN_DEFAULT_CHANGES, upgradeUntouchedBricks } from './remix'
 import { createStarterProject, WALKER_SPEED, WALKER_SPEED_BEFORE } from './starter'
 import type { StudioProject } from './store'
 
@@ -21,6 +21,7 @@ function savedWithSpeed(speed: number): StudioProject {
 describe('the Walker', () => {
   it('walks 30 steps a second, like the classic Walker', () => {
     expect(WALKER_SPEED).toBe(1)
+    expect(BUILT_IN_DEFAULT_CHANGES.brick_walker).toEqual([{ variable: 'brick_walker_speed', from: WALKER_SPEED_BEFORE, to: WALKER_SPEED }])
     const rt = play(createStarterProject().design)
     const walker = rt.world.targets.find((t) => t.copyId === 'copy_walker_slow')!
     for (let i = 0; i < 10; i++) rt.step()
