@@ -13,7 +13,7 @@
  * day of week 1=Sunday … 7=Saturday). With no clock, or an unknown menu, the reporter is 0.
  * Loudness is 0. Username is ''. There is no `Date` and no microphone in core.
  */
-import { TICKS_PER_SECOND, TICK_MS, YIELD } from './contracts'
+import { PLAYER_MENU, TICKS_PER_SECOND, TICK_MS, YIELD, playerBrickIdOf } from './contracts'
 import type { AskPrompt, BrickDef, HostClock, Primitive, PrimitiveCtx, PrimitiveTable, QueuedAsk, RuntimeApi, Target, Value, World } from './contracts'
 
 export type { AskPrompt, HostClock, QueuedAsk }
@@ -155,6 +155,11 @@ export function clearTargetQuestions(runtime: RuntimeApi, target: Target): void 
 }
 
 function brickNamed(world: World, name: string): BrickDef | undefined {
+  if (name === PLAYER_MENU) {
+    const id = playerBrickIdOf(world)
+    const brick = id ? world.bricks[id] : undefined
+    return brick && !brick.isStage ? brick : undefined
+  }
   for (const brick of Object.values(world.bricks)) {
     if (!brick.isStage && brick.name === name) return brick
   }
@@ -169,6 +174,16 @@ const touchingObject: Primitive = (ctx) => {
   if (!ctx.target.visible) return false
   const brick = brickNamed(world, menu)
   if (!brick) return false
+  return touchingBrick(ctx, brick)
+}
+
+/**
+ * Is this script's target touching any copy of `brick`? In a room, touching a player's copy makes the script about the
+ * players it touches (ThreadHandle.about). Shared by "touching [brick]?" and Start from nothing's "touching the player?".
+ */
+export function touchingBrick(ctx: PrimitiveCtx, brick: BrickDef): boolean {
+  const world = ctx.runtime.world
+  if (!ctx.target.visible) return false
   // Prefilter: a level can hold thousands of copies of one brick (every painted cell is one), so first skip every copy
   // whose position is too far from this target's box to reach it, whatever its size or rotation.
   const mine = targetBounds(world, ctx.target)

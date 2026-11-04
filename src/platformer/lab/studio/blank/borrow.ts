@@ -11,6 +11,12 @@ import { createCarBrick, createRacerBrick, RACE_GLOBALS } from '../race/carBrick
 import { createStarterBrick, createStarterWorkspace, createTrackBrick, trackWorkspace } from '../race/raceTrack'
 import { standardTemplate } from '../builder/catalog'
 import { freeBrickName } from '../builder/newBrick'
+import { createMovingPlatformBrick, createUpDownPlatformBrick } from '../builtins/platforms'
+import { createCheckpointBrick } from '../builtins/checkpoint'
+import { createFlyerBrick, createShellbugBrick, createSpikyBrick } from '../builtins/critters'
+import { BUMPER_BRICK_ID, FLOWERS_BRICK_ID, STAND_BRICK_ID, TIRES_BRICK_ID, TREE_BRICK_ID, createRaceExtraBrick } from '../race/raceExtras'
+import { rewriteReferences } from '../remix'
+import { PLAYER_MENU } from '../../core/contracts'
 
 export type BorrowShelf = 'platformer' | 'race'
 
@@ -45,12 +51,25 @@ export const BORROWABLE: readonly Borrowable[] = [
   { id: 'goal', name: 'Goal', what: 'ends the level', shelf: 'platformer', make: () => made(createGoalBrick('b', 'Goal')) },
   { id: 'ground', name: 'Ground', what: 'tiles', shelf: 'platformer', make: () => grid('ground') },
   { id: 'spikes', name: 'Spikes', what: 'ouch', shelf: 'platformer', make: () => grid('spikes') },
+  // Parity B's classic bricks (studio/builtins).
+  { id: 'platform', name: 'Moving platform', what: 'carries you', shelf: 'platformer', make: () => made(createMovingPlatformBrick('b')) },
+  { id: 'lift', name: 'Up-down platform', what: 'lifts you', shelf: 'platformer', make: () => made(createUpDownPlatformBrick('b')) },
+  { id: 'checkpoint', name: 'Checkpoint', what: 'come back here', shelf: 'platformer', make: () => made(createCheckpointBrick('b')) },
+  { id: 'spiky', name: 'Spiky', what: 'don\'t stomp', shelf: 'platformer', make: () => made(createSpikyBrick('b')) },
+  { id: 'flyer', name: 'Flyer', what: 'bobs, stomp it', shelf: 'platformer', make: () => made(createFlyerBrick('b')) },
+  { id: 'shellbug', name: 'Shellbug', what: 'kick its shell', shelf: 'platformer', make: () => made(createShellbugBrick('b')) },
   { id: 'car', name: 'Car', what: 'drives', shelf: 'race', player: true, needs: RACE_NEEDS, make: () => made(createCarBrick()) },
   { id: 'racer', name: 'Computer racer', what: 'drives itself', shelf: 'race', needs: RACE_NEEDS, make: () => made(createRacerBrick()) },
   { id: 'starter', name: 'Starter', what: '3, 2, 1, go!', shelf: 'race', needs: RACE_NEEDS, make: () => ({ brick: strip(createStarterBrick()), workspace: createStarterWorkspace() }) },
   { id: 'road', name: 'Road', what: 'tiles', shelf: 'race', make: () => ({ brick: strip(createTrackBrick('road')), workspace: trackWorkspace('road') }) },
   { id: 'barrier', name: 'Barrier', what: 'tiles', shelf: 'race', make: () => ({ brick: strip(createTrackBrick('barrier')), workspace: trackWorkspace('barrier') }) },
   { id: 'finish', name: 'Finish', what: 'counts laps', shelf: 'race', make: () => ({ brick: strip(createTrackBrick('finish')), workspace: trackWorkspace('finish') }) },
+  // Parity B's track bricks (race/raceExtras.ts): a borrowed Car or Computer racer bounces off each by "what I hit".
+  { id: 'tires', name: 'Tire stack', what: 'soft crash', shelf: 'race', make: () => made(createRaceExtraBrick(TIRES_BRICK_ID)) },
+  { id: 'bumper', name: 'Bumper', what: 'kicks back', shelf: 'race', make: () => made(createRaceExtraBrick(BUMPER_BRICK_ID)) },
+  { id: 'tree', name: 'Tree', what: 'scenery', shelf: 'race', make: () => made(createRaceExtraBrick(TREE_BRICK_ID)) },
+  { id: 'grandstand', name: 'Grandstand', what: 'scenery', shelf: 'race', make: () => made(createRaceExtraBrick(STAND_BRICK_ID)) },
+  { id: 'flowers', name: 'Flowers', what: 'slow grass', shelf: 'race', make: () => made(createRaceExtraBrick(FLOWERS_BRICK_ID)) },
 ]
 
 export const BORROW_SHELVES: ReadonlyArray<{ id: BorrowShelf; label: string }> = [
@@ -69,9 +88,24 @@ export function freeGridChar(design: Pick<LevelDesign, 'bricks'>, wanted?: strin
   throw new Error('No grid characters left')
 }
 
+/** The name the kits' bricks use for the Platformer's player. */
+const KIT_HERO = 'Hero'
+
+/**
+ * A kit brick's code names the player "Hero" (touching Hero?, y position of Hero, when I bump Hero). A game from nothing
+ * names its player by id, so a borrowed brick's menus say "the player" instead (core/contracts.ts PLAYER_MENU): a
+ * Walker hurts Zip, a Coin counts for Zip, a Checkpoint raises its flag for Zip. The player bricks themselves (Hero,
+ * Car) keep their code as it is.
+ */
+export function aimAtThePlayer<T>(code: T): T {
+  return rewriteReferences(code, KIT_HERO, PLAYER_MENU) as T
+}
+
 /** The borrowed brick, ready to add: a free name and, for a grid brick, a free character. */
 export function borrowedBrick(design: Pick<LevelDesign, 'bricks'>, item: Borrowable): { brick: Omit<BrickDef, 'id'>; workspace: unknown } {
-  const { brick, workspace } = item.make()
+  const made = item.make()
+  const brick = item.player ? made.brick : { ...made.brick, program: aimAtThePlayer(made.brick.program) }
+  const workspace = item.player ? made.workspace : aimAtThePlayer(made.workspace)
   const name = freeBrickName(brick.name, design.bricks.map((b) => b.name))
   // The copy is the kid's own: it no longer remembers the kit's brick it came from.
   const { remixOf: _remixOf, ...rest } = brick

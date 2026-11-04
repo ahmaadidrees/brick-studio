@@ -1,5 +1,5 @@
 import * as Blockly from 'blockly/core'
-import type { HatOpcode } from '../contracts'
+import { PLAYER_MENU, type HatOpcode } from '../contracts'
 import {
   DEFAULT_CURRENT_MENU,
   DEFAULT_GRAPHIC_EFFECTS,
@@ -19,6 +19,7 @@ import {
   VARIABLE_MENU_RENAME,
   type EditorContext,
   type MenuOption,
+  type SpecialTarget,
 } from './context'
 import { CATEGORY_COLORS } from './colors'
 
@@ -73,20 +74,26 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
   const motionTowardsOptions = () =>
     getTargetOptions(context, [{ label: 'mouse-pointer', value: '_mouse_' }])
 
+  // Start from nothing names its player by id (core/contracts.ts PLAYER_MENU): its sprite menus offer "the player" first,
+  // read when the menu is built (and when a block loads, since Blockly checks a saved value against the menu).
+  const isBlank = (): boolean => (context ?? getEditorContext()).kit === 'blank'
+  const thePlayer = (): Array<{ label: string; value: SpecialTarget }> => (isBlank() ? [{ label: 'the player', value: PLAYER_MENU }] : [])
+
   const sensingTouchingOptions = () =>
     getTargetOptions(context, [
+      ...thePlayer(),
       { label: 'mouse-pointer', value: '_mouse_' },
       { label: 'edge', value: '_edge_' },
     ])
 
   const sensingDistanceOptions = () =>
-    getTargetOptions(context, [{ label: 'mouse-pointer', value: '_mouse_' }])
+    getTargetOptions(context, [...thePlayer(), { label: 'mouse-pointer', value: '_mouse_' }])
 
   const cloneOfOptions = () =>
     getTargetOptions(context, [{ label: 'myself', value: '_myself_' }])
 
   const sensingOfObjects = () =>
-    getTargetOptions(context, [{ label: 'Stage', value: '_stage_' }])
+    getTargetOptions(context, [{ label: 'Stage', value: '_stage_' }, ...thePlayer()])
 
   const onOff: MenuOption[] = [
     ['on', 'on'],
@@ -116,6 +123,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
   const bumpSideMenu = (): MenuOption[] => (is3d() ? [...bumpSideOptions, ['front', 'front'], ['back', 'back']] : [...bumpSideOptions])
   const bumpBrickOptions = (): MenuOption[] => [
     ['anything', '_any_'],
+    ...(isBlank() ? [['the player', PLAYER_MENU] as MenuOption] : []),
     ['edge', '_edge_'],
     ...(context?.getBricks?.() ?? getEditorContext().getBricks?.() ?? []).map((b): MenuOption => [b, b]),
   ]

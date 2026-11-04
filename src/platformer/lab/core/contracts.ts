@@ -211,6 +211,16 @@ export const isKitId = (value: unknown): value is KitId => typeof value === 'str
 /** A design's kit. Missing means the Platformer, so every save made before kits opens unchanged. */
 export const designKit = (design: Pick<LevelDesign, 'kit'>): KitId => design.kit ?? 'platformer'
 
+/**
+ * Start from nothing (docs/qa/blank-2d): the sprite menus' "the player" (touching, distance to, "of", and the bump hat's
+ * brick). It names the game's player brick by id (LevelDesign.player), so a brick borrowed from the Platformer reacts to
+ * Zip as it did to the Hero. A game with no player (every kit game: they name their Hero) has nothing it names.
+ */
+export const PLAYER_MENU = '_player_'
+
+/** The game's player brick id: the running design's (a room changes it live), else the one the game started with. */
+export const playerBrickIdOf = (world: Pick<World, 'design' | 'player'>): string | undefined => world.design?.player ?? world.player
+
 /** The plain backdrops a Start from nothing game can have (the Stage card): paper with a grid, sky, grass, night. */
 export type Backdrop = 'paper' | 'sky' | 'grass' | 'night'
 export const BACKDROPS: readonly Backdrop[] = ['paper', 'sky', 'grass', 'night']

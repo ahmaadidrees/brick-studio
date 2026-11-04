@@ -104,7 +104,11 @@ export function isStructuralWorkspaceChange(before: unknown, after: unknown): bo
 // These menu sockets identify another brick by its displayed name. Never rewrite arbitrary text/broadcasts.
 const TARGET_FIELDS = new Set(['TO', 'TOWARDS', 'TOUCHINGOBJECTMENU', 'DISTANCETOMENU', 'OBJECT', 'CLONE_OPTION', 'BRICK'])
 
-function rewriteReferences(value: unknown, from: string, to: string): unknown {
+/**
+ * Point every menu that names brick `from` (sensing, bump, clone and motion menus) at `to` instead, in a brick's program
+ * or a workspace. Broadcasts and other text are never touched.
+ */
+export function rewriteReferences(value: unknown, from: string, to: string): unknown {
   if (Array.isArray(value)) return value.map((entry) => rewriteReferences(entry, from, to))
   if (!record(value) || ArrayBuffer.isView(value)) return value
   const result: Record<string, unknown> = {}

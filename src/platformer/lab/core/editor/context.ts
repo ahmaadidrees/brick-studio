@@ -218,7 +218,7 @@ export function getKeyOptions(ctx: EditorContext = activeContext): MenuOption[] 
   return [...DEFAULT_KEYS]
 }
 
-export type SpecialTarget = '_mouse_' | '_random_' | '_myself_' | '_edge_' | '_stage_'
+export type SpecialTarget = '_mouse_' | '_random_' | '_myself_' | '_edge_' | '_stage_' | '_player_'
 
 export function getTargetOptions(
   ctx: EditorContext = activeContext,

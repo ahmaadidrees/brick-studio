@@ -12,7 +12,7 @@
  * in a uniform spatial hash rebuilt every tick; `solid [on]` / `solid [only on top]` is the only thing that makes a
  * target block, and bumps are reported on both sides (the mover and the solid it hit both get `when I bump`).
  */
-import { DEFAULT_PHYSICS } from './contracts'
+import { DEFAULT_PHYSICS, PLAYER_MENU, playerBrickIdOf } from './contracts'
 import type { Body, PhysicsSettings, PrimitiveCtx, PrimitiveTable, RuntimeApi, SavedBump, StageBounds, Target, World } from './contracts'
 import { targetBounds } from './geometry'
 import { toNumber } from './values'
@@ -556,8 +556,10 @@ const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'righ
  */
 function startBumpHats(runtime: RuntimeApi, mover: Target, bump: Bump, goneBrickId?: string): void {
   const otherName = bump.other ? brickNameOf(runtime, bump.other) : goneBrickId ? nameOfBrick(runtime, goneBrickId) : '_edge_'
-  startHatsFor(runtime, mover, bump.side, otherName, aboutPlayer(bump.other))
-  if (bump.other) startHatsFor(runtime, bump.other, OPPOSITE[bump.side], brickNameOf(runtime, mover), aboutPlayer(mover))
+  const player = playerBrickIdOf(runtime.world)
+  const otherIsPlayer = !!player && (bump.other ? bump.other.brickId : goneBrickId) === player
+  startHatsFor(runtime, mover, bump.side, otherName, aboutPlayer(bump.other), otherIsPlayer)
+  if (bump.other) startHatsFor(runtime, bump.other, OPPOSITE[bump.side], brickNameOf(runtime, mover), aboutPlayer(mover), !!player && mover.brickId === player)
 }
 
 const aboutPlayer = (t: Target | null): readonly number[] | undefined => (t?.player !== undefined ? [t.player] : undefined)
@@ -572,9 +574,11 @@ function nameOfBrick(runtime: RuntimeApi, brickId: string): string | undefined {
 }
 
 /** The runtime matches hat fields by equality, so start the hats once per (side or any) x (brick, edge or any). */
-function startHatsFor(runtime: RuntimeApi, target: Target, side: Side, brick: string | undefined, about?: readonly number[]): void {
+function startHatsFor(runtime: RuntimeApi, target: Target, side: Side, brick: string | undefined, about?: readonly number[], player = false): void {
   const bricks = ['_any_']
   if (brick !== undefined && brick !== '_any_') bricks.push(brick)
+  // Start from nothing: "when I bump [side] of [the player]" (sensing.ts PLAYER_MENU) hears the game's player brick.
+  if (player) bricks.push(PLAYER_MENU)
   for (const SIDE of ['_any_', side]) {
     for (const BRICK of bricks) runtime.startHats('platformer_whenbump', { target, fields: { SIDE, BRICK }, ...(about ? { about } : {}) })
   }

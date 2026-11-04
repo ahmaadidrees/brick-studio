@@ -7,6 +7,8 @@
  */
 
 import {
+  PLAYER_MENU,
+  playerBrickIdOf,
   CLONE_LIMIT,
   DEFAULT_TICK_OP_BUDGET,
   TICK_MS,
@@ -219,7 +221,9 @@ export class Runtime implements RuntimeApi {
   }
 
   findOriginal(brickName: string): Target | undefined {
-    const brick = Object.values(this.world.bricks).find((b) => b.name === brickName)
+    // Start from nothing: "the player" in a sprite menu is the game's player brick, whatever the kid named it.
+    const playerId = brickName === PLAYER_MENU ? playerBrickIdOf(this.world) : undefined
+    const brick = playerId ? this.world.bricks[playerId] : Object.values(this.world.bricks).find((b) => b.name === brickName)
     return brick ? this.world.targets.find((t) => t.brickId === brick.id && !t.isClone) : undefined
   }
 
