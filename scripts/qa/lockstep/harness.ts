@@ -19,8 +19,23 @@ import { createStarterProject } from '../../../src/platformer/lab/studio/starter
 import { createRaceStarterProject } from '../../../src/platformer/lab/studio/race/raceProject'
 import { applyEdit, applyEditLive, type EditOp } from '../../../src/platformer/lab/rooms/edits'
 import { brickToWire } from '../../../src/platformer/lab/core/save'
+import { StudioStore } from '../../../src/platformer/lab/studio/store'
+import { PLATFORMER_EXTRAS, RACE_EXTRAS } from '../../../src/platformer/lab/studio/builtins/extras'
+import { CHECKPOINT_BRICK_ID } from '../../../src/platformer/lab/studio/builtins/checkpoint'
+import { FLYER_BRICK_ID, SHELLBUG_BRICK_ID, SPIKY_BRICK_ID } from '../../../src/platformer/lab/studio/builtins/critters'
+import { LIFT_BRICK_ID, PLATFORM_BRICK_ID } from '../../../src/platformer/lab/studio/builtins/platforms'
+import { createBlankProject } from '../../../src/platformer/lab/studio/blank/blankProject'
+import { BORROWABLE, borrowedBrick } from '../../../src/platformer/lab/studio/blank/borrow'
+import { giveJob } from '../../../src/platformer/lab/studio/blank/jobs'
+import { costumeFromImage, imageFromRows } from '../../../src/platformer/lab/studio/pixels'
 
-export type Kit = 'platformer' | 'race'
+/** The game: the Platformer, Racing, or a game from nothing (docs/qa/blank-2d). */
+export type Kit = 'platformer' | 'race' | 'blank'
+/**
+ * Which project (wave 2 integration): the kit's starter, or the starter with every Parity B brick placed or painted
+ * (docs/qa/parity-2026-11-03/B.md). A blank game is always its own (`blankText`).
+ */
+export type Variant = 'starter' | 'parity'
 
 /** One thing a room puts in order: a key going down or up, or a code or knob edit, applied before tick `tick` runs. */
 export type RoomEvent =
@@ -38,11 +53,15 @@ export type RoomEvent =
    * painted, a brick's code changed (its scripts restart), and that code change put back.
    */
   | { tick: number; kind: 'together'; what: 'place' | 'paint' | 'code' | 'undo-code' }
+  /** A game from nothing (wave 2): the backdrop changed as a room `game` edit (building). */
+  | { tick: number; kind: 'together'; what: 'backdrop' }
 
 export interface ScenarioOptions {
   /** The saved project text (exportProjectJson), so every engine starts from the same bytes. */
   projectText: string
   kit: Kit
+  /** The project's variant: live edits go to its own bricks first (Parity B's, the borrowed ones). */
+  variant?: Variant
   ticks: number
   events: RoomEvent[]
   /** Turn the game into JSON at this tick and carry on in a fresh runtime (the late-joiner path). */
@@ -70,9 +89,89 @@ export interface ScenarioResult {
 
 // ------------------------------------------------------------------------------------------------ starters
 
-/** The project a new Hackable game starts from, as saved text. */
-export function starterText(kit: Kit): string {
+/** The project a new Hackable game starts from, as saved text; with `parity`, plus every Parity B brick. */
+export function starterText(kit: Kit, variant: Variant = 'starter'): string {
+  if (kit === 'blank') return blankText()
+  if (variant === 'parity') return exportProjectJson(kit === 'race' ? raceParity() : platformerParity())
   return exportProjectJson(kit === 'race' ? createRaceStarterProject() : createStarterProject())
+}
+
+/**
+ * The starter level with Parity B's Platformer bricks along the Hero's way: a Checkpoint near the start, the critters
+ * on the ground ahead, a moving and an up-down platform, and the level 40 tiles longer (the Length chip's step x 2).
+ */
+function platformerParity() {
+  const store = new StudioStore(createStarterProject())
+  const place = (id: string, x: number, y: number) => { const brick = store.addCatalogBrick(id); if (brick) store.addCopy(brick, x, y) }
+  place(CHECKPOINT_BRICK_ID, 200, 32)
+  place(SPIKY_BRICK_ID, 420, 40)
+  place(FLYER_BRICK_ID, 520, 90)
+  place(SHELLBUG_BRICK_ID, 640, 40)
+  place(PLATFORM_BRICK_ID, 360, 120)
+  place(LIFT_BRICK_ID, 760, 80)
+  if (PLATFORMER_EXTRAS.length !== 6) throw new Error('Parity B gained a brick: place it here too.')
+  return store.getState().project
+}
+
+/** The beginner track with Parity B's track bricks: tire stacks and a bumper among the barriers, scenery off the road. */
+function raceParity() {
+  const store = new StudioStore(createRaceStarterProject())
+  const chars = RACE_EXTRAS.map((x) => {
+    const id = store.addCatalogBrick(x.id)
+    return id ? store.getState().project.design.bricks.find((b) => b.id === id)!.grid!.char : null
+  })
+  const tiles = store.getState().project.design.tiles!
+  const barriers: [number, number][] = []
+  const empty: [number, number][] = []
+  for (let r = 0; r < tiles.rows; r++) for (let c = 0; c < tiles.cols; c++) {
+    const ch = tiles.data[r]![c]
+    if (ch === 'X') barriers.push([c, r])
+    else if (ch === '.') empty.push([c, r])
+  }
+  // Tires and the bumper replace every 5th and 7th barrier cell; tree, grandstand and flowers go in empty cells.
+  barriers.forEach(([c, r], i) => { const ch = i % 5 === 0 ? chars[0] : i % 7 === 0 ? chars[1] : null; if (ch) store.setTile(c, r, ch) })
+  empty.forEach(([c, r], i) => { const ch = i % 23 === 0 ? chars[2] : i % 29 === 0 ? chars[3] : i % 17 === 0 ? chars[4] : null; if (ch) store.setTile(c, r, ch) })
+  return store.getState().project
+}
+
+/**
+ * A game from nothing: Zip (Player · walks around), Wall tiles, a Star to collect, a Spike that hurts, a Flag goal,
+ * and borrowed Platformer bricks aimed at "the player": a Walker, a Coin, a Checkpoint and a Spiky.
+ */
+export function blankText(): string {
+  const square = (colour: string) => costumeFromImage('c', imageFromRows(Array.from({ length: 16 }, () => '#'.repeat(16)), { '#': colour }))
+  const store = new StudioStore(createBlankProject())
+  const zip = store.addBrick('Zip', square('#34c77b'))
+  const wall = store.addBrick('Wall', square('#c9743a'))
+  const star = store.addBrick('Star', square('#f5b301'))
+  const spike = store.addBrick('Spike', square('#5b6676'))
+  const flag = store.addBrick('Flag', square('#e5484d'))
+  store.setGridChar(wall, 'W')
+  const borrow = (id: string) => {
+    const made = borrowedBrick(store.getState().project.design, BORROWABLE.find((b) => b.id === id)!)
+    return store.addBrickFrom(made.brick, made.workspace)
+  }
+  const walker = borrow('walker')
+  const coin = borrow('coin')
+  const checkpoint = borrow('checkpoint')
+  const spiky = borrow('spiky')
+  store.setBrush(null)
+  store.addCopy(zip, 40, 40)
+  for (let row = 4; row < 18; row++) store.setTile(14, row, 'W')
+  for (let col = 2; col < 12; col++) store.setTile(col, 12, 'W')
+  for (const [x, y] of [[120, 60], [200, 120], [300, 260]]) store.addCopy(star, x, y)
+  store.addCopy(spike, 260, 60)
+  store.addCopy(flag, 440, 300)
+  store.addCopy(walker, 160, 280)
+  store.addCopy(coin, 100, 160)
+  store.addCopy(checkpoint, 380, 40)
+  store.addCopy(spiky, 340, 200)
+  giveJob(store, zip, 'player', 'walk')
+  giveJob(store, star, 'collect')
+  giveJob(store, spike, 'hurts')
+  giveJob(store, flag, 'goal')
+  giveJob(store, wall, 'wall')
+  return exportProjectJson(store.getState().project)
 }
 
 function designOf(projectText: string, kit: Kit): LevelDesign {
@@ -182,10 +281,17 @@ function editKnob(world: World, design: LevelDesign, playerBrickId: string): str
 }
 
 /** The operations of a building-together edit on the project as it is now, or null when there is nothing to edit. */
-function togetherOps(what: 'place' | 'paint' | 'code', design: LevelDesign, kit: Kit): { ops: EditOp[]; said: string } | null {
-  const isPlayer = (id: string) => id === PLAYER_BRICK[kit]
+function togetherOps(what: 'place' | 'paint' | 'code' | 'backdrop', design: LevelDesign, kit: Kit, variant: Variant = 'starter'): { ops: EditOp[]; said: string } | null {
+  const isPlayer = (id: string) => id === playerBrickOf(design, kit)
+  if (what === 'backdrop') return kit === 'blank' ? { ops: [{ op: 'game', backdrop: design.backdrop === 'night' ? 'sky' : 'night' }], said: 'the backdrop changed' } : null
+  // Wave 2: a Parity B project and a game from nothing place and recode their own new bricks first.
+  const rank = (names: string[]) => (id: string) => { const i = names.indexOf(design.bricks.find((b) => b.id === id)?.name ?? ''); return i < 0 ? names.length : i }
+  const placeFirst = rank(variant === 'parity' || kit === 'blank' ? ['Shellbug', 'Spiky', 'Walker', 'Flyer'] : [])
+  const codeFirst = rank(variant === 'parity' || kit === 'blank' ? ['Moving platform', 'Checkpoint', 'Walker'] : [])
   if (what === 'place') {
-    const copy = design.copies.find((c) => !isPlayer(c.brickId) && design.bricks.find((b) => b.id === c.brickId)?.limit === undefined)
+    const copy = design.copies
+      .filter((c) => !isPlayer(c.brickId) && design.bricks.find((b) => b.id === c.brickId)?.limit === undefined)
+      .sort((a, b) => placeFirst(a.brickId) - placeFirst(b.brickId))[0]
     if (!copy) return null
     return { ops: [{ op: 'copy', copy: { ...copy, id: `together_${copy.id}`, x: copy.x + 64 } }], said: `placed another ${copy.brickId} at x ${copy.x + 64}` }
   }
@@ -198,7 +304,9 @@ function togetherOps(what: 'place' | 'paint' | 'code', design: LevelDesign, kit:
     return cells.length ? { ops: [{ op: 'cells', cells }], said: `painted ${cells.length} ${grid.name} cells` } : null
   }
   // Code: a brick that is neither the player nor a grid brick, its first number one bigger.
-  const brick = design.bricks.find((b) => !isPlayer(b.id) && !b.grid && design.copies.some((c) => c.brickId === b.id) && /"value":-?\d/.test(JSON.stringify(b.program)))
+  const brick = design.bricks
+    .filter((b) => !isPlayer(b.id) && !b.grid && design.copies.some((c) => c.brickId === b.id) && /"value":-?\d/.test(JSON.stringify(b.program)))
+    .sort((a, b) => codeFirst(a.id) - codeFirst(b.id))[0]
   if (!brick) return null
   const text = JSON.stringify(brick.program).replace(/"value":(-?\d+(?:\.\d+)?)/, (_m, n: string) => `"value":${Number(n) + 1}`)
   return { ops: [{ op: 'brick', brick: brickToWire({ ...brick, program: JSON.parse(text) }) }], said: `${brick.name}'s code changed (its scripts restart)` }
@@ -215,12 +323,14 @@ function rejoin(snapshot: string, design: LevelDesign): Runtime {
 
 // ------------------------------------------------------------------------------------------------ run
 
-const PLAYER_BRICK: Record<Kit, string> = { platformer: 'brick_hero', race: 'brick_car' }
+const PLAYER_BRICK: Record<Exclude<Kit, 'blank'>, string> = { platformer: 'brick_hero', race: 'brick_car' }
+/** The player brick: the kit's own, or the one a game from nothing chose (LevelDesign.player). */
+const playerBrickOf = (design: LevelDesign, kit: Kit): string => (kit === 'blank' ? design.player ?? '' : PLAYER_BRICK[kit])
 
-/** Where every player's Hero (or Car) starts: the painted one in the project. */
+/** Where every player's Hero (or Car, or player brick) starts: the painted one in the project. */
 function spawnOf(design: LevelDesign, kit: Kit) {
-  const spawn = design.copies.find((c) => c.brickId === PLAYER_BRICK[kit])
-  if (!spawn) throw new Error(`The project has no ${PLAYER_BRICK[kit]}`)
+  const spawn = design.copies.find((c) => c.brickId === playerBrickOf(design, kit))
+  if (!spawn) throw new Error(`The project has no ${playerBrickOf(design, kit) || 'player'}`)
   return spawn
 }
 
@@ -261,10 +371,10 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
       else if (e.kind === 'leave') removePlayer(runtime, e.player)
       else if (e.kind === 'flag') runtime = playAgain(runtime, design, opts.kit)
       else if (e.kind === 'edit-program' || e.kind === 'edit-knob') {
-        const did = e.kind === 'edit-program' ? editProgram(runtime.world, design) : editKnob(runtime.world, design, PLAYER_BRICK[opts.kit])
+        const did = e.kind === 'edit-program' ? editProgram(runtime.world, design) : editKnob(runtime.world, design, playerBrickOf(design, opts.kit))
         ;(did ? result.applied : result.skipped).push(`tick ${tick}: ${did ?? e.what}`)
       } else if (e.kind === 'together') {
-        const edit = e.what === 'undo-code' ? (undoCode ? { ops: undoCode, said: 'the code change put back' } : null) : togetherOps(e.what, design, opts.kit)
+        const edit = e.what === 'undo-code' ? (undoCode ? { ops: undoCode, said: 'the code change put back' } : null) : togetherOps(e.what, design, opts.kit, opts.variant)
         if (!edit) {
           result.skipped.push(`tick ${tick}: together ${e.what}`)
           continue
@@ -289,7 +399,7 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
   const coins = world.bricks[world.stage.brickId].program.variables.find((v) => v.name === 'coins')
   result.final = {
     coins: coins ? world.stage.variables[coins.id] : undefined,
-    players: world.targets.filter((t) => t.body?.selfMove || t.brickId === PLAYER_BRICK[opts.kit]).map((t) => ({ name: world.bricks[t.brickId].name, x: t.x, y: t.y })),
+    players: world.targets.filter((t) => t.body?.selfMove || t.brickId === playerBrickOf(design, opts.kit)).map((t) => ({ name: world.bricks[t.brickId].name, x: t.x, y: t.y })),
   }
   return result
 }
@@ -309,7 +419,8 @@ export function kidInput(kit: Kit, ticks: number, seed: number, player?: number,
   }
   const forward = kit === 'race' ? 'up arrow' : 'right arrow'
   const back = kit === 'race' ? 'down arrow' : 'left arrow'
-  const extras = kit === 'race' ? ['left arrow', 'right arrow'] : ['space', 'x']
+  // A game from nothing's player walks four ways (Player · walks around).
+  const extras = kit === 'race' ? ['left arrow', 'right arrow'] : kit === 'blank' ? ['up arrow', 'down arrow'] : ['space', 'x']
   for (let tick = from; tick < to; tick += 1 + Math.floor(rand() * 6)) {
     const r = rand()
     set(tick, forward, r < 0.8)
