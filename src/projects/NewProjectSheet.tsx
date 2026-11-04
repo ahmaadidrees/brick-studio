@@ -1,134 +1,167 @@
-import { Blocks, Code2, Flag, Footprints } from 'lucide-react'
-import { useMemo } from 'react'
-import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
+import { Plus } from 'lucide-react'
+import { useMemo, useRef } from 'react'
 import { COURSES } from '@brick-studio/platformer-core/levels/courses'
-import { RACE_COURSES, brickSpeedway } from '@brick-studio/platformer-core/levels/raceCourses'
+import { RACE_COURSES } from '@brick-studio/platformer-core/levels/raceCourses'
 import { Button, Sheet } from '../ui'
+// From their own modules, not the shell barrel: screens that mock '../shell' in tests still get the real ones.
+import { joinPath } from '../shell/navigation'
+import { useClassroomSession } from '../shell/useClassroomSession'
 import { raceThumb } from '../platformer/race/raceThumb'
 import { levelThumb } from '../platformer/ui/thumbs'
+import { BUILD_3D_HREF, DEFAULT_BUILDER, FROM_NOTHING_HREF, GAME_START_HREF, gameStart, type BuilderKind, type GameId } from './gameStarts'
 import './projects.css'
 
 /** Where each choice goes: the builder, on a new project of that kind. */
 export const NEW_PROJECT_HREF = {
-  build3d: '/build?new=1',
-  platformer: '/2d/build?new=1',
-  raceStarter: '/2d/build?new=1&kit=race-starter',
-  raceEmpty: '/2d/build?new=1&kit=race-empty',
+  build3d: BUILD_3D_HREF,
+  platformer: GAME_START_HREF.platformer.classic,
+  raceStarter: GAME_START_HREF.race.classic,
   template: (id: string) => `/2d/build?new=1&template=${encodeURIComponent(id)}`,
-  hackable: '/2d/hackable?new=1',
-  hackableRace: '/2d/hackable-race?new=1',
+  hackable: GAME_START_HREF.platformer.hackable,
+  hackableRace: GAME_START_HREF.race.hackable,
+}
+
+const MEDIA = '/brand/media'
+const SIGNIN_HREF = joinPath({ mode: 'signin' })
+
+/** Each game, as its card says it. */
+const GAMES: readonly { id: GameId; name: string; blurb: string }[] = [
+  { id: 'platformer', name: 'Platformer', blurb: 'Side view. Run, jump and stomp critters to reach the flag.' },
+  { id: 'race', name: 'Racing', blurb: 'Top view. Paint a track, set the laps and race.' },
+]
+
+/**
+ * The picture on a game's card shows what its Start opens. The classic race kit starts on Brick Speedway; Hackable
+ * Racing starts on its beginner oval (a capture of a new /2d/hackable-race project, public/brand/media/MEDIA.md).
+ */
+const GAME_PICTURE: Readonly<Record<GameId, Readonly<Record<BuilderKind, { src: string; position: string }>>>> = {
+  platformer: {
+    classic: { src: `${MEDIA}/platformer-game-800.webp`, position: '20% 80%' },
+    hackable: { src: `${MEDIA}/platformer-game-800.webp`, position: '20% 80%' },
+  },
+  race: {
+    classic: { src: `${MEDIA}/race-track-1200.webp`, position: '30% 85%' },
+    hackable: { src: `${MEDIA}/hackable-race-oval-800.webp`, position: '50% 85%' },
+  },
+}
+
+/** "Or play one first": one starter per game, copied into the builder as the kid's own. */
+const STARTER_IDS: readonly { id: string; game: GameId }[] = [
+  { id: 'workshop', game: 'platformer' },
+  { id: 'speedway', game: 'race' },
+  { id: 'oval', game: 'race' },
+]
+
+export type NewProjectSheetProps = {
+  open: boolean
+  onClose: () => void
+  onPick?: (href: string) => void
+  /** Put the keyboard on this game's Start when the sheet opens (the landing's game cards). */
+  focusGame?: GameId
+  /** Which builder each game's Start opens (tests); the app uses DEFAULT_BUILDER. */
+  defaults?: Readonly<Record<GameId, BuilderKind>>
+  /** The empty-stage start; the card shows only when there is one (tests turn it on). */
+  fromNothingHref?: string | null
 }
 
 /**
- * "New project": what do you want to make? A project keeps the kind it starts as. Each kind starts empty or from a
- * starter; rooms, inviting, saving, Build and Play work the same for all of them.
+ * "Make a game": one card per game. Start opens that game's default builder (classic until the Hackable versions
+ * reach parity, src/projects/gameStarts.ts) and the link under it opens the other one. Then 3D, then a starter to
+ * play first. A project keeps the kind it starts as; rooms, inviting, saving, Build and Play work the same for all.
  */
-export function NewProjectSheet({ open, onClose, onPick = (href) => window.location.assign(href) }: { open: boolean; onClose: () => void; onPick?: (href: string) => void }) {
-  const pictures = useMemo(() => {
-    if (!open) return null
-    return {
-      platformer: levelThumb(createBlankLevel(160, 27, 'My world'), 'blank:cartoon'),
-      race: raceThumb(brickSpeedway(), 'race:speedway'),
-      starters: [
-        ...COURSES.map((c) => ({ id: c.id, title: c.title, kind: 'Platformer', picture: levelThumb(c.level(), `course:${c.id}`) })),
-        ...RACE_COURSES.map((c) => ({ id: c.id, title: c.title, kind: 'Race track', picture: raceThumb(c.level(), `race:${c.id}`) })),
-      ],
-    }
+export function NewProjectSheet({ open, onClose, onPick = (href) => window.location.assign(href), focusGame, defaults = DEFAULT_BUILDER, fromNothingHref = FROM_NOTHING_HREF }: NewProjectSheetProps) {
+  const session = useClassroomSession()
+  const focusRef = useRef<HTMLButtonElement>(null)
+  const starters = useMemo(() => {
+    if (!open) return []
+    return STARTER_IDS.flatMap(({ id, game }) => {
+      if (game === 'race') {
+        const c = RACE_COURSES.find((r) => r.id === id)
+        return c ? [{ id, title: c.title, kind: 'Racing', picture: raceThumb(c.level(), `race:${c.id}`) }] : []
+      }
+      const c = COURSES.find((r) => r.id === id)
+      return c ? [{ id, title: c.title, kind: 'Platformer', picture: levelThumb(c.level(), `course:${c.id}`) }] : []
+    })
   }, [open])
+
   return (
-    <Sheet open={open} onClose={onClose} title="New project" description="What do you want to make? A project keeps the kind it starts as." variant="dialog" size="lg" className="projects-new">
-      <div className="projects-kinds">
-        <article className="projects-kind">
-          <div className="projects-kind-picture">
-            <img src="/brand/media/demo-3d-poster.jpg" alt="" draggable={false} />
-          </div>
-          <h3>
-            <Blocks size={18} aria-hidden="true" /> 3D build
-          </h3>
-          <p>Snap bricks together in 3D: houses, robots, whole towns. Walk around in it.</p>
-          <div className="projects-kind-actions">
-            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.build3d)}>
-              Start a 3D build
-            </Button>
-          </div>
-        </article>
-        <article className="projects-kind">
-          <div className="projects-kind-picture">{pictures?.platformer && <img src={pictures.platformer} alt="" draggable={false} />}</div>
-          <h3>
-            <Footprints size={18} aria-hidden="true" /> Platformer
-          </h3>
-          <p>Side view. Run, jump, stomp critters and reach the flag.</p>
-          <div className="projects-kind-actions">
-            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.platformer)}>
-              Start a platformer
-            </Button>
-          </div>
-        </article>
-        <article className="projects-kind projects-kind-hackable">
-          <div className="projects-kind-picture">
-            {pictures?.platformer && <img src={pictures.platformer} alt="" draggable={false} />}
-            {/* A taste of what is inside: two of the Hero's own blocks over the level. */}
-            <span className="projects-hack-blocks" aria-hidden="true">
-              <span className="projects-hack-block projects-hack-hat">when I land</span>
-              <span className="projects-hack-block">change <b>jumps left</b> to <i>2</i></span>
-            </span>
-          </div>
-          <h3>
-            <Code2 size={18} aria-hidden="true" /> Hackable Platformer <span className="projects-new-tag">New</span>
-          </h3>
-          <p>A platformer where you can change anything about how it works, with blocks. Open any brick, even your Hero.</p>
-          <div className="projects-kind-actions">
-            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.hackable)}>
-              Start a Hackable Platformer
-            </Button>
-          </div>
-        </article>
-        <article className="projects-kind projects-kind-hackable">
-          <div className="projects-kind-picture">
-            {pictures?.race && <img src={pictures.race} alt="" draggable={false} />}
-            {/* A taste of what is inside: two of the Car's own blocks over a track. */}
-            <span className="projects-hack-blocks" aria-hidden="true">
-              <span className="projects-hack-block projects-hack-hat">when I finish a lap</span>
-              <span className="projects-hack-block">change <b>top speed</b> by <i>1</i></span>
-            </span>
-          </div>
-          <h3>
-            <Code2 size={18} aria-hidden="true" /> Hackable Racing <span className="projects-new-tag">New</span>
-          </h3>
-          <p>A race track where you can change how everything drives, with blocks. Open any brick, even your Car.</p>
-          <div className="projects-kind-actions">
-            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.hackableRace)}>
-              Start Hackable Racing
-            </Button>
-          </div>
-        </article>
-        <article className="projects-kind">
-          <div className="projects-kind-picture">{pictures?.race && <img src={pictures.race} alt="" draggable={false} />}</div>
-          <h3>
-            <Flag size={18} aria-hidden="true" /> Race track
-          </h3>
-          <p>Top view. Paint a track with boosts, ice and jumps, set the laps, then race it.</p>
-          <div className="projects-kind-actions">
-            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.raceStarter)}>
-              Starter track
-            </Button>
-            <Button onClick={() => onPick(NEW_PROJECT_HREF.raceEmpty)}>Empty field</Button>
-          </div>
-        </article>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="What do you want to make?"
+      description="Pick a start. Every brick can be changed later, and you can always make your own."
+      variant="dialog"
+      size="lg"
+      className="projects-new"
+      initialFocusRef={focusGame ? focusRef : undefined}
+    >
+      <div className="projects-games">
+        {GAMES.map((game) => {
+          const start = gameStart(game.id, defaults)
+          const picture = GAME_PICTURE[game.id][start.builder]
+          return (
+            <article key={game.id} className="projects-game" data-game={game.id} data-builder={start.builder}>
+              <img className="projects-game-picture" src={picture.src} style={{ objectPosition: picture.position }} alt="" draggable={false} />
+              <div className="projects-game-body">
+                <h3>{game.name}</h3>
+                <p>{game.blurb}</p>
+                <Button ref={game.id === focusGame ? focusRef : undefined} variant="primary" fullWidth aria-label={`Start a ${game.name === 'Racing' ? 'race' : 'platformer'}`} onClick={() => onPick(start.href)}>
+                  Start
+                </Button>
+                <button type="button" className="projects-game-other" onClick={() => onPick(start.other.href)}>
+                  {start.other.label}
+                </button>
+              </div>
+            </article>
+          )
+        })}
+        {fromNothingHref && (
+          <article className="projects-game projects-game-blank" data-game="blank">
+            <div className="projects-game-picture projects-game-blank-picture" aria-hidden="true">
+              <span><Plus size={16} /> New brick</span>
+            </div>
+            <div className="projects-game-body">
+              <h3>From nothing</h3>
+              <p>An empty stage. Draw your own bricks and give them code.</p>
+              <Button fullWidth aria-label="Start from nothing" onClick={() => onPick(fromNothingHref)}>
+                Start
+              </Button>
+            </div>
+          </article>
+        )}
       </div>
+
+      <button type="button" className="projects-3d" aria-labelledby="projects-3d-title" aria-describedby="projects-3d-text" onClick={() => onPick(NEW_PROJECT_HREF.build3d)}>
+        <img src={`${MEDIA}/build-3d-stairs-880.webp`} alt="" draggable={false} />
+        <span className="projects-3d-copy">
+          <strong id="projects-3d-title">Or build in 3D</strong>
+          <span id="projects-3d-text">Stack bricks on a plate, pick a scene, then walk around inside.</span>
+        </span>
+        <span className="projects-3d-start" aria-hidden="true">Start</span>
+      </button>
+
       <section className="projects-starters" aria-labelledby="projects-starters-title">
-        <h3 id="projects-starters-title">Or start from a starter</h3>
-        <p className="projects-muted">A copy that's yours to change.</p>
+        <h3 id="projects-starters-title">Or play one first, then make it yours</h3>
         <div className="projects-starter-row">
-          {pictures?.starters.map((s) => (
+          {starters.map((s) => (
             <button key={s.id} type="button" className="projects-starter" onClick={() => onPick(NEW_PROJECT_HREF.template(s.id))}>
               <span className="projects-starter-picture">{s.picture && <img src={s.picture} alt="" draggable={false} />}</span>
-              <span className="projects-starter-title">{s.title}</span>
-              <span className="projects-muted">{s.kind}</span>
+              <span className="projects-starter-text">
+                <span className="projects-starter-title">{s.title}</span>
+                <span className="projects-muted">{s.kind}</span>
+              </span>
             </button>
           ))}
         </div>
       </section>
+
+      {session.status === 'guest' && (
+        <p className="projects-new-saving">
+          {/* Through onPick, like every choice here, so a game that is open saves before it leaves. */}
+          Your game saves on this computer.{' '}
+          <a href={SIGNIN_HREF} onClick={(event) => { event.preventDefault(); onPick(SIGNIN_HREF) }}>Sign in</a> to keep it in your account.
+        </p>
+      )}
     </Sheet>
   )
 }

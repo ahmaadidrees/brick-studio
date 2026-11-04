@@ -73,3 +73,15 @@ PNG files are the no-AVIF/no-WebP fallback only (256-colour palette) and are not
 `scripts/demo/site-media.mjs` from the demo recordings (see docs/PLATFORMER.md, "Demo videos"), not by the
 scripts above. The hero plays the 4:3 clips (WebM first, MP4 fallback) and loads `demo-full.mp4` only when someone
 opens full screen.
+
+## Home page and "Make a game" (2026-11-03)
+
+Added for the new landing page and picker (owner-approved mock "Brickgineers landing: what it should be"). WebP via
+`cwebp`; the crops were made with `ffmpeg`.
+
+| File | Size | From |
+|---|---|---|
+| platformer-game-1600.webp, platformer-game-800.webp | 1600×988, 800×494 | The mock's Hackable Platformer game shot |
+| hero-code-1000.webp | 1000×670 | The mock's shot of the Hero's code in the editor |
+| build-3d-stairs-880.webp | 880×540 | demo-3d-poster.jpg cropped to the stair bricks (x 0, y 100), no app buttons |
+| hackable-race-oval-800.webp | 800×499 | The stage of a new /2d/hackable-race project after Fit (the beginner oval), scaled with nearest neighbour |

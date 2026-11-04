@@ -1,183 +1,143 @@
-import { ArrowRight, Code2, Flag, FolderOpen, LogIn, Menu, Play, Plus, Square, X } from 'lucide-react'
+import { ArrowRight, Check, Menu, Play, Plus, X } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent } from 'react'
 import { BRAND_NAME, BrandLockup } from '../../brand'
 import { Button } from '../../ui/Button'
 import { AppHeader, joinPath } from '../../shell'
+import { FROM_NOTHING_HREF, type GameId } from '../../projects/gameStarts'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
-import { HeroDemo } from './HeroDemo'
-import { PixelLevelArt, ScenePlaceholder } from './LandingArt'
 import './landing.css'
 
-// The New project picker draws starter pictures with the 2D renderer: loaded only when someone opens it.
+// The "Make a game" picker draws starter pictures with the 2D renderer: loaded only when someone opens it.
 const NewProjectSheet = lazy(() => import('../../projects/NewProjectSheet').then((m) => ({ default: m.NewProjectSheet })))
 
 /*
- * Brickgineers marketing page. Pure presentation: the hero's recorded demo
- * clips, local CSS/SVG art and `<picture>` media from `/brand/media`; no
- * store, protocol, or 3D imports. Brand name and lockup come from `src/brand`;
- * buttons use the `src/ui` button classes.
+ * Brickgineers home page: "Make your own games, brick by brick." Pure presentation: `/brand/media` pictures and CSS
+ * art, no store, protocol, or 3D imports. Brand name and lockup come from `src/brand`; buttons use the `src/ui`
+ * button classes. The layout follows the owner-approved mock (2026-11-03): hero, three ways to work, the games,
+ * playing together, teachers, footer.
  */
 
-/** Root-relative media folder owned by W7. Filenames and intrinsic sizes follow docs/brand/CONTRACTS.md. */
-const MEDIA_BASE = '/brand/media'
+const MEDIA = '/brand/media'
 
 export type LandingPageProps = {
-  /** Destination of "Start building" / "Continue building". Account links always go straight to `/join`. */
+  /** Destination of "Start building in 3D". Account links always go straight to `/join`. */
   studioHref?: string
-  /** Destination of the 2D builder ("Make a 2D world", "Build in 2D"). */
-  platformerHref?: string
   className?: string
+  /** The empty-stage start; its card shows only when there is one (tests turn it on). */
+  fromNothingHref?: string | null
 }
 
-/** Every project, on this computer and in the account, plus the starters to play. */
 const PROJECTS_HREF = '/projects'
-const RACE_STARTER_HREF = '/2d/build?new=1&kit=race-starter'
-const HACKABLE_HREF = '/2d/hackable?new=1'
 const HELP_HREF = '/help'
-
-/*
- * Account links open the join page in the mode they ask for. They used to go through
- * `/build?classroom=…`, which loaded the 3D builder only to redirect, and left it in Back.
- */
 const JOIN_HREF = joinPath()
-const SIGNIN_HREF = joinPath({ mode: 'signin' })
 const TEACHER_HREF = joinPath({ mode: 'teacher' })
 
-/* --------------------------------------------------------------- media --- */
-
-type BrandPictureProps = {
-  /** File stem, e.g. `hero` or `scene-toy-room`; widths are appended as `-800`. */
-  name: string
-  widths: readonly number[]
-  width: number
-  height: number
-  alt: string
-  sizes: string
-  /** Above the fold: eager, high priority. Everything else lazy-loads. */
-  priority?: boolean
-  /** Same-aspect vector art shown until the file has loaded, and instead of it when the file is missing. */
-  fallback: ReactNode
-  className?: string
-}
-
-type MediaStatus = 'pending' | 'loaded' | 'failed'
-
-/**
- * Responsive `<picture>` (avif, webp, png) with explicit intrinsic size so the
- * layout never shifts. The vector fallback is always rendered underneath: the
- * raster fades in over it once it has loaded, and a missing file (before W7's
- * assets land) simply leaves the vector art in place. No code change is needed
- * when the files arrive.
- */
-function BrandPicture({ name, widths, width, height, alt, sizes, priority = false, fallback, className }: BrandPictureProps) {
-  const [status, setStatus] = useState<MediaStatus>('pending')
-  // A cached image can be complete before React attaches onLoad.
-  const attach = useCallback((img: HTMLImageElement | null) => {
-    if (img && img.complete && img.naturalWidth > 0) setStatus('loaded')
-  }, [])
-  const srcSet = (extension: string) => widths.map((w) => `${MEDIA_BASE}/${name}-${w}.${extension} ${w}w`).join(', ')
-  const largest = widths[widths.length - 1]
-  const classes = ['landing-media', `landing-media-${status}`, className].filter(Boolean).join(' ')
-  const fallbackA11y = status === 'failed' && alt ? { role: 'img', 'aria-label': alt } : { 'aria-hidden': true as const }
-  return (
-    <span className={classes} style={{ aspectRatio: `${width} / ${height}` }}>
-      <span className="landing-media-fallback" {...fallbackA11y}>{fallback}</span>
-      {status !== 'failed' && (
-        <picture>
-          <source type="image/avif" srcSet={srcSet('avif')} sizes={sizes} />
-          <source type="image/webp" srcSet={srcSet('webp')} sizes={sizes} />
-          <img
-            ref={attach}
-            src={`${MEDIA_BASE}/${name}-${largest}.png`}
-            srcSet={srcSet('png')}
-            sizes={sizes}
-            width={width}
-            height={height}
-            alt={alt}
-            loading={priority ? 'eager' : 'lazy'}
-            decoding={priority ? 'sync' : 'async'}
-            fetchPriority={priority ? 'high' : 'auto'}
-            onLoad={() => setStatus('loaded')}
-            onError={() => setStatus('failed')}
-          />
-        </picture>
-      )}
-    </span>
-  )
-}
-
-/* ------------------------------------------------------------ hackable --- */
-
-/** A still from the Hackable Platformer: the Hero on a ledge it reached with Double jump (scripts/demo/record-hack.mjs). */
-function HackableStill() {
-  return (
-    <img
-      className="landing-hack-picture"
-      src={`${MEDIA_BASE}/hackable-ledge.jpg`}
-      alt="The Hero standing on a high ledge it reached with a Double jump power, in the Hackable Platformer"
-      width={960}
-      height={720}
-      loading="lazy"
-      decoding="async"
-    />
-  )
-}
-
-/* ------------------------------------------------------------ building --- */
-
-type CtaLinkProps = {
-  href: string
-  variant?: 'primary' | 'secondary'
-  icon?: ReactNode
-  trailingIcon?: ReactNode
-  className?: string
-  children: ReactNode
-}
-
-/** A link styled with the shared `src/ui` button classes (large size). */
-function CtaLink({ href, variant = 'secondary', icon, trailingIcon, className, children }: CtaLinkProps) {
-  return (
-    <a className={['ui-button', `ui-button-${variant}`, 'ui-button-lg', 'landing-cta', className].filter(Boolean).join(' ')} href={href}>
-      {icon && <span className="ui-button-icon" aria-hidden="true">{icon}</span>}
-      <span className="ui-button-label">{children}</span>
-      {trailingIcon && <span className="ui-button-icon" aria-hidden="true">{trailingIcon}</span>}
-    </a>
-  )
-}
-
-function StartCta({ href, continueBuild, className }: { href: string; continueBuild: boolean; className?: string }) {
-  return (
-    <CtaLink href={href} variant="primary" icon={<Play size={18} />} className={className}>
-      {continueBuild ? 'Continue building' : 'Start building'}
-    </CtaLink>
-  )
-}
-
-/** The strip under the hero: plain facts, no numbers to decode. */
-const FACTS = ['Chromebooks, iPads and laptops', 'No account needed to start', 'Students join with a class code', 'No student email addresses'] as const
+/** Players in one 2D room (platformer-core MAX_PLAYERS; the landing test keeps these equal). */
+export const ROOM_PLAYERS = 16
 
 /** Old in-page anchors for what now lives on /help. */
 const MOVED_TO_HELP: Readonly<Record<string, string>> = { help: 'how', faq: 'faq', privacy: 'privacy' }
 
+/*
+ * Anything made on this computer: the 3D build, a 2D draft or a Hackable project. Read only (never created or
+ * changed here), so a returning kid without an account still finds My projects. Keys: src/brick/localProjectKeys.ts,
+ * src/platformer/ui/drafts.ts and src/platformer/lab/studio/persist/hackableProjects.ts.
+ */
+const LOCAL_WORK_KEYS = [BRICK_STUDIO_LOCAL_STORAGE_KEY, 'brick-studio.2d.drafts.v1', 'code-lab.projects.v1', 'code-lab.project.v1'] as const
+
+function hasLocalWork(): boolean {
+  try {
+    return LOCAL_WORK_KEYS.some((key) => {
+      const value = window.localStorage.getItem(key)
+      return value !== null && value !== '[]' && value !== '{}' && value !== ''
+    })
+  } catch {
+    return false
+  }
+}
+
+/* ------------------------------------------------------------ pictures --- */
+
+const FRIENDS = [
+  { src: `${MEDIA}/character-pip-400.webp`, tint: '#FFE7A3' },
+  { src: `${MEDIA}/character-nova-400.webp`, tint: '#CFE0FF' },
+  { src: `${MEDIA}/character-fern-400.webp`, tint: '#D4F2DC' },
+] as const
+
+function Faces() {
+  return (
+    <span className="landing-faces">
+      {FRIENDS.map((f) => <img key={f.src} src={f.src} alt="" width={28} height={28} style={{ background: f.tint }} loading="lazy" decoding="async" />)}
+    </span>
+  )
+}
+
+/** A Hackable Platformer level, with a ? block's code open over it and friends playing. The overlays are decoration. */
+function HeroShot() {
+  return (
+    <figure className="landing-hero-art">
+      <span className="landing-shot">
+        <img
+          className="landing-shot-picture"
+          src={`${MEDIA}/platformer-game-1600.webp`}
+          srcSet={`${MEDIA}/platformer-game-800.webp 800w, ${MEDIA}/platformer-game-1600.webp 1600w`}
+          sizes="(max-width: 960px) 100vw, 640px"
+          width={1600}
+          height={988}
+          alt="A Brickgineers platformer: the Hero jumping toward a row of bricks and ? blocks, with critters and coins"
+          fetchPriority="high"
+          decoding="async"
+        />
+        <span className="landing-shot-playing" aria-hidden="true"><Faces />Maya, Sam and Lee are playing</span>
+        <span className="landing-shot-you" aria-hidden="true">You</span>
+        <span className="landing-shot-pick" aria-hidden="true" />
+      </span>
+      <span className="landing-brick-card" aria-hidden="true">
+        <span className="landing-brick-card-head">
+          <span className="landing-q">?</span>
+          <strong>? block</strong>
+          <span className="landing-brick-card-see">See inside</span>
+        </span>
+        <span className="landing-blocks">
+          <span className="landing-block landing-block-hat">when the Hero bumps my <i>bottom</i></span>
+          <span className="landing-block landing-block-var">change <i>coins</i> by <b>1</b></span>
+          <span className="landing-block landing-block-looks">switch costume to <i>used</i></span>
+        </span>
+      </span>
+    </figure>
+  )
+}
+
+/** Two friends racing, the room bar on top and what just changed. Decoration around a real track picture. */
+function RoomShot() {
+  return (
+    <figure className="landing-shot landing-room-shot">
+      <img className="landing-shot-picture" src={`${MEDIA}/race-track-1200.webp`} width={1200} height={750} alt="A race track seen from above with several cars racing" loading="lazy" decoding="async" />
+      <span className="landing-room-bar" aria-hidden="true">
+        <Faces />
+        3 playing
+        <span className="landing-room-copy">Copy link</span>
+      </span>
+      <span className="landing-room-toast" aria-hidden="true">Maya changed the Boost pad: now twice as fast</span>
+    </figure>
+  )
+}
+
 /* ---------------------------------------------------------------- page --- */
 
-export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build', className }: LandingPageProps) {
-  // Detected exactly as the studio does; reading never creates or mutates a draft.
-  const [continueBuild] = useState(() => {
-    try { return window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY) !== null } catch { return false }
-  })
+export function LandingPage({ studioHref = '/build', className, fromNothingHref = FROM_NOTHING_HREF }: LandingPageProps) {
+  const [localWork] = useState(hasLocalWork)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [newOpen, setNewOpen] = useState(false)
+  // Which picker is open: the hero's (no game) or a game card's (that game's Start gets the keyboard).
+  const [picker, setPicker] = useState<{ game?: GameId } | null>(null)
   const menuButton = useRef<HTMLButtonElement>(null)
   const mainId = useId()
   const navId = useId()
-  const waysId = useId()
-  const friendsId = useId()
-  const hackId = useId()
-  const codeId = useId()
+  const layersId = useId()
+  const gamesId = useId()
+  const togetherId = useId()
   const teachersId = useId()
-  const finaleId = useId()
 
   const closeMenu = useCallback(() => setMenuOpen(false), [])
   const onNavKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
@@ -207,7 +167,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
   }, [])
 
   return (
-    <div className={['brick-landing', className].filter(Boolean).join(' ')}>
+    <div className={['brick-landing', 'landing-home', className].filter(Boolean).join(' ')}>
       <a className="landing-skip" href={`#${mainId}`}>Skip to content</a>
 
       {/* Shared shell header: lockup = Home, page links, account chip in the corner (Sign in → /join?mode=signin). */}
@@ -229,19 +189,18 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               Menu
             </Button>
             <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
-              <a className="landing-nav-link" href="#two-ways">What you can make</a>
-              <a className="landing-nav-link" href={PROJECTS_HREF}>My projects</a>
+              <a className="landing-nav-link" href="#games">Games</a>
               <a className="landing-nav-link" href="#teachers">For teachers</a>
               <a className="landing-nav-link" href={HELP_HREF}>Help</a>
-              <a className="landing-nav-link" href={TEACHER_HREF}>Teacher login</a>
+              <a className="landing-nav-link" href={JOIN_HREF}>Class code</a>
             </nav>
           </>
         }
       />
 
-      {newOpen && (
+      {picker && (
         <Suspense fallback={null}>
-          <NewProjectSheet open onClose={() => setNewOpen(false)} />
+          <NewProjectSheet open focusGame={picker.game} onClose={() => setPicker(null)} />
         </Suspense>
       )}
       <main id={mainId}>
@@ -265,200 +224,165 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
             </details>
           </aside>
         )}
-        <section className="landing-hero" aria-labelledby="landing-hero-title">
-          <div className="landing-hero-copy">
-            <span className="landing-eyebrow">Free for students · Nothing to install</span>
-            <h1 id="landing-hero-title">
-              Build it.
-              <br />
-              Play it.
-              <br />
-              <span className="landing-hero-hack">Hack it.</span>
-            </h1>
-            <p className="landing-hero-lede">Snap bricks into 3D worlds, platformers and race tracks, then open any brick and change how it works with code blocks.</p>
-            <p className="landing-hero-builds">
-              <button type="button" className="landing-stud-button landing-stud-button-3d" onClick={() => setNewOpen(true)}>
-                <Plus size={22} aria-hidden="true" />
-                New project
-              </button>
-              <a className="landing-stud-button landing-stud-button-2d" href={PROJECTS_HREF}>
-                <FolderOpen size={22} aria-hidden="true" />
-                {continueBuild ? 'Continue a project' : 'My projects'}
-              </a>
-            </p>
-            {/* A plain GET form: /join?classCode= with no mode looks the class up, then shows the names to tap
-                plus "I'm new" (src/pages/join/joinQuery.ts), so a returning kid never lands on account creation. */}
-            <form className="landing-code" action="/join" method="get">
-              <label htmlFor={codeId}>Got a class code?</label>
-              <input id={codeId} name="classCode" placeholder="e.g. BRICK-42" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={32} required />
-              <button type="submit" className="ui-button ui-button-primary">Join</button>
-            </form>
-            <p className="landing-hero-trust">
-              No account needed to start. <a href={SIGNIN_HREF}>Student login</a>
-            </p>
-          </div>
-          <HeroDemo />
-        </section>
 
-        <ul className="landing-facts" aria-label="At a glance">
-          {FACTS.map((fact) => <li key={fact}>{fact}</li>)}
-        </ul>
-
-        <section id="two-ways" className="landing-section landing-ways" aria-labelledby={waysId}>
-          <div className="landing-ways-head">
-            <h2 id={waysId}>Three things to make. One set of bricks.</h2>
-            <p>Every project saves the same way, shares with your class the same way, and lives in My projects.</p>
-          </div>
-          <ul className="landing-ways-grid">
-            <li className="landing-way landing-way-3d">
-              <BrandPicture
-                name="scene-toy-room"
-                widths={[400, 800]}
-                width={800}
-                height={500}
-                sizes="(max-width: 860px) 100vw, 420px"
-                alt="A 3D brick build on a play table in the Toy Room scene"
-                fallback={<ScenePlaceholder scene="toy-room" />}
-              />
-              <div className="landing-way-copy">
-                <h3>3D builds</h3>
-                <p>Stack bricks on a plate, pick a scene, then walk inside what you built.</p>
-                <p className="landing-way-links">
-                  <StartCta href={studioHref} continueBuild={continueBuild} />
-                </p>
+        <section id="top" className="landing-band landing-hero-band" aria-labelledby="landing-hero-title">
+          <div className="landing-wrap landing-hero">
+            <div className="landing-hero-copy">
+              <p className="landing-eyebrow">Free · In your browser · Nothing to install</p>
+              <h1 id="landing-hero-title">Make your own games, brick by brick.</h1>
+              <p className="landing-hero-lede">
+                Snap a platformer or a race track together and press Play. Every brick has code inside, so when you're
+                ready, you can change how anything works. Then send a link and play it with friends.
+              </p>
+              <div className="landing-hero-actions">
+                <button type="button" className="landing-make" onClick={() => setPicker({})}>
+                  <Play size={20} fill="currentColor" aria-hidden="true" />
+                  Make a game
+                </button>
+                <a className="landing-join" href={JOIN_HREF}>Got a class code? Join your class</a>
               </div>
-            </li>
-            <li className="landing-way landing-way-2d landing-way-code">
-              <BrandPicture
-                name="world-2d"
-                widths={[800]}
-                width={800}
-                height={500}
-                sizes="(max-width: 860px) 100vw, 420px"
-                alt="A cartoon 2D world built from bricks, with the player bumping a ? brick"
-                fallback={<PixelLevelArt />}
-              />
-              <span className="landing-way-tag"><Code2 size={15} aria-hidden="true" /> Code inside</span>
-              <div className="landing-way-copy">
-                <h3>Platformers</h3>
-                <p>Place bricks, springs and critters, press Play and run through it. Open any brick to change how it works.</p>
-                <p className="landing-way-links">
-                  <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Make a platformer</CtaLink>
-                  <CtaLink href={HACKABLE_HREF} icon={<Code2 size={18} />}>Open the code</CtaLink>
-                </p>
-              </div>
-            </li>
-            <li className="landing-way landing-way-race">
-              <span className="landing-media landing-media-loaded" style={{ aspectRatio: '800 / 500' }}>
-                <img src={`${MEDIA_BASE}/race-track-1200.webp`} width={1200} height={750} alt="A race track seen from above, with ? blocks, a boost strip, a ramp over the water and cars racing" loading="lazy" decoding="async" />
-              </span>
-              <div className="landing-way-copy">
-                <h3>Race tracks</h3>
-                <p>Paint a track with boosts, ice and jumps, set the laps, then race your class.</p>
-                <p className="landing-way-links">
-                  <CtaLink href={RACE_STARTER_HREF} variant="primary" icon={<Flag size={18} />}>Make a race track</CtaLink>
-                  <CtaLink href="/2d/play/speedway" icon={<Play size={18} />}>Race a starter</CtaLink>
-                </p>
-              </div>
-            </li>
-          </ul>
-        </section>
-
-        <section id="hackable" className="landing-section landing-hack-wrap" aria-labelledby={hackId}>
-          <div className="landing-hack">
-            <div className="landing-hack-copy">
-              <span className="landing-eyebrow landing-hack-eyebrow">The Hackable Platformer</span>
-              <h2 id={hackId}>Every brick has code inside.</h2>
-              <ol className="landing-hack-steps">
-                <li><span><b>Build</b> a level with bricks, springs and a goal.</span></li>
-                <li><span><b>Open</b> any brick, even your Hero, and see its blocks.</span></li>
-                <li><span><b>Change</b> how it plays: a triple jump, faster critters, a brick nobody else has.</span></li>
-              </ol>
-              <p className="landing-hack-cta">
-                <a className="landing-butter-button" href={HACKABLE_HREF}>Try the Hackable Platformer</a>
-                <span className="landing-hack-note">No coding needed to start.</span>
+              <p className="landing-hero-note">
+                No account needed to start. Free for students, always.
+                {localWork && <> <a href={PROJECTS_HREF}>Your games are in My projects</a>.</>}
               </p>
             </div>
-            <div className="landing-hack-art">
-              <HackableStill />
-              <span className="landing-hack-blocks" aria-hidden="true">
-                <span className="landing-hack-block landing-hack-hat">when I land</span>
-                <span className="landing-hack-block">change <b>jumps left</b> to <i>3</i></span>
-              </span>
+            <HeroShot />
+          </div>
+        </section>
+
+        <section className="landing-band" aria-labelledby={layersId}>
+          <div className="landing-wrap landing-stack">
+            <div className="landing-heading">
+              <h2 id={layersId}>Start simple. Go as deep as you want.</h2>
+              <p>Every project works the same three ways. A kid can make a whole game without code, and the code is always one tap away when they're ready.</p>
+            </div>
+            <div className="landing-layers">
+              <article className="landing-layer">
+                <h3><span className="landing-step">1</span>Place</h3>
+                <p>Paint bricks into a level and press Play. Ground, springs, critters, a goal.</p>
+                <ul className="landing-palette" aria-label="Some of the bricks">
+                  <li><span className="landing-tile landing-tile-ground" aria-hidden="true" />Ground</li>
+                  <li><span className="landing-tile landing-tile-q" aria-hidden="true">?</span>? block</li>
+                  <li><span className="landing-tile landing-tile-spring" aria-hidden="true" />Spring</li>
+                  <li><span className="landing-tile landing-tile-walker" aria-hidden="true" />Walker</li>
+                  <li><span className="landing-tile landing-tile-coin" aria-hidden="true" />Coin</li>
+                </ul>
+              </article>
+              <article className="landing-layer">
+                <h3><span className="landing-step">2</span>Tune</h3>
+                <p>Every brick has sliders. Jump higher, drive faster, make the critters sneaky.</p>
+                <div className="landing-sliders">
+                  {([['Jump power', 70], ['Run speed', 50], ['Jumps in the air', 67]] as const).map(([name, value]) => (
+                    <div key={name} className="landing-slider">
+                      <span>{name}</span>
+                      <span className="landing-slider-track" aria-hidden="true"><span style={{ width: `${value}%` }} /></span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+              <article className="landing-layer">
+                <h3><span className="landing-step landing-step-open">3</span>Open</h3>
+                <p>See inside any brick, even the Hero. It's real block code: change it, or make a brick from nothing.</p>
+                <div className="landing-code-shot">
+                  <img src={`${MEDIA}/hero-code-1000.webp`} width={1000} height={670} alt="The Hero's block code open in the editor" loading="lazy" decoding="async" />
+                </div>
+              </article>
             </div>
           </div>
         </section>
 
-        <section className="landing-section landing-friends" aria-labelledby={friendsId}>
-          <div className="landing-friends-art">
-            <BrandPicture
-              name="scene-brick-valley"
-              widths={[400, 800]}
-              width={800}
-              height={500}
-              sizes="(max-width: 760px) 100vw, 320px"
-              alt="A brick build in the Brick Valley scene"
-              fallback={<ScenePlaceholder scene="brick-valley" />}
-            />
-          </div>
-          <div className="landing-friends-copy">
-            <h2 id={friendsId}>Better with friends.</h2>
-            <p>Open a room, share the link, and everyone builds and plays in the same world at the same time. The owner decides who builds.</p>
+        <section id="games" className="landing-band landing-band-soft" aria-labelledby={gamesId}>
+          <div className="landing-wrap landing-stack">
+            <div className="landing-heading">
+              <h2 id={gamesId}>Pick a start. Make it anything.</h2>
+              <p>
+                A platformer or a race gets you playing in a minute. They're starting points, not limits: every brick can be changed
+                {fromNothingHref ? ', and you can begin from an empty stage.' : '.'}
+              </p>
+            </div>
+            <div className="landing-games">
+              <article className="landing-game">
+                <img src={`${MEDIA}/platformer-game-800.webp`} width={800} height={494} alt="" loading="lazy" decoding="async" style={{ objectPosition: '20% 80%' }} />
+                <div className="landing-game-copy">
+                  <h3><button type="button" className="landing-game-open" aria-describedby="landing-game-platformer" onClick={() => setPicker({ game: 'platformer' })}>Platformer</button></h3>
+                  <p id="landing-game-platformer">Run, jump and stomp to the flag. Change how the Hero moves.</p>
+                </div>
+              </article>
+              <article className="landing-game">
+                <img src={`${MEDIA}/race-track-1200.webp`} width={1200} height={750} alt="" loading="lazy" decoding="async" style={{ objectPosition: '30% 80%' }} />
+                <div className="landing-game-copy">
+                  <h3><button type="button" className="landing-game-open" aria-describedby="landing-game-race" onClick={() => setPicker({ game: 'race' })}>Racing</button></h3>
+                  <p id="landing-game-race">Paint a track with boosts, ice and jumps, then race your friends.</p>
+                </div>
+              </article>
+              {fromNothingHref && (
+                <article className="landing-game landing-game-blank">
+                  <span className="landing-game-blank-art" aria-hidden="true"><span><Plus size={18} /> New brick</span></span>
+                  <div className="landing-game-copy">
+                    <h3><a className="landing-game-open" href={fromNothingHref} aria-describedby="landing-game-blank">Start from nothing</a></h3>
+                    <p id="landing-game-blank">An empty stage. Draw your own bricks and give them code.</p>
+                  </div>
+                </article>
+              )}
+            </div>
+            <article className="landing-3d">
+              <img src={`${MEDIA}/build-3d-stairs-880.webp`} width={880} height={540} alt="A character standing on red, yellow, green and blue bricks stacked like stairs on a 3D plate" loading="lazy" decoding="async" />
+              <div className="landing-3d-copy">
+                <p className="landing-eyebrow">Not making a game?</p>
+                <h3>Build in 3D</h3>
+                <p>Stack bricks on a plate, pick a scene, then walk around inside what you built. With friends, too.</p>
+                <a className="landing-3d-link" href={studioHref}>Start building in 3D</a>
+              </div>
+            </article>
           </div>
         </section>
 
-        <section id="teachers" className="landing-teachers" aria-labelledby={teachersId}>
-          <div className="landing-teachers-inner">
-            <span className="landing-eyebrow">For teachers</span>
-            <h2 id={teachersId}>Your whole class, one code away.</h2>
-            <ul className="landing-features">
-              <li>
-                <h3>No student emails</h3>
-                <p>Students join with your class code and pick a username and password.</p>
-              </li>
-              <li>
-                <h3>Work that's saved</h3>
-                <p>Every project saves to the student's account, and class worlds live in one place.</p>
-              </li>
-              <li>
-                <h3>Coding they want to do</h3>
-                <p>A student who makes a new power shares it on the class shelf. You check it first.</p>
-              </li>
-              <li>
-                <h3>No AI</h3>
-                <p>Every brick, level and script is made by a kid. You run the class controls.</p>
-              </li>
+        <section className="landing-band" aria-labelledby={togetherId}>
+          <div className="landing-wrap landing-together">
+            <div className="landing-together-copy">
+              <h2 id={togetherId}>Send a link. Play it together.</h2>
+              <p>Open a room and everyone plays the same game, each with their own Hero. Change a brick and it changes for everyone, right away.</p>
+              <ul className="landing-checks">
+                <li><Check size={20} strokeWidth={3} aria-hidden="true" />Up to {ROOM_PLAYERS} players in a room</li>
+                <li><Check size={20} strokeWidth={3} aria-hidden="true" />Build together or just play</li>
+                <li><Check size={20} strokeWidth={3} aria-hidden="true" />Works with a class code too</li>
+              </ul>
+            </div>
+            <RoomShot />
+          </div>
+        </section>
+
+        <section id="teachers" className="landing-band landing-teachers" aria-labelledby={teachersId}>
+          <div className="landing-wrap landing-teachers-inner">
+            <div className="landing-teachers-copy">
+              <p className="landing-eyebrow">For teachers</p>
+              <h2 id={teachersId}>Your whole class, one code away.</h2>
+              <p>Students join with a class code and keep their work in their own account. You see every project and share the best powers on a class shelf.</p>
+              <p className="landing-teachers-actions">
+                <a className="landing-teachers-primary" href={TEACHER_HREF}>Teacher sign in</a>
+                <a className="landing-teachers-secondary" href={`${HELP_HREF}#teachers`}>How class codes work</a>
+              </p>
+            </div>
+            <ul className="landing-promises">
+              <li><strong>No student emails</strong><span>A class code and a username. Nothing else.</span></li>
+              <li><strong>No AI</strong><span>Every brick, level and script is made by a kid.</span></li>
+              <li><strong>Runs on Chromebooks</strong><span>And iPads and laptops. Nothing to install.</span></li>
+              <li><strong>Free for students</strong><span>Always. Classroom tools come later.</span></li>
             </ul>
-            <p className="landing-cta-row">
-              <CtaLink href={TEACHER_HREF} variant="primary" icon={<LogIn size={18} />}>Teacher sign in</CtaLink>
-              <CtaLink href={studioHref} icon={<Play size={18} />}>Try building first</CtaLink>
-              <a className="landing-text-link" href={`${HELP_HREF}#teachers`}>How class controls work <ArrowRight size={16} aria-hidden="true" /></a>
-            </p>
-            <p className="landing-teachers-hint">Teacher accounts are set up by the {BRAND_NAME} team for now. Sign in with your teacher Google account or email.</p>
           </div>
-        </section>
-
-        <section className="landing-finale" aria-labelledby={finaleId}>
-          <h2 id={finaleId}>Ready to build?</h2>
-          <p className="landing-finale-cta">
-            <a className="landing-butter-button" href={studioHref}>{continueBuild ? 'Continue building' : 'Start building'}</a>
-            <a className="landing-finale-join" href={JOIN_HREF}>Join a class</a>
-          </p>
         </section>
       </main>
 
-      <footer className="landing-footer">
-        <BrandLockup size={24} className="landing-brand landing-brand-footer" />
-        <nav className="landing-footer-links" aria-label="Footer">
-          <a href={HELP_HREF}>Help</a>
-          <a href={`${HELP_HREF}#privacy`}>Privacy</a>
-          <a href={SIGNIN_HREF}>Student login</a>
-          <a href={TEACHER_HREF}>Teacher sign in</a>
-        </nav>
-        <p>
-          A creative building playground for curious minds. {BRAND_NAME} is an independent
-          creation and is not affiliated with or endorsed by the LEGO Group.
-        </p>
+      <footer className="landing-footer landing-home-footer">
+        <div className="landing-wrap landing-footer-row">
+          <BrandLockup size={24} className="landing-brand landing-brand-footer" />
+          <p>Built by a teacher, for kids who make things.</p>
+          <nav className="landing-footer-links" aria-label="Footer">
+            <a href={HELP_HREF}>Help</a>
+            <a href={`${HELP_HREF}#privacy`}>Privacy</a>
+            <a href="#teachers">For teachers</a>
+          </nav>
+        </div>
       </footer>
     </div>
   )
