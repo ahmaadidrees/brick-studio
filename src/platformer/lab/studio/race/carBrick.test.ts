@@ -47,6 +47,8 @@ describe('the Car in open blocks', () => {
     }
     expect(tops(createCarBrick().workspace).filter((b) => b.type === 'procedures_definition').map(label)).toEqual([
       expect.stringMatching(/^Drive and bounce off barriers/),
+      // Parity bucket B: what I hit decides how bouncy it is.
+      expect.stringMatching(/^How bouncy is what I hit/),
     ])
   })
 
@@ -106,10 +108,13 @@ describe('each feel script switches off, and the car still drives', () => {
 describe('the Car as saved (pinned for later upgrades)', () => {
   const labelsOf = (ws: WorkspaceJson) => tops(ws).map((b) => `${b.type} | ${label(b)}`)
 
-  it('has the blocks fingerprint of parity bucket A, and R1\'s upgrades', () => {
+  it('has the blocks fingerprint of parity bucket B, and the upgrades from R1 and parity A', () => {
     // f3157bf8 from a202bb8 (R1, as shipped) until W A S D and directional boost pads (parity bucket A); an untouched R1
     // Car upgrades from it. The racer's 3f8004eb likewise, until it steered and braked.
     expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).toContain('f3157bf8')
+    // cd3793ca / 68d4e698: parity A as shipped (2026-11-04), before "what I hit" (parity B).
+    expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).toContain('cd3793ca')
+    expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_racer).toContain('68d4e698')
     expect(workspaceFingerprint(createCarWorkspace())).toBe(CAR_FINGERPRINT)
     expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_car).not.toContain(CAR_FINGERPRINT)
     expect(EARLIER_BUILT_IN_FINGERPRINTS.brick_racer).toContain('3f8004eb')
@@ -123,8 +128,8 @@ describe('the Car as saved (pinned for later upgrades)', () => {
   })
 })
 
-const CAR_FINGERPRINT = 'cd3793ca'
-const RACER_FINGERPRINT = '68d4e698'
+const CAR_FINGERPRINT = '1ff9e54c'
+const RACER_FINGERPRINT = '79628010'
 
 const CAR_LABELS_R1: readonly string[] = [
   'event_whenflagclicked | When the race starts: no gravity, I move myself',
@@ -140,5 +145,6 @@ const CAR_LABELS_R1: readonly string[] = [
   'platformer_everytick | Grip: sideways sliding fades by my grip',
   'platformer_everytick | Drive: move, and bounce off barriers (go inside to see how)',
   'procedures_definition | Drive and bounce off barriers: turn my two speeds into x and y speeds, move, bounce off anything solid',
+  'procedures_definition | How bouncy is what I hit: a barrier, a tire stack soaks it up, a bumper kicks me back, a tree or a stand',
   'race_whenlap | When I finish my last lap: stop, and put my name on the results',
 ]

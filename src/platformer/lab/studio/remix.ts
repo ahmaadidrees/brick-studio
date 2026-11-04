@@ -248,10 +248,10 @@ let currentHeroFingerprint: string | undefined
  * parity bucket A (2026-11-03).
  */
 export const EARLIER_BUILT_IN_FINGERPRINTS: Readonly<Record<string, readonly string[]>> = {
-  // R1 as shipped: before W A S D and boost pads that point a way.
-  brick_car: ['f3157bf8'],
-  // R1 as shipped: before steering and braking like the classic computer driver.
-  brick_racer: ['3f8004eb'],
+  // R1 as shipped: before W A S D and boost pads that point a way. Then parity A as shipped: before "what I hit".
+  brick_car: ['f3157bf8', 'cd3793ca'],
+  // R1 as shipped: before steering and braking like the classic computer driver. Then parity A as shipped.
+  brick_racer: ['3f8004eb', '68d4e698'],
 }
 
 /**

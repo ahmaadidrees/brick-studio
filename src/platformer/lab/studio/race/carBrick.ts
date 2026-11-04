@@ -66,6 +66,11 @@ export const CAR_KNOBS: readonly CarKnob[] = [
   { id: 'roll', name: 'full steering from', value: 0.35, from: 'steering bites fully from 0.35 of top speed (a share, same in both)' },
   { id: 'reverse_from', name: 'reversing below', value: 0.05 * SPEED, from: 'brakes turn into reverse below 0.05 px/frame x 2' },
   { id: 'side_keep', name: 'barrier keeps sideways', value: 0.85, from: 'a barrier keeps 0.85 of the speed along it (a share, same in both)' },
+  // What the Car hits (parity bucket B, classic car.ts bounceOf and the bumper's kick)
+  { id: 'tires_bounce', name: 'tire stack bounce', value: 0.08, from: 'tire stacks bounce 0.08 (a share, same in both)' },
+  { id: 'tires_keep', name: 'tire stack keeps sideways', value: 0.6, from: 'a tire stack keeps 0.6 of the speed along it (a share, same in both)' },
+  { id: 'bumper_push', name: 'bumper kick', value: 2.4 * SPEED, from: 'a bumper bounces fully and adds 2.4 px/frame x 2' },
+  { id: 'scenery_bounce', name: 'tree and stand bounce', value: 0.25, from: 'trees and grandstands bounce 0.25 (a share, same in both)' },
 ]
 
 /** The four Build sliders: top speed, acceleration, steering, grip. */
@@ -86,6 +91,9 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'boost_left', name: 'boost left' },
   { id: 'share', name: 'share' },
   { id: 'turn', name: 'turn' },
+  { id: 'bounce_now', name: 'bounce now' },
+  { id: 'keep_now', name: 'keep sideways now' },
+  { id: 'kick_now', name: 'kick now' },
 ]
 
 /** Stage (global) variables the race uses: the Car and racers read them, the Stage sets them. */
@@ -245,7 +253,8 @@ function driverWorkspace(prefix: string, controls: (b: CarBlocks) => void): Work
   ])
 
   b.every('Off-road slowdown: grass and dirt are slower than road', [
-    b.when(b.groundIs('Grass'), [b.set('cap', b.mul(top(), v('grass'))), b.set('ease_now', v('grass_ease'))]),
+    // Flowers are grass too (parity bucket B, classic raceSurface).
+    b.when(b.later(() => b.or(b.groundIs('Grass'), b.groundIs('Flowers'))), [b.set('cap', b.mul(top(), v('grass'))), b.set('ease_now', v('grass_ease'))]),
     b.when(b.groundIs('Dirt'), [b.set('cap', b.mul(top(), v('dirt')))]),
   ])
 
@@ -314,17 +323,33 @@ function driverWorkspace(prefix: string, controls: (b: CarBlocks) => void): Work
 
   b.every('Drive: move, and bounce off barriers (go inside to see how)', [b.call(DRIVE)])
 
+  // Parity bucket B: how hard I bounce depends on what I hit (classic car.ts bounceOf): barriers, tire stacks that soak
+  // it up, bumpers that kick me back, trees and grandstands. These blocks came later, so every older block keeps its id.
+  const whatIHit = (): Conn => ({ block: b.blk('platformer_whathit') })
+  const howBouncy: MyBlock = { proccode: 'how bouncy is what I hit', argumentNames: [] }
+  const kick = (axis: 'x' | 'y') =>
+    b.later(() => b.either(b.lt(axis === 'x' ? b.xSpeed() : b.ySpeed(), 0), [b.blk('platformer_changespeed', { fields: { AXIS: axis }, inputs: { SPEED: b.sub(0, v('kick_now')) } })], [b.blk('platformer_changespeed', { fields: { AXIS: axis }, inputs: { SPEED: v('kick_now') } })]))
   b.define(DRIVE, 'Drive and bounce off barriers: turn my two speeds into x and y speeds, move, bounce off anything solid', [
     b.setSpeed('x', b.add(b.mul(v('fwd'), b.sinDir()), b.mul(v('side'), b.cosDir()))),
     b.setSpeed('y', b.sub(b.mul(v('fwd'), b.cosDir()), b.mul(v('side'), b.sinDir()))),
     // Upright while I move, so my box is the same size whichever way I point.
     b.rotationStyle("don't rotate"),
     b.moveUntilHit('x', b.xSpeed()),
-    b.when(b.hit(), [b.blk('platformer_tellhit'), b.setSpeed('x', b.sub(0, b.mul(b.xSpeed(), v('bounce')))), b.setSpeed('y', b.mul(b.ySpeed(), v('side_keep')))]),
+    b.when(b.hit(), [b.blk('platformer_tellhit'), b.later(() => b.call(howBouncy)), b.setSpeed('x', b.sub(0, b.mul(b.xSpeed(), v('bounce_now')))), kick('x'), b.setSpeed('y', b.mul(b.ySpeed(), v('keep_now')))]),
     b.moveUntilHit('y', b.ySpeed()),
-    b.when(b.hit(), [b.blk('platformer_tellhit'), b.setSpeed('y', b.sub(0, b.mul(b.ySpeed(), v('bounce')))), b.setSpeed('x', b.mul(b.xSpeed(), v('side_keep')))]),
+    b.when(b.hit(), [b.blk('platformer_tellhit'), b.later(() => b.call(howBouncy)), b.setSpeed('y', b.sub(0, b.mul(b.ySpeed(), v('bounce_now')))), kick('y'), b.setSpeed('x', b.mul(b.xSpeed(), v('keep_now')))]),
     b.rotationStyle('all around'),
   ])
+  b.later(() =>
+    b.define(howBouncy, 'How bouncy is what I hit: a barrier, a tire stack soaks it up, a bumper kicks me back, a tree or a stand', [
+      b.set('bounce_now', v('bounce')),
+      b.set('keep_now', v('side_keep')),
+      b.set('kick_now', 0),
+      b.when(b.eq(whatIHit(), b.text('Tire stack')), [b.set('bounce_now', v('tires_bounce')), b.set('keep_now', v('tires_keep'))]),
+      b.when(b.eq(whatIHit(), b.text('Bumper')), [b.set('bounce_now', 1), b.set('keep_now', 1), b.set('kick_now', v('bumper_push'))]),
+      b.when(b.or(b.eq(whatIHit(), b.text('Tree')), b.eq(whatIHit(), b.text('Grandstand'))), [b.set('bounce_now', v('scenery_bounce'))]),
+    ]),
+  )
 
   b.script('When I finish my last lap: stop, and put my name on the results', b.blk('race_whenlap'), [
     b.when(b.eq({ block: b.blk('race_lapsdone') }, v(RACE_GLOBALS.lapsToWin)), [

@@ -530,6 +530,14 @@ export const selfMovePrimitives: PrimitiveTable = {
   },
   platformer_moveuntilhit: moveSelf,
   platformer_hitsomething: (ctx) => !!ctx.target.lastHit,
+  // Parity bucket B: what the last "move until I hit something" stopped at: a brick's name, "edge" for a level wall
+  // or the floor, or nothing. A brick deleted since still gives its name.
+  platformer_whathit(ctx) {
+    const hit = ctx.target.lastHit
+    if (!hit) return ''
+    if (hit.otherId === null) return 'edge'
+    return (hit.otherBrickId !== undefined && nameOfBrick(ctx.runtime, hit.otherBrickId)) || ''
+  },
   platformer_tellhit: tellHit,
   platformer_slipcorner: slipCorner,
   platformer_movecarry: moveCarrying,

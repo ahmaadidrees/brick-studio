@@ -76,8 +76,8 @@ describe('the palette by kit (docs/qa/hackable-modes/R1-SCREENS.md, lane 3)', ()
   it('keeps the Platformer palette byte for byte as it was before kits (a202bb8)', () => {
     // Pinned from createContinuousToolbox() at a202bb8 (its JSON length and FNV-1a). A change here changes every Platformer kid's palette.
     // Parity bucket B (2026-11-04) added blocks on purpose: "slip past a corner up to (4) steps" (was 12927:ba548a4f),
-    // then "move [x] by (2) and carry what stands on me" (was 13047:aadbcce3).
-    const PLATFORMER = '13169:4f5ca372'
+    // then "move [x] by (2) and carry what stands on me" (was 13047:aadbcce3), then "what I hit" (was 13169:4f5ca372).
+    const PLATFORMER = '13214:d96db26f'
     const PLATFORMER_STAGE = '9852:fe914df6'
     expect(sha(createContinuousToolbox())).toBe(PLATFORMER)
     expect(sha(CONTINUOUS_TOOLBOX)).toBe(PLATFORMER)
@@ -115,7 +115,7 @@ describe('the palette by kit (docs/qa/hackable-modes/R1-SCREENS.md, lane 3)', ()
       'label:Platformer blocks', 'platformer_everytick', 'platformer_whenbump',
       'sep', 'platformer_setsolid',
       'sep', 'platformer_setspeed', 'platformer_changespeed', 'platformer_speed',
-      'label:Bricks that move themselves', 'platformer_setmover', 'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_slipcorner', 'platformer_movecarry', 'platformer_tellhit',
+      'label:Bricks that move themselves', 'platformer_setmover', 'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_whathit', 'platformer_slipcorner', 'platformer_movecarry', 'platformer_tellhit',
     ])
     // Every other category is the Platformer's own, untouched.
     const others = (t: { contents: ToolboxCategory[] }) => t.contents.filter((c) => c.name !== 'Racing' && c.name !== 'Platformer')

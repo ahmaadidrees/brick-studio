@@ -1657,6 +1657,14 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       tooltip: 'Yes when the last "move until I hit something" stopped before it went the whole way.',
     },
     {
+      type: 'platformer_whathit',
+      message0: 'what I hit',
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      output: 'String',
+      tooltip: 'The name of the brick the last "move until I hit something" stopped at, "edge" for a level wall or the floor, or nothing when it went the whole way.',
+    },
+    {
       type: 'platformer_tellhit',
       message0: 'tell what I hit',
       category: 'platformer',

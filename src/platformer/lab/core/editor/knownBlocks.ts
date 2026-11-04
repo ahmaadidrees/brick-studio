@@ -36,7 +36,7 @@ export const KNOWN_BLOCK_TYPES: readonly string[] = [
   'platformer_changespeed', 'platformer_everytick', 'platformer_hitsomething', 'platformer_movecarry', 'platformer_moveuntilhit',
   'platformer_onground', 'platformer_setgravity', 'platformer_setmover', 'platformer_setonground',
   'platformer_setsolid', 'platformer_setspeed', 'platformer_slipcorner', 'platformer_speed', 'platformer_tellhit', 'platformer_whenbump',
-  'platformer_whenland', 'platformer_whenleaveground',
+  'platformer_whathit', 'platformer_whenland', 'platformer_whenleaveground',
   'procedures_call', 'procedures_callnoreturn', 'procedures_callreturn', 'procedures_definition',
   'procedures_defnoreturn', 'procedures_defreturn', 'procedures_prototype',
   'race_groundunder', 'race_lapsdone', 'race_myplace', 'race_trackdirection', 'race_whenlap',

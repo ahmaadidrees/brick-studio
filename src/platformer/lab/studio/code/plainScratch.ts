@@ -343,6 +343,15 @@ function selfMoveCards(): PlainScratchCard[] {
       extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
     },
     {
+      opcode: 'platformer_whathit',
+      name: 'what I hit',
+      explanation:
+        '"what I hit" says which brick the last move stopped at, so a car can bounce harder off a bumper than off a tire stack. ' +
+        'In plain Scratch you ask each kind in turn: touching Wall? touching Bumper? and remember the first that says yes.',
+      workspace: workspace([place(moveLoop, 20, 20)], vars),
+      extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
+    },
+    {
       opcode: 'platformer_tellhit',
       name: 'tell what I hit',
       explanation:
