@@ -254,7 +254,7 @@ describe('student', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/live/worldavatreehouse?invited=1'))
   })
 
-  it('shares a Hackable Platformer to look at only, and stays on the page', async () => {
+  it('invites classmates to play a Hackable project, then takes the owner into its room', async () => {
     const hackable = fixtureWorld({ id: 'world-ava-hack', title: 'Coin Cave', format: 'hackable' })
     const client = createFakeWorldsClient({ worlds: [hackable] })
     const setWorldSharing = vi.spyOn(client, 'setWorldSharing').mockImplementation(async (_id, sharing) => {
@@ -266,26 +266,28 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('article', { name: 'Coin Cave' })).getByRole('button', { name: 'Invite classmates' }))
+    // (The sheet is a stand-in here; InviteSheet.test covers its Hackable words.) Even a "build" answer shares it to play:
+    // classmates play, only the owner changes the project.
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Invite Ben K. and build' }))
 
     await waitFor(() => expect(setWorldSharing).toHaveBeenCalledWith('world-ava-hack', { visibility: 'members', canEdit: false, members: ['student-ben'] }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(assign).not.toHaveBeenCalled()
-    // No live room to build together in: the owner's card opens their own project.
-    expect(within(screen.getByRole('article', { name: 'Coin Cave' })).getByRole('link', { name: /Open/ })).toHaveAttribute('href', '/2d/hackable?world=world-ava-hack')
+    // The owner lands in the studio with the room open, the room the invite opens for the friend.
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/2d/hackable?world=world-ava-hack&together=1'))
   })
 
-  it('a Hackable Platformer shared for building before this change still opens as the owner’s own project', async () => {
+  it('a shared Hackable project’s card plays it together, and still opens alone', async () => {
     draw(createFakeWorldsClient({ worlds: [fixtureWorld({ id: 'world-ava-hack', title: 'Coin Cave', format: 'hackable', visibility: 'class', classCanEdit: true, sharedAt: '2026-10-20T10:00:00.000Z' })] }))
     await settled()
     const card = screen.getByRole('article', { name: 'Coin Cave' })
     expect(within(card).queryByRole('link', { name: /Build together/ })).not.toBeInTheDocument()
-    expect(within(card).getByRole('link', { name: /Open/ })).toHaveAttribute('href', '/2d/hackable?world=world-ava-hack')
+    expect(within(card).getByRole('link', { name: /Play together/ })).toHaveAttribute('href', '/2d/hackable?world=world-ava-hack&together=1')
+    fireEvent.click(within(card).getByRole('button', { name: /More for Coin Cave/ }))
+    expect(screen.getByRole('menuitem', { name: 'Open alone' })).toBeInTheDocument()
   })
 
   it('joins ?invited=1 to an address that already has a query', () => {
     expect(invitedHref({ id: 'w-1', format: 'brick' })).toBe('/live/w1?invited=1')
-    expect(invitedHref({ id: 'w-1', format: 'hackable' })).toBe('/2d/hackable?world=w-1&invited=1')
+    expect(invitedHref({ id: 'w-1', format: '2d' })).toBe('/2d/w/w1?invited=1')
   })
 
   it('loads the classmate roster once, in the background, for the sheet', async () => {

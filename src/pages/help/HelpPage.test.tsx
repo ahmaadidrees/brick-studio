@@ -16,6 +16,12 @@ describe('/help', () => {
     expect(screen.getByText(/a teacher can pause building together at any time; the work is kept/i)).toBeInTheDocument()
   })
 
+  it('explains both Hackable games and playing one together', () => {
+    render(<HelpPage />)
+    for (const term of ['Hackable Platformer', 'Hackable Racing', 'Playing a Hackable game together']) expect(screen.getByText(term, { selector: 'dt' })).toBeInTheDocument()
+    expect(screen.queryByText(/can't be played together/i)).not.toBeInTheDocument()
+  })
+
   it('has how-to, teacher and privacy sections at their anchors, with no domain text and no fake claims', () => {
     const { container } = render(<HelpPage />)
     expect(screen.getByRole('heading', { level: 1, name: 'Help' })).toBeInTheDocument()

@@ -20,8 +20,6 @@ import { decodeShareCode } from './ui/shareCode'
 import { downloadUnreadable, unreadableDraftFile, unreadableLevelFile, type UnreadableFile } from './ui/unreadableFile'
 import './ui/platformer.css'
 
-/** The code lab (/2d/lab) is its own chunk: Blockly loads only there. */
-const LabApp = lazy(() => import('./lab/LabApp'))
 const StudioApp = lazy(() => import('./lab/studio/StudioApp'))
 /** Playing a Hackable project together (docs/qa/hackable-rooms M1). */
 const HackableRoomPage = lazy(() => import('./lab/rooms/RoomPage'))
@@ -44,12 +42,6 @@ export default function PlatformerApp() {
       return <GuestRoomPage roomId={route.roomId} />
     case 'classroom':
       return <ClassRoomPage worldId={route.worldId} />
-    case 'lab':
-      return (
-        <Suspense fallback={<Notice title="Opening the code lab…" busy />}>
-          <LabApp />
-        </Suspense>
-      )
     case 'studio-moved':
       window.location.replace(`/2d/hackable${window.location.search}`)
       return <Notice title="Opening the Hackable Platformer…" busy />

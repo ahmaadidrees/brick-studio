@@ -1,4 +1,4 @@
-import { hackableHref } from '../platformer/lab/studio/persist/hackableProjects'
+import { roomHref } from '../platformer/lab/rooms/hrefs'
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
 import { Button, Sheet } from '../ui'
@@ -8,7 +8,7 @@ import { useClassroomSession, type ClassroomSessionState } from '../shell/useCla
 import './student-invites.css'
 
 export const inviteWorldHref = (invite: Pick<ClassroomInvite, 'worldId' | 'format'>) =>
-  invite.format === 'hackable' ? hackableHref.world(invite.worldId) : `${invite.format === '2d' ? '/2d/w' : '/live'}/${invite.worldId.replaceAll('-', '')}`
+  invite.format === 'hackable' ? roomHref.classroom(invite.worldId) : `${invite.format === '2d' ? '/2d/w' : '/live'}/${invite.worldId.replaceAll('-', '')}`
 export function inviteActionLabel(invite: Pick<ClassroomInvite, 'ownerName'>) {
   const firstName = invite.ownerName?.trim().split(/\s+/)[0]
   return firstName ? `Go to ${firstName}’s world` : 'Go to world'

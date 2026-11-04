@@ -5,6 +5,9 @@
 .hk-room-names { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .hk-room-name { padding: 1px 8px; border-radius: 999px; background: #fff; }
 .hk-room-me { font-weight: 700; }
+.hk-room-away { opacity: 0.6; font-style: italic; }
+.hk-room-closed { padding: 1px 8px; border-radius: 999px; background: #0b3558; color: #fff; font-size: 13px; }
+.hk-room-menu-head { display: block; padding: 4px 4px 2px; font-size: 13px; color: var(--text-muted); }
 .hk-room-hint, .hk-room-notice { color: #2c4a66; }
 .hk-room-notice { font-weight: 600; }
 .hk-room-invite { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-width: 0; }

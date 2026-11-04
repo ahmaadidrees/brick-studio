@@ -1150,7 +1150,7 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
-  // Hackable projects have no live rooms yet: never hand one to a 3D room.
+  // Hackable projects have their own rooms (HackableRoom, loadClassroomHackable): never hand one to a 3D room.
   if (worldFormat(row) === 'hackable') fail(409, 'wrong_world_kind', notHackableHere(hackableKit(row)));
   return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }

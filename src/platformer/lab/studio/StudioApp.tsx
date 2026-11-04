@@ -44,6 +44,8 @@ export interface StudioRoute {
   fresh: boolean
   /** The address's game (/2d/hackable-race): what a new project is, and which newest one opens. Absent: the Platformer. */
   kit?: 'race'
+  /** Open the project's room at once (the owner, after inviting classmates to play). */
+  together?: boolean
 }
 
 const routeKit = (route: Pick<StudioRoute, 'kit'>): ScreensKit => route.kit ?? 'platformer'
@@ -126,8 +128,9 @@ async function openWhere(route: StudioRoute): Promise<Opening> {
   if (route.world) {
     try {
       const { world, project } = await loadHackableWorld(route.world)
-      // Only the owner saves into it. There are no live rooms for Hackable projects, so a classmate (or a teacher)
-      // who may build in it would save over the owner's project; they look, and make their own copy to keep changes.
+      // Only the owner saves into it. A Hackable project's room is for playing (docs/qa/hackable-rooms), not building
+      // together, so a classmate (or a teacher) who may build in it would save over the owner's project; they look,
+      // play in the room, and make their own copy to keep changes.
       const mine = world.canEdit && !!session && world.ownerId === session.user.id
       return mine ? { kind: 'account', world, project } : { kind: 'viewer', world, project }
     } catch (error) {
@@ -295,10 +298,10 @@ export default function StudioApp({ route }: { route: StudioRoute }) {
       </div>
     )
   }
-  return <OpenProject opened={opening} />
+  return <OpenProject opened={opening} together={!!route.together} />
 }
 
-function OpenProject({ opened }: { opened: Opened }) {
+function OpenProject({ opened, together }: { opened: Opened; together: boolean }) {
   const store = useMemo(() => new StudioStore(opened.project), [opened])
   // Dev only: the console can reach the store (window.__studio) to check state while testing.
   if (import.meta.env.DEV) (window as unknown as { __studio?: StudioStore }).__studio = store
@@ -596,8 +599,17 @@ function OpenProject({ opened }: { opened: Opened }) {
       setStorageNotice({ id: 'room', type: 'error', message: error instanceof Error ? error.message : 'The room could not be opened. Try again.' })
     }
   }
+  // Invited classmates to play (My projects): the owner arrives with the room already open. Only the owner's account
+  // project has a room to open here; anyone else's address goes to the room's own page.
+  const openTogether = useRef(together)
+  useEffect(() => {
+    if (!openTogether.current || home.kind === 'new') return
+    openTogether.current = false
+    if (home.kind === 'account') settle(hackableHref.world(home.world.id, kitIn(store.getState().project)))
+    if (home.kind === 'account' || home.kind === 'viewer') void startRoom()
+  })
   const viewerBanner = home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined
-  const roomBanner = room ? <RoomBar session={room.session} invite={room.invite} onLeave={leaveRoom} leaveLabel="Stop playing together" /> : undefined
+  const roomBanner = room ? <RoomBar session={room.session} invite={room.invite} onLeave={leaveRoom} leaveLabel="Stop playing together" editing /> : undefined
 
   return (
     <div className="studio-screen">

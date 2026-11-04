@@ -1,4 +1,5 @@
 import { hackableHref } from '../../platformer/lab/studio/persist/hackableProjects'
+import { roomHref } from '../../platformer/lab/rooms/hrefs'
 import { BUILD_PLATE_SIZES, DEFAULT_BUILD_PLATE_SIZE, createBrickStudioDocument, type BuildPlateSize } from '@brick-studio/core'
 import { createPlatformerDocument } from '@brick-studio/platformer-core/document'
 import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
@@ -129,24 +130,33 @@ export function readLocalDraft(storage: Pick<Storage, 'getItem'> = globalThis.lo
 
 /** A 2D level (the `/2d` builder and rooms) rather than a 3D brick build. */
 export const isLevel2d = (world: Pick<WorldsWorld, 'format'>) => world.format === '2d'
-/** Opening one of your own worlds hands it to its editor: the 3D studio (`/build?world=`) or the 2D builder. */
+/**
+ * Opening one of your own worlds hands it to its editor: the 3D studio (`/build?world=`) or the 2D builder. For a
+ * classmate's Hackable project it is the way to look inside (the studio, where they can make their own copy).
+ */
 export const buildHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
   world.format === 'hackable' ? hackableHref.world(world.id, world.kit) : isLevel2d(world) ? `/2d/build?world=${encodeURIComponent(world.id)}` : `/build?world=${encodeURIComponent(world.id)}`
 /**
  * Joining or visiting someone else's world goes through the live room, the way
  * shared worlds are joined today: the room id is the world id without dashes
  * (`LiveWorldPage`, or `/2d/w/` for a 2D level), and the Worker's `canEdit` decides viewer or editor there.
+ * A Hackable project's room is played in, not built in (docs/qa/hackable-rooms): `/2d/hackable/w/<id>`.
  */
 export const liveHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
-  // Hackable projects have no live rooms yet: a classmate's opens (at its game's address) to look at and copy.
-  world.format === 'hackable' ? hackableHref.world(world.id, world.kit) : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+  world.format === 'hackable' ? roomHref.classroom(world.id) : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+/** The owner's way into their own shared world's room: a Hackable project opens in the studio with its room open. */
+export const ownRoomHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
+  world.format === 'hackable' ? hackableHref.together(world.id, world.kit) : liveHref(world)
 /** The owner's way into the room right after inviting (`?invited=1` joined to any query the address already has). */
-export const invitedHref = (world: Pick<WorldsWorld, 'id' | 'format'>) => {
+export const invitedHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) => {
+  if (world.format === 'hackable') return ownRoomHref(world)
   const href = liveHref(world)
   return `${href}${href.includes('?') ? '&' : '?'}invited=1`
 }
-/** Kinds with a live room to build in together. A Hackable Platformer has none: classmates look and make a copy. */
+/** Kinds with a live room to build in together. A Hackable project's room is played in: only its owner changes it. */
 export const canBuildTogether = (world: Pick<WorldsWorld, 'format'>) => world.format !== 'hackable'
+/** Kinds whose room is for playing together: a Hackable project (every player gets a Hero; the owner hosts). */
+export const canPlayTogether = (world: Pick<WorldsWorld, 'format'>) => world.format === 'hackable'
 /** A new 2D level, next to "New build". */
 export const NEW_LEVEL_2D_HREF = '/2d/build?new=1'
 export const SAVE_DRAFT_HREF = '/build?classroom=save'

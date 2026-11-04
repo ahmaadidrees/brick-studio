@@ -12,9 +12,12 @@ import './invite-sheet.css'
  * Classmate tiles come first; "Everyone in class" is a chip; "Just let them look" is a switch that is OFF by
  * default (building is the default). The primary button reads back the choice: "Invite Jayden and Maya and build",
  * "Invite the class to look", "Pick someone first" (disabled) …
+ *
+ * A Hackable project (docs/qa/hackable-rooms) is played together instead: "Who do you want to play with?", no switch.
+ * Classmates each get a Hero in its room; only the owner changes the project.
  */
 export type InviteSheetProps = {
-  /** A Hackable Platformer (`format: 'hackable'`) has no live room: it can only be shared to look at and copy. */
+  /** A Hackable project (`format: 'hackable'`) is shared to play together: classmates play, only the owner edits. */
   world: Pick<ClassroomWorld, 'id' | 'title' | 'visibility' | 'classCanEdit' | 'members'> & Partial<Pick<ClassroomWorld, 'format'>>
   /** The owner's class name ("Period 3"). */
   className: string
@@ -24,7 +27,8 @@ export type InviteSheetProps = {
   busy: boolean
   /**
    * Fired with the resulting sharing. The CALLER decides what happens next: /worlds and the editor navigate the
-   * owner into the live room when `canEdit` is true; the live room just refreshes its roster.
+   * owner into the live room when `canEdit` is true (or into a Hackable project's room to play); the live room just
+   * refreshes its roster.
    */
   onInvite: (sharing: ClassroomWorldSharing) => void
   /** Explicit resend does not rewrite the sharing audience. */
@@ -54,12 +58,12 @@ const classmatesCount = (count: number) => `${count} ${count === 1 ? 'classmate'
  */
 export function InviteSheet({ world, className, classmates, classmatesError, busy: externalBusy, onInvite, onInviteAgain, onStopSharing, onClose }: InviteSheetProps) {
   const shared = world.visibility !== 'private'
-  // No live room to build in together: classmates look, and make their own copy to change it.
-  const onlyLook = world.format === 'hackable'
+  // A room to play in together: classmates play (each with a Hero) and make their own copy to change it.
+  const play = world.format === 'hackable'
   const [everyone, setEveryone] = useState(world.visibility === 'class')
   const [picked, setPicked] = useState<string[]>(() => initialPicks(world))
   const [lookOnlyChoice, setLookOnly] = useState(shared && !world.classCanEdit)
-  const lookOnly = onlyLook || lookOnlyChoice
+  const lookOnly = play || lookOnlyChoice
   const [resending, setResending] = useState(false)
   const [resendNotice, setResendNotice] = useState('')
   const busy = externalBusy || resending
@@ -80,7 +84,7 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
   }
   const sharing: ClassroomWorldSharing = everyone ? { visibility: 'class', canEdit: !lookOnly } : { visibility: 'members', canEdit: !lookOnly, members: picked }
   const nobody = !everyone && picked.length === 0
-  const label = nobody ? 'Pick someone first' : shared ? 'Save who can join' : `Invite ${inviteAudienceLabel(sharing, classmates ?? [])} ${lookOnly ? 'to look' : 'and build'}`
+  const label = nobody ? 'Pick someone first' : shared ? 'Save who can join' : `Invite ${inviteAudienceLabel(sharing, classmates ?? [])} ${play ? 'and play' : lookOnly ? 'to look' : 'and build'}`
   const classLabel = classmates ? `${className} · ${classmatesCount(classmates.length)}` : className
   // Whole-class access is already granted to the active roster. A selected reinvite does not narrow that audience.
   const existingIds = new Set(world.visibility === 'class' ? classmates?.map(member => member.id) ?? [] : world.members?.map(member => member.id) ?? [])
@@ -101,8 +105,8 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
     closeLabel="Cancel"
     onClose={onClose}
     className="invite-sheet"
-    title={onlyLook ? 'Who do you want to show it to?' : 'Who do you want to build with?'}
-    description={onlyLook ? `They get an invite to look at “${world.title}” and play it. To change it, they make their own copy.` : `They get an invite and can jump into “${world.title}” with you.`}
+    title={play ? 'Who do you want to play with?' : 'Who do you want to build with?'}
+    description={play ? `They get an invite and can jump into “${world.title}” with you, each with their own Hero.` : `They get an invite and can jump into “${world.title}” with you.`}
     footer={<>
       <p className="invite-sheet-teacher">Your teacher can see it too.</p>
       <div className="invite-sheet-actions">
@@ -136,7 +140,7 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
             })}
           </div>}
 
-    {onlyLook ? <p className="invite-sheet-note">Only you change this project. Classmates can look, play and make their own copy.</p> : <div className="invite-sheet-look">
+    {play ? <p className="invite-sheet-note">You play together in the same room. Only you change the project: your changes reach everyone as you make them. Classmates can also look inside and make their own copy.</p> : <div className="invite-sheet-look">
       <div className="invite-sheet-look-text">
         <strong id="invite-sheet-look-label">Just let them look</strong>
         <small>{lookOnly ? 'They can visit and walk around. Only you change the bricks.' : 'Off: they build with you, live, in the same room.'}</small>

@@ -335,7 +335,7 @@ describe('the roster while students are joining', () => {
   })
 })
 
-it('opens each kind of world where it lives: a 3D room, a 2D room, or a Hackable Platformer page', async () => {
+it('opens each kind of world where it lives: a 3D room, a 2D room, or a Hackable project’s room (or a look inside)', async () => {
   const worlds = [
     ...WORLDS,
     { id: 'w-4', title: 'Lava Run', ownerId: 's1', classId: null, kind: 'personal' as const, format: 'hackable', revision: 2, updatedAt: '2026-09-18T10:00:00.000Z', ownerName: 'Aiden K.', visibility: 'class' as const, canEdit: false, sharedAt: '2026-09-18T10:01:00.000Z', hiddenByTeacher: false },
@@ -344,7 +344,8 @@ it('opens each kind of world where it lives: a 3D room, a 2D room, or a Hackable
   ]
   render(<ClassPage client={testClient({ worlds }).client} navigate={vi.fn()} />)
   const shared = await screen.findByRole('list', { name: 'Worlds students shared with this class' })
-  expect(within(shared).getByRole('link', { name: 'Open Lava Run' })).toHaveAttribute('href', '/2d/hackable?world=w-4')
+  expect(within(shared).getByRole('link', { name: 'Play Lava Run together' })).toHaveAttribute('href', '/2d/hackable/w/w-4')
+  expect(within(shared).getByRole('link', { name: 'Look inside Lava Run' })).toHaveAttribute('href', '/2d/hackable?world=w-4')
   expect(within(shared).getByRole('link', { name: 'Open Cave Level' })).toHaveAttribute('href', '/2d/w/w5')
   expect(within(shared).getByRole('link', { name: 'Open Rocket Base' })).toHaveAttribute('href', '/live/w1')
   fireEvent.click(screen.getByRole('radio', { name: 'Worlds' }))

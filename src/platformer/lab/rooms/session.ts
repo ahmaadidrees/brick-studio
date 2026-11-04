@@ -32,6 +32,8 @@ export interface RoomView {
   host: boolean
   players: PlayerInfo[]
   settings: RoomSettings
+  /** How many players the host removed (they can't come back until the host lets them). */
+  banned: number
   classroom: boolean
   /** Something to tell everyone (the room's notices, a refused edit). */
   notice: string | null
@@ -59,7 +61,7 @@ export class RoomSession {
   private readonly heldKeys = new Set<string>()
 
   constructor(opts: RoomSessionOptions) {
-    this.view = { status: 'connecting', title: '', me: 0, host: false, players: [], settings: { closed: false }, classroom: false, notice: null, generation: 0 }
+    this.view = { status: 'connecting', title: '', me: 0, host: false, players: [], settings: { closed: false }, banned: 0, classroom: false, notice: null, generation: 0 }
     this.link = new HackableRoomLink(opts.name, {
       welcome: (w) => {
         // The room let go of our keys when we dropped; the next press goes out again.
@@ -78,7 +80,7 @@ export class RoomSession {
         else if (reason === 'busy') this.set({ notice: 'Changes are going out a little slower. The newest one will follow.' })
       },
       players: (players) => this.set({ players, host: players.find((p) => p.num === this.view.me)?.host ?? this.view.host }),
-      settings: (settings) => this.set({ settings }),
+      settings: (settings, banned) => this.set({ settings, banned }),
       notice: (message) => this.set({ notice: message }),
       status: (status, detail) => this.set({ status, detail }),
     }, opts)
@@ -260,6 +262,23 @@ export class RoomSession {
   /** The host's Play again with the project as it is. */
   restart(): boolean {
     return this.view.host && this.send({ t: 'restart' })
+  }
+
+  // Host controls: the room ignores them from anyone else.
+
+  /** Take a player out of the room: their Hero goes, and they can't come back until the host lets them. */
+  removePlayer(num: number) {
+    if (this.view.host && num !== this.view.me) this.link.kick(num)
+  }
+
+  /** Let new players join, or not (people already admitted can always come back). */
+  setClosed(closed: boolean) {
+    if (this.view.host) this.link.setClosed(closed)
+  }
+
+  /** Everyone the host removed may come back. */
+  letRemovedBack() {
+    if (this.view.host) this.link.unban()
   }
 }
 

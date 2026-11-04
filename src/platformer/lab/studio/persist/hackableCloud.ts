@@ -8,7 +8,8 @@ import { checkedHackableDocument, projectFromDocument, type CheckedDocument } fr
 
 /*
  * Hackable projects (Platformer and Racing) in an account: ordinary classroom worlds whose document wraps the project's save, so
- * My projects, copies, checkpoints and sharing with the class work as they do for the other kinds. No live rooms yet.
+ * My projects, copies, checkpoints and sharing with the class work as they do for the other kinds. Playing together is a
+ * Hackable room (lab/rooms), which never saves here: the owner's studio does.
  */
 
 const SAVE_DELAY_MS = 1200

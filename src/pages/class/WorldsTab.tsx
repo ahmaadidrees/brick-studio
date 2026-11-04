@@ -5,7 +5,8 @@ import type { ClassroomCheckpoint, ClassroomStudent, ClassroomWorldMember } from
 import { TextInput } from '../../classroom/fields'
 import { readForm } from '../../classroom/panelShared'
 import { WorldControls } from '../../classroom/GroupControls'
-import { worldRoomHref, type ClassPageClass, type ClassPageWorld } from './classPageData'
+import { type ClassPageClass, type ClassPageWorld } from './classPageData'
+import { WorldOpenButtons } from './WorldOpenButtons'
 
 type Props = {
   currentClass: ClassPageClass
@@ -58,7 +59,7 @@ export function WorldsTab({ currentClass, worlds, students, busy, selected, memb
             </div>
             <p className="class-card-owner">Saved {new Date(world.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · revision {world.revision}</p>
             <div className="class-card-actions">
-              <Button variant="secondary" size="sm" href={worldRoomHref(world)} aria-label={`Open ${world.title}`}>Open</Button>
+              <WorldOpenButtons world={world} />
               <Button variant="quiet" size="sm" icon={<Settings2 size={16} />} disabled={busy} aria-label={`World controls for ${world.title}`} onClick={() => onSelect(world)}>World controls</Button>
             </div>
           </li>)}

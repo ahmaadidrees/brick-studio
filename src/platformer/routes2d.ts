@@ -9,11 +9,11 @@
  *   /2d/w/<world>          a class level's live room (its world id, with or without dashes)
  *   /2d/hackable           the Hackable Platformer (Code Lab, src/platformer/lab/studio): your newest one in this browser
  *   /2d/hackable?new=1     a new one (in the account when signed in)   ?world=<id> an account one   ?draft=<id> one in this browser
+ *                          ?world=<id>&together=1 the owner's account project with its room open (after inviting)
  *   /2d/hackable-race      Hackable Racing, the same studio and the same ?new=1, ?world=, ?draft= (your newest race track)
  *   /2d/hackable/r/<room>  a Hackable guest room (32 hex digits), joined by link (docs/qa/hackable-rooms)
  *   /2d/hackable/w/<world> an account Hackable project's room, for classmates it is shared with
- *   /2d/lab/next           the Hackable Platformer's old address: goes to /2d/hackable
- *   /2d/lab                the code lab: every brick (and you) is a block program (single player, this browser only)
+ *   /2d/lab, /2d/lab/next  old addresses (the first Code Lab, then the Hackable Platformer's): go to /2d/hackable
  */
 
 /** What a new world starts from (the kit picker): absent is a platformer. */
@@ -26,9 +26,8 @@ export type Route2D =
   | { kind: 'shared'; code: string | null }
   | { kind: 'guest'; roomId: string }
   | { kind: 'classroom'; worldId: string }
-  | { kind: 'lab' }
   /** `kit` 'race' at /2d/hackable-race (a new project's game, and which newest one opens); absent is the Platformer. */
-  | { kind: 'studio'; world?: string; draft?: string; fresh: boolean; kit?: 'race' }
+  | { kind: 'studio'; world?: string; draft?: string; fresh: boolean; kit?: 'race'; together?: boolean }
   | { kind: 'studio-moved' }
   | { kind: 'hackable-room'; roomId: string }
   | { kind: 'hackable-class'; worldId: string }
@@ -45,8 +44,7 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
   const path = pathname.replace(/\/+$/, '') || '/'
   const query = new URLSearchParams(search)
   if (path === '/2d') return { kind: 'home' }
-  if (path === '/2d/lab') return { kind: 'lab' }
-  if (path === '/2d/lab/next') return { kind: 'studio-moved' }
+  if (path === '/2d/lab' || path === '/2d/lab/next') return { kind: 'studio-moved' }
   if (path === '/2d/hackable' || path === '/2d/hackable-race') {
     const world = query.get('world')?.trim() || ''
     const draft = /^[a-z0-9]{1,64}$/i.exec(query.get('draft')?.trim() ?? '')?.[0]
@@ -56,6 +54,7 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
       ...(draft ? { draft } : {}),
       fresh: query.get('new') === '1',
       ...(path === '/2d/hackable-race' ? { kit: 'race' as const } : {}),
+      ...(query.get('together') === '1' ? { together: true } : {}),
     }
   }
   const hackableRoom = /^\/2d\/hackable\/r\/([a-f0-9]{32})$/.exec(path)

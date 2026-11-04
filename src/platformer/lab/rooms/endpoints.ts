@@ -7,6 +7,8 @@ import { resolveLiveServerBaseUrl } from '../../../brick/live/liveWorldGateway'
 import { browserClassroomClient } from '../../../classroom/client'
 import type { CreateRoomResponse, RoomInfo } from './protocol'
 
+export { roomHref } from './hrefs'
+
 const httpBase = () => resolveLiveServerBaseUrl()
 const socketBase = () => httpBase().replace(/^http/, 'ws')
 
@@ -14,12 +16,6 @@ export class RoomServiceError extends Error {
   constructor(message: string, readonly status = 0, readonly code = '') {
     super(message)
   }
-}
-
-/** The pages people join from. */
-export const roomHref = {
-  guest: (roomId: string) => `/2d/hackable/r/${roomId}`,
-  classroom: (worldId: string) => `/2d/hackable/w/${worldId}`,
 }
 
 /** Opens a guest room for a project (designText). This browser keeps the owner token and hosts the room. */

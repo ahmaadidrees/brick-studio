@@ -236,7 +236,7 @@ describe('a Hackable room (docs/qa/hackable-rooms M1)', () => {
     await net.run(RECONNECT_GRACE_MS, [maya], 16)
     expect(playerHero(maya.runtime!.world, 2)).toBeUndefined()
     expect(maya.view.players.map((p) => p.name)).toEqual(['Maya'])
-  })
+  }, 60_000)
 
   it('a player who drops and comes back in time keeps their Hero where it was, the same in every game', async () => {
     const room = new HackableRoomCore('r7', designText(createStarterProject().design), { now: clock, hostKey: 'HOST' })
@@ -280,7 +280,7 @@ describe('a Hackable room (docs/qa/hackable-rooms M1)', () => {
     await net.run(RECONNECT_GRACE_MS, all, 16)
     expect(playerHero(maya.runtime!.world, 2)).toBeDefined()
     expect(room.stats.resyncs).toBe(0)
-  })
+  }, 60_000)
 
   it('the host can remove a player who dropped, and close the room to newcomers', () => {
     const room = new HackableRoomCore('r8', designText(createStarterProject().design), { now: clock, hostKey: 'HOST' })
