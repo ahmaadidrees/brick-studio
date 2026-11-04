@@ -4,17 +4,56 @@
  *
  * Each player gets a Hero: a painted copy of the kit's player brick (the Hero, the Car), tagged with their number. The
  * first player to join takes the Hero painted in the level; later players get new copies at the same spot, a little to
- * the side. A Hero's "key pressed?" and "when key pressed" hear only its player's keys (runtime.pressKey with a
+ * the side (in Racing, on a starting grid behind the painted Car). A Hero's "key pressed?" and "when key pressed" hear only its player's keys (runtime.pressKey with a
  * player); bricks that are no one's hear every player's.
  *
  * Outside a room nothing here runs and `world.players` stays missing, so a single game is exactly as before.
  */
-import type { CopyPlacement, PlayerSlot, Target } from './contracts'
+import { TILE_SIZE, parseGridCopyId, type CopyPlacement, type KitId, type PlayerSlot, type Target, type World } from './contracts'
+import { sinCosDeg } from './detmath'
 import { targetForCopy } from './project'
+import { racerRadius } from './race'
 import type { Runtime } from './runtime'
 
 /** Steps between one player's Hero and the next one's, so they don't start inside each other. */
 export const PLAYER_SPACING = 20
+
+/**
+ * Racing's starting grid, as classic Racing lines cars up (packages/platformer-core engine/car.ts `gridSpots`): two by
+ * two behind the start, 1.6 bricks between rows, the second car of each row 1.4 bricks to the right and 0.6 back. The
+ * painted Car is slot 0. Slot `i` is that many steps from it, along the way the painted Car points.
+ */
+export function gridSlot(spawn: Pick<CopyPlacement, 'x' | 'y' | 'direction'>, i: number): { x: number; y: number } {
+  const [sin, cos] = sinCosDeg(spawn.direction ?? 90)
+  // Scratch directions: 0 is up, 90 is right. Forward is (sin, cos); the car's right is (cos, -sin).
+  const back = (Math.floor(i / 2) * 1.6 + (i % 2) * 0.6) * TILE_SIZE
+  const side = (i % 2) * 1.4 * TILE_SIZE
+  return { x: spawn.x - sin * back + cos * side, y: spawn.y - cos * back - sin * side }
+}
+
+/** Grid slots a joining Car may try before it gives up on finding a clear one. */
+const GRID_SLOTS = 32
+
+/**
+ * The first grid slot where `car` touches nothing: no other player's Car, no Computer racer, no brick placed there
+ * (grid cells don't count, they are the track). Mid-race the front slots are usually free again. Everything it reads is
+ * the shared world, so every game of a room picks the same slot. With no clear slot, the next one in line.
+ */
+function clearGridSlot(world: World, car: Target, spawn: CopyPlacement, fallback: number): { x: number; y: number } {
+  const reach = racerRadius(world, car)
+  const others = world.targets.filter((t) => t.visible && !(t.copyId && parseGridCopyId(t.copyId) && !t.isClone))
+  for (let i = 0; i < GRID_SLOTS; i++) {
+    const at = gridSlot(spawn, i)
+    const clear = others.every((t) => {
+      const dx = t.x - at.x
+      const dy = t.y - at.y
+      const r = reach + racerRadius(world, t)
+      return dx * dx + dy * dy >= r * r
+    })
+    if (clear) return at
+  }
+  return gridSlot(spawn, fallback)
+}
 
 /** A player's Hero target id (later players; the first takes the painted Hero's own id). */
 export const playerTargetId = (num: number): string => `player:${num}`
@@ -26,7 +65,12 @@ export const playerHero = (world: Runtime['world'], num: number): Target | undef
  * A player joins. `spawn` is the painted Hero's placement in the project (where every player's Hero starts). Returns
  * their Hero, or undefined when the level has no player brick to copy. Joining twice changes nothing.
  */
-export function addPlayer(runtime: Runtime, player: { num: number; name: string }, spawn: CopyPlacement): Target | undefined {
+export function addPlayer(
+  runtime: Runtime,
+  player: { num: number; name: string },
+  spawn: CopyPlacement,
+  kit: KitId = 'platformer',
+): Target | undefined {
   const world = runtime.world
   const players = (world.players ??= [])
   if (players.some((p) => p.num === player.num)) return playerHero(world, player.num)
@@ -44,6 +88,12 @@ export function addPlayer(runtime: Runtime, player: { num: number; name: string 
   if (!brick) return undefined
   const index = players.length - 1
   const hero = targetForCopy({ ...spawn, id: playerTargetId(player.num), x: spawn.x + index * PLAYER_SPACING }, brick)
+  if (kit === 'race') {
+    // Cars bump, so they line up side by side instead of nose to tail on the race line.
+    const at = clearGridSlot(world, hero, spawn, index)
+    hero.x = at.x
+    hero.y = at.y
+  }
   hero.player = player.num
   world.targets.push(hero)
   // A game already running starts the new Hero the way the green flag started everyone's ("every tick" scripts pick

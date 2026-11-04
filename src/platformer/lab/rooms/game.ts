@@ -7,7 +7,7 @@
  * the right one.
  */
 import { createRuntime, type Runtime } from '../core'
-import type { CopyPlacement, LevelDesign } from '../core/contracts'
+import { designKit, type CopyPlacement, type LevelDesign } from '../core/contracts'
 import { addPlayer, removePlayer } from '../core/players'
 import { bricksOf } from '../core/project'
 import { parse } from '../core/save'
@@ -41,7 +41,7 @@ function join(runtime: Runtime, num: number, name: string): void {
   const design = runtime.world.design
   const spawn = design && spawnOf(design)
   if (spawn) {
-    addPlayer(runtime, { num, name }, spawn)
+    addPlayer(runtime, { num, name }, spawn, designKit(design))
     return
   }
   const players = (runtime.world.players ??= [])

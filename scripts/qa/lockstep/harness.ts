@@ -201,7 +201,7 @@ function spawnOf(design: LevelDesign, kit: Kit) {
 function playAgain(old: Runtime, design: LevelDesign, kit: Kit): Runtime {
   const runtime = createRuntime(design)
   const players = old.world.players ?? []
-  for (const p of players) addPlayer(runtime, p, spawnOf(design, kit))
+  for (const p of players) addPlayer(runtime, p, spawnOf(design, kit), kit)
   runtime.greenFlag()
   for (const p of players) for (const key of p.keys) runtime.pressKey(key, p.num)
   return runtime
@@ -226,7 +226,7 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
     for (const e of byTick.get(tick) ?? []) {
       if (e.kind === 'down') runtime.pressKey(e.key, e.player)
       else if (e.kind === 'up') runtime.releaseKey(e.key, e.player)
-      else if (e.kind === 'join') addPlayer(runtime, { num: e.player, name: e.name }, spawnOf(design, opts.kit))
+      else if (e.kind === 'join') addPlayer(runtime, { num: e.player, name: e.name }, spawnOf(design, opts.kit), opts.kit)
       else if (e.kind === 'leave') removePlayer(runtime, e.player)
       else if (e.kind === 'flag') runtime = playAgain(runtime, design, opts.kit)
       else if (e.kind === 'edit-program' || e.kind === 'edit-knob') {

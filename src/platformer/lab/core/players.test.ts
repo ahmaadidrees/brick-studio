@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { CopyPlacement, LevelDesign } from './contracts'
 import { createRuntime, type Runtime } from './index'
-import { addPlayer, playerHero, removePlayer } from './players'
+import { addPlayer, gridSlot, playerHero, removePlayer } from './players'
+import { TILE_SIZE } from './contracts'
+import { racerRadius } from './race'
 import { worldFingerprint, worldFromJson, worldToJson } from './snapshot'
 import { createStarterProject } from '../studio/starter'
 import { createRaceStarterProject } from '../studio/race/raceProject'
@@ -112,11 +114,11 @@ describe('players in a room (docs/qa/hackable-rooms M0)', () => {
     const rt = createRuntime(design)
     rt.greenFlag()
     const spawn = design.copies.find((c) => c.brickId === 'brick_car')!
-    const one = addPlayer(rt, { num: 1, name: 'Maya' }, spawn)!
-    const two = addPlayer(rt, { num: 2, name: 'Sam' }, spawn)!
+    const one = addPlayer(rt, { num: 1, name: 'Maya' }, spawn, 'race')!
+    const two = addPlayer(rt, { num: 2, name: 'Sam' }, spawn, 'race')!
     rt.pressKey('up arrow', 1)
-    // Sam pressed nothing: his Car never has the gas on. (Since cars bump each other, parity bucket A, Maya's Car,
-    // spawned behind his, can still shove it along, so where it ends up says nothing about his keys.)
+    // Sam pressed nothing: his Car never has the gas on. (Cars bump each other, parity bucket A, and the Computer
+    // racers can still shove his along, so where it ends up says nothing about his keys.)
     let samGas = 0
     for (let i = 0; i < 150; i++) {
       rt.step()
@@ -126,5 +128,98 @@ describe('players in a room (docs/qa/hackable-rooms M0)', () => {
     expect(moved(one)).toBeGreaterThan(40)
     expect(Number(one.variables.car_gas)).toBe(1)
     expect(samGas).toBe(0)
+  })
+
+  describe("Racing's starting grid (room Cars side by side, like classic Racing)", () => {
+    const raceStart = () => {
+      const design = createRaceStarterProject().design
+      const rt = createRuntime(design)
+      const spawn = design.copies.find((c) => c.brickId === 'brick_car')!
+      return { design, rt, spawn }
+    }
+    const names = ['Maya', 'Sam', 'Lee', 'Ana', 'Ben', 'Kit']
+
+    it('slots go two by two behind the painted Car, the second of each row to its right', () => {
+      const right = { x: 100, y: 100, direction: 90 }
+      expect(gridSlot(right, 0)).toEqual({ x: 100, y: 100 })
+      expect(gridSlot(right, 1)).toEqual({ x: 100 - 0.6 * TILE_SIZE, y: 100 - 1.4 * TILE_SIZE })
+      expect(gridSlot(right, 2)).toEqual({ x: 100 - 1.6 * TILE_SIZE, y: 100 })
+      expect(gridSlot(right, 3)).toEqual({ x: 100 - 2.2 * TILE_SIZE, y: 100 - 1.4 * TILE_SIZE })
+      // Pointing up, "behind" is down and "right" is +x.
+      const up = { x: 100, y: 100, direction: 0 }
+      expect(gridSlot(up, 1)).toEqual({ x: 100 + 1.4 * TILE_SIZE, y: 100 - 0.6 * TILE_SIZE })
+      expect(gridSlot(up, 2)).toEqual({ x: 100, y: 100 - 1.6 * TILE_SIZE })
+    })
+
+    it('every Car gets its own clear spot on the road, none straight ahead of another', () => {
+      const { design, rt, spawn } = raceStart()
+      const cars = names.map((name, i) => addPlayer(rt, { num: i + 1, name }, spawn, 'race')!)
+      rt.greenFlag()
+      expect(cars[0]!.copyId).toBe(spawn.id)
+      const racers = rt.world.targets.filter((t) => t.brickId === 'brick_car' || t.brickId === 'brick_racer')
+      expect(racers).toHaveLength(names.length + 2)
+      const road = 'R'
+      for (const car of cars) {
+        // On the road (rows[0] is the bottom row), facing the painted Car's way.
+        const tiles = design.tiles!
+        expect(tiles.data[Math.floor(car.y / TILE_SIZE)]![Math.floor(car.x / TILE_SIZE)], `${car.id} on the road`).toBe(road)
+        expect(car.direction).toBe(spawn.direction)
+        // Behind or beside the painted Car, never in front of it.
+        expect(car.x).toBeLessThanOrEqual(spawn.x)
+        for (const other of racers) {
+          if (other === car) continue
+          const gap = Math.hypot(other.x - car.x, other.y - car.y)
+          expect(gap, `${car.id} vs ${other.id}`).toBeGreaterThanOrEqual(racerRadius(rt.world, car) + racerRadius(rt.world, other))
+        }
+      }
+      // Player 2 is beside player 1 (not on its race line), so the two never touch when both floor it at "go".
+      const [one, two] = cars as [typeof cars[0], typeof cars[0]]
+      expect(Math.abs(two.y - one.y)).toBeCloseTo(1.4 * TILE_SIZE, 5)
+      rt.pressKey('up arrow', 1)
+      rt.pressKey('up arrow', 2)
+      let closest = Infinity
+      for (let i = 0; i < 6 * 30; i++) {
+        rt.step()
+        closest = Math.min(closest, Math.hypot(two.x - one.x, two.y - one.y))
+      }
+      expect(one.x - spawn.x).toBeGreaterThan(40)
+      expect(closest).toBeGreaterThanOrEqual(racerRadius(rt.world, one) + racerRadius(rt.world, two))
+    })
+
+    it('every game of a room picks the same spots, joining before or during the race', () => {
+      const play = () => {
+        const { rt, spawn } = raceStart()
+        addPlayer(rt, { num: 1, name: 'Maya' }, spawn, 'race')
+        addPlayer(rt, { num: 2, name: 'Sam' }, spawn, 'race')
+        rt.greenFlag()
+        rt.pressKey('up arrow', 1)
+        rt.pressKey('up arrow', 2)
+        for (let i = 0; i < 200; i++) rt.step()
+        // A late joiner takes the first free slot: the front ones are empty again once the race is under way.
+        const late = addPlayer(rt, { num: 3, name: 'Lee' }, spawn, 'race')!
+        const at = { x: late.x, y: late.y }
+        for (let i = 0; i < 30; i++) rt.step()
+        return { at, print: worldFingerprint(rt.world), spawn }
+      }
+      const a = play()
+      const b = play()
+      expect(b.at).toEqual(a.at)
+      expect(b.print).toBe(a.print)
+      expect(a.at).toEqual(gridSlot(a.spawn, 0))
+    })
+
+    it('slots skip a Computer racer parked on the grid', () => {
+      const { rt, spawn } = raceStart()
+      const cars = names.slice(0, 4).map((name, i) => addPlayer(rt, { num: i + 1, name }, spawn, 'race')!)
+      // Slot 3 of the beginner track is 10 steps from the second Computer racer, closer than two radii (11).
+      expect(cars.map((c) => ({ x: c.x, y: c.y }))).toEqual([0, 1, 2, 4].map((i) => gridSlot(spawn, i)))
+    })
+
+    it('the Platformer still puts later Heroes beside the first, along x', () => {
+      const { rt, spawn } = start()
+      addPlayer(rt, { num: 1, name: 'Maya' }, spawn)
+      const two = addPlayer(rt, { num: 2, name: 'Sam' }, spawn, 'platformer')!
+      expect([two.x, two.y]).toEqual([spawn.x + 20, spawn.y])
+    })
   })
 })

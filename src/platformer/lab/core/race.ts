@@ -190,6 +190,14 @@ function progress(s: LapState, length: number): number {
 /** How much of the speed toward each other two bumping cars trade (classic raceRun.ts bumpCars). */
 const BUMP_TRADE = 0.6
 
+/** How far a racer reaches when bumping: half the smaller side of its picture's opaque box, at its size, whichever way it points. */
+export function racerRadius(world: World, t: Target): number {
+  const costume = costumeOf(world, t)
+  if (!costume) return 0
+  const r = opaqueRect(costume)
+  return (Math.min(r.right - r.left, r.bottom - r.top) / 2) * (t.size / 100)
+}
+
 /**
  * Cars bump each other, like the classic race (raceRun.ts bumpCars; parity bucket A, 2026-11-03): two racers closer than
  * their two radii (half the smaller side of each one's box; the Car's is 5.5, classic's CAR_RADIUS) are pushed apart,
@@ -199,13 +207,7 @@ const BUMP_TRADE = 0.6
  */
 export function bumpRacers(world: World): void {
   const racers = world.targets.filter(isRacer)
-  // Half the smaller side of its picture's opaque box, at its size, whichever way it points.
-  const radius = (t: Target): number => {
-    const costume = costumeOf(world, t)
-    if (!costume) return 0
-    const r = opaqueRect(costume)
-    return (Math.min(r.right - r.left, r.bottom - r.top) / 2) * (t.size / 100)
-  }
+  const radius = (t: Target): number => racerRadius(world, t)
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
       const a = racers[i]!
