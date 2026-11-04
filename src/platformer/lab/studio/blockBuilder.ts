@@ -76,6 +76,9 @@ export class Blocks {
   heroY(): Conn {
     return { block: this.blk('sensing_of', { fields: { PROPERTY: 'y position', OBJECT: 'Hero' } }) }
   }
+  myX(): Conn {
+    return { block: this.blk('motion_xposition') }
+  }
   myY(): Conn {
     return { block: this.blk('motion_yposition') }
   }
@@ -198,6 +201,10 @@ export class Blocks {
   }
   changeY(dy: number): BlockJson {
     return this.blk('motion_changeyby', { inputs: { DY: this.num(dy) } })
+  }
+  /** `change y by (dy)` with any value, a reporter too. */
+  changeYBy(dy: Conn | number): BlockJson {
+    return this.blk('motion_changeyby', { inputs: { DY: this.as(dy) } })
   }
   wait(seconds: number): BlockJson {
     return this.blk('control_wait', { inputs: { DURATION: this.num(seconds) } })

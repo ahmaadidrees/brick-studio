@@ -125,12 +125,14 @@ export function drawerEntries(bricks: readonly BrickDef[]): DrawerEntry[] {
       hint: template.hint,
     })
   }
-  // The Platformer's other built-in bricks (parity bucket B): the level's own copy, or an offer to add one.
+  // The level's own bricks, then the Platformer's other built-in bricks (parity bucket B: the level's copy, or an offer
+  // to add one), then the kid's own bricks last, so the bricks kids know keep their places.
+  const extras: DrawerEntry[] = []
   for (const extra of PLATFORMER_EXTRAS) {
     const have = bricks.find((b) => b.id === extra.id && !b.remixOf)
     if (have) used.add(have.id)
     const original = extraOriginal(extra.id)!.brick
-    out.push({
+    extras.push({
       id: have ? brickEntryId(have.id) : extraEntryId(extra.id),
       name: have?.name ?? original.name,
       category: extra.category,
@@ -139,10 +141,14 @@ export function drawerEntries(bricks: readonly BrickDef[]): DrawerEntry[] {
       hint: extra.hint,
     })
   }
+  const mine: DrawerEntry[] = []
   for (const b of placeableBricks(bricks)) {
     if (used.has(b.id)) continue
-    out.push({ id: brickEntryId(b.id), name: b.name, category: b.grid ? 'mine' : categoryForBrick(b), brick: b, asset: b.costumes[0]?.asset })
+    const entry: DrawerEntry = { id: brickEntryId(b.id), name: b.name, category: b.grid ? 'mine' : categoryForBrick(b), brick: b, asset: b.costumes[0]?.asset }
+    if (entry.category === 'mine') mine.push(entry)
+    else out.push(entry)
   }
+  out.push(...extras, ...mine)
   return out
 }
 
