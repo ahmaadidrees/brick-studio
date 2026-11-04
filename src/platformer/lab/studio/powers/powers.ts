@@ -203,7 +203,8 @@ export function snapPower(project: StudioProject, brickId: string, power: PowerB
     return out
   }
 
-  const right = tops.reduce((m, b) => Math.max(m, typeof b.x === 'number' ? b.x : 0), 0) + 700
+  // Onto an empty brick, the power's scripts start at the left, where the kid looks first.
+  const right = tops.length ? tops.reduce((m, b) => Math.max(m, typeof b.x === 'number' ? b.x : 0), 0) + 700 : 20
   let y = 20
   const added = power.blocks.map((b) => {
     const copy = renameProcs(remap(b, nextId, vars)) as Json

@@ -14,6 +14,7 @@ import { POWER_FILE_KIND, powerChanged, type PowerBrick, type PowerVariable } fr
 import { createHeroBrick, createHeroOuchSound, HERO_OUCH_SOUND } from '../hero/heroBrick'
 import { carVariableId, createCarBrick } from '../race/carBrick'
 import { readLabel } from '../code/layers'
+import { isFreshBrick } from '../builder/newBrick'
 import { STAGE_ID, type StudioStore } from '../store'
 import { HURT_MESSAGE, jobIdOf, SCORE_ID, SCORE_NAME, WIN_MESSAGE, type JobId, type PlayerWay } from './blankRules'
 
@@ -199,6 +200,9 @@ export function giveJob(store: StudioStore, brickId: string, job: JobId, way: Pl
     if (old && oldSnap && !powerChanged(store.getState().project, old.id, oldSnap.id)) store.takeOffPower(old.id, oldSnap.id)
   }
   if (job === 'collect') store.ensureStageData([{ id: SCORE_ID, name: SCORE_NAME, value: 0 }])
+  // A fresh brick's only script is the empty starter hat: the job's own scripts replace it, at the left of Code.
+  const now = store.brick(brickId)
+  if (now && !now.powers?.length && isFreshBrick(now)) store.setWorkspace(brickId, { blocks: { languageVersion: 0, blocks: [] }, variables: [] })
   if (job === 'player' && way === 'jump' && !store.brick(brickId)?.sounds.some((s) => s.name === HERO_OUCH_SOUND)) {
     store.setSounds(brickId, [...(store.brick(brickId)?.sounds ?? []), createHeroOuchSound()])
   }

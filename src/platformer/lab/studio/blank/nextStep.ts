@@ -40,7 +40,9 @@ export function nextStep(design: LevelDesign, s: NextStepState): NextStep | null
     return { id: 'place', text: `Pick ${last.name} in My bricks, then tap the stage.` }
   }
   const onStage = design.bricks.filter((b) => placed.has(b.id))
-  const busy = onStage.filter((b) => hasJobOrCode(b))
+  // New tiles start with the Wall job by themselves: the things placed one at a time are the ones waiting for a job.
+  const things = onStage.filter((b) => !b.grid)
+  const busy = (things.length ? things : onStage).filter((b) => hasJobOrCode(b))
   const card = s.cardBrickId ? design.bricks.find((b) => b.id === s.cardBrickId) : undefined
   if (busy.length === 0) {
     if (card) return { id: 'pick', text: 'Pick a job, then press Play.' }

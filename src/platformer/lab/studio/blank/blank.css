@@ -75,7 +75,7 @@
 
 /* The drawer of a game from nothing holds only the kid's own bricks: no search, no categories (board 1). */
 .cl-drawer-blank .part-search-row { display: none; }
-.cl-blank-drawer-title { margin: 4px 12px 8px; color: #5b6676; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.cl-blank-drawer-title { flex: none; margin: 4px 12px 8px; color: #5b6676; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 
 /* Boards 3a and 3c: Give it a job, and the job a brick has. */
 .cl-blank-jobs { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px; overflow-y: auto; min-height: 0; }
@@ -100,3 +100,4 @@
 .cl-blank-change { display: flex; flex-direction: column; gap: 8px; }
 .cl-blank-change .cl-blank-jobs { padding: 0; }
 .cl-blank-player-pill { align-self: flex-start; padding: 2px 8px; border-radius: 999px; color: #17663f; background: #e7f7ee; font-size: 12px; font-weight: 800; }
+.cl-drawer-blank .cl-drawer-picker > .cl-blank-drawer-title { flex: 0 0 auto; }
