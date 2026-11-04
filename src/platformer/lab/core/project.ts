@@ -873,28 +873,45 @@ function gridTargets(design: LevelDesign, bricks: Record<string, BrickDef>): Tar
       if (ch === '.') continue
       const brick = byChar.get(ch)
       if (!brick) continue
-      const covered = brick.grid?.autotile === true && brick.costumes.length > 1 && tiles.data[row + 1]?.[col] === ch
-      const locals = localsFrom(brick.program, undefined)
-      const id = gridCopyId(col, row)
-      const target = newTarget({
-        id,
-        brickId: brick.id,
-        isStage: false,
-        x: left + col * TILE_SIZE + TILE_SIZE / 2,
-        y: bottom + row * TILE_SIZE + TILE_SIZE / 2,
-        // A brick that points a way (a boost pad) faces it; every other cell faces right.
-        direction: brick.grid?.way ?? 90,
-        size: 100,
-        visible: true,
-        costumeIndex: covered ? 1 : 0,
-        variables: locals.variables,
-        lists: locals.lists,
-      })
-      target.copyId = id
-      out.push(target)
+      out.push(makeCell(brick, tiles, col, row, left, bottom))
     }
   }
   return out
+}
+
+/** The costume a grid cell starts with: costume 2 for an autotile brick when the cell above is the same. */
+export function cellCostume(brick: BrickDef, tiles: TileLayer, col: number, row: number): number {
+  const ch = tiles.data[row]?.[col]
+  return brick.grid?.autotile === true && brick.costumes.length > 1 && tiles.data[row + 1]?.[col] === ch ? 1 : 0
+}
+
+function makeCell(brick: BrickDef, tiles: TileLayer, col: number, row: number, left: number, bottom: number): Target {
+  const locals = localsFrom(brick.program, undefined)
+  const id = gridCopyId(col, row)
+  const target = newTarget({
+    id,
+    brickId: brick.id,
+    isStage: false,
+    x: left + col * TILE_SIZE + TILE_SIZE / 2,
+    y: bottom + row * TILE_SIZE + TILE_SIZE / 2,
+    // A brick that points a way (a boost pad) faces it; every other cell faces right.
+    direction: brick.grid?.way ?? 90,
+    size: 100,
+    visible: true,
+    costumeIndex: cellCostume(brick, tiles, col, row),
+    variables: locals.variables,
+    lists: locals.lists,
+  })
+  target.copyId = id
+  return target
+}
+
+/**
+ * One painted cell's target, as Play makes it (rooms: a cell painted while everyone plays, rooms/edits.ts). `tiles`
+ * is the grid with the cell already painted.
+ */
+export function cellTarget(design: Pick<LevelDesign, 'bounds'>, brick: BrickDef, tiles: TileLayer, col: number, row: number): Target {
+  return makeCell(brick, tiles, col, row, finite(design.bounds.left, 0), finite(design.bounds.bottom, 0))
 }
 
 /** A fresh painted copy's target, as Play makes it (rooms: core/players.ts makes each player's Hero this way). */

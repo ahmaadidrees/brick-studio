@@ -117,8 +117,37 @@ export class HackableCloudSaver {
     this.accountId = client.getSession()?.user.id
   }
 
+  /**
+   * Building together (docs/qa/hackable-rooms M2): while the project's class room is open, the room saves it for
+   * everyone, so this tab doesn't (two savers would each find the other's newer version). Saves what is waiting first.
+   */
+  async pause(): Promise<void> {
+    await this.flush()
+    this.paused = true
+    this.onChange()
+  }
+
+  /**
+   * The room closed here: carry on saving, from the account's newest version (the room saved over the one this tab
+   * knew), starting with the project as it is now.
+   */
+  async resume(project: StudioProject): Promise<void> {
+    if (!this.paused) return
+    try {
+      const fresh = await this.client.getWorld(this.world.id)
+      this.world = { ...this.world, ...fresh, document: undefined }
+    } catch {
+      // The next save finds out; a conflict keeps this tab's project as a copy, as always.
+    }
+    this.paused = false
+    this.schedule(project)
+  }
+
+  /** The class room saves the project now (pause). */
+  paused = false
+
   schedule(project: StudioProject) {
-    if (this.conflicted) return
+    if (this.conflicted || this.paused) return
     this.pending = project
     // While a failed save waits to be tried again, a new change waits with it (the chip keeps saying why).
     if (this.status === 'error' && this.retryTimer !== undefined) return

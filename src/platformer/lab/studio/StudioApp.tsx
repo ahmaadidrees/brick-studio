@@ -8,6 +8,7 @@ import { designText } from '../core/save'
 import { RoomBar } from '../rooms/RoomBar'
 import { RoomSession } from '../rooms/session'
 import { StudioRoomLink } from '../rooms/studioRoom'
+import { RoomBuilder } from '../rooms/building'
 import { classRoomSocketUrl, createGuestRoom, guestRoomSocketUrl, rememberOwnerToken, roomHref } from '../rooms/endpoints'
 import type { HeaderSaveStatus } from '../../../shell/AppHeader'
 import { StudioShell } from './screen/StudioShell'
@@ -556,7 +557,9 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
 
   const signedIn = !!browserClassroomClient.getSession()
   const saveStatus: HeaderSaveStatus = saver
-    ? saver.conflicted
+    ? saver.paused
+      ? { source: { kind: 'cloud', status: 'saved' }, detail: 'The room saves this project for everyone while you play together.', explain: SAVE_WORDS.room }
+      : saver.conflicted
       ? copyFailed
         ? { source: { kind: 'cloud', status: 'error' }, detail: 'Your changes here are not saved yet. Press This project, then Save File, so you do not lose them.', explain: SAVE_WORDS.conflictFailed }
         : { source: { kind: 'cloud', status: 'saving' }, detail: 'Keeping your changes here as a copy.', explain: SAVE_WORDS.conflict }
@@ -586,16 +589,20 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
   const roomRef = useRef(room)
   roomRef.current = room
   useEffect(() => () => roomRef.current?.stop(), [])
+  // Building together (M2): while the class room is open it saves the project for everyone, so this tab doesn't.
   const leaveRoom = useCallback(() => {
     roomRef.current?.stop()
     setRoom(null)
-  }, [])
+    if (saver?.paused) void saver.resume(store.getState().project)
+  }, [saver, store])
   const startRoom = async () => {
     if (home.kind === 'viewer') return window.location.assign(roomHref.classroom(home.world.id))
     if (roomRef.current) return
     try {
+      if (home.kind === 'account' && saver) await saver.pause()
       setRoom(await openRoom(store, home.kind === 'account' ? home.world.id : null))
     } catch (error) {
+      if (saver?.paused) void saver.resume(store.getState().project)
       setStorageNotice({ id: 'room', type: 'error', message: error instanceof Error ? error.message : 'The room could not be opened. Try again.' })
     }
   }
@@ -653,29 +660,23 @@ async function openRoom(store: StudioStore, worldId: string | null): Promise<Ope
     url = () => classRoomSocketUrl(worldId)
     invite = roomHref.classroom(worldId)
   } else {
-    const { roomId, ownerToken } = await createGuestRoom(text, design.name)
+    const { roomId, ownerToken } = await createGuestRoom(text, design.name, store.getState().project.workspaces)
     rememberOwnerToken(roomId, ownerToken)
     url = guestRoomSocketUrl(roomId, ownerToken)
     invite = roomHref.guest(roomId)
   }
   const session = new RoomSession({ name: savedGuestName() || 'Player', url, key: clientKey() })
-  // A class room starts from the account's copy; the host's project as it is on screen goes in at once.
-  const link = new StudioRoomLink(session, worldId ? '' : text)
-  let pushed = false
-  const unsubscribe = session.subscribe(() => {
-    if (pushed || !session.view.host || !session.runtime) return
-    pushed = true
-    link.playAgain(store.getState().project.design, false)
-  })
-  const unwatch = link.watch(store)
+  // Building together (M2): the host's changes go out as edits, and everyone else's come in. A class room starts from the
+  // account's copy; the host's project as it is on screen goes in once the room has answered.
+  const builder = new RoomBuilder(session, store)
   session.connect()
-  store.enterRoom(link)
+  store.enterRoom(new StudioRoomLink(session))
+  const stopBuilding = builder.start()
   return {
     session,
     invite,
     stop: () => {
-      unsubscribe()
-      unwatch()
+      stopBuilding()
       session.close()
       store.leaveRoom()
     },
@@ -699,6 +700,7 @@ export const SAVE_WORDS = {
   conflict: 'A newer version was saved somewhere else, so your changes here are being kept as a copy.',
   conflictFailed: 'Your changes here are not saved yet. Open the ⋯ menu (This project) and press Save File, so you do not lose them.',
   viewer: 'This is someone else’s project, so changes here are not saved. Press Make my own copy to keep them.',
+  room: 'While you play together, the room saves this project to your account a moment after anyone changes it.',
   notSaved: 'This project is not saved. Open the ⋯ menu (This project) and press Save File, so you do not lose it.',
 }
 

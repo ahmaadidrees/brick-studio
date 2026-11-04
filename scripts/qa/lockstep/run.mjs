@@ -59,6 +59,11 @@ function timeline(kit, scenario) {
   for (let tick = 600; tick < TICKS; tick += 600) events.push({ tick, kind: 'flag' })
   events.push({ tick: 300, kind: 'edit-program', what: 'Stage: change by 1 → by 5 (nothing to change)' })
   events.push({ tick: 750, kind: 'edit-knob', what: 'player knob x 1.3 (nothing to change)' })
+  // Building together (M2): live edits as room events, before and after the late joiner.
+  events.push({ tick: 200, kind: 'together', what: 'place' })
+  events.push({ tick: 450, kind: 'together', what: 'paint' })
+  events.push({ tick: 820, kind: 'together', what: 'code' })
+  events.push({ tick: 1300, kind: 'together', what: 'undo-code' })
   return events.sort((a, b) => a.tick - b.tick)
 }
 

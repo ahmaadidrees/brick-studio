@@ -19,10 +19,11 @@ export class RoomServiceError extends Error {
 }
 
 /** Opens a guest room for a project (designText). This browser keeps the owner token and hosts the room. */
-export async function createGuestRoom(project: string, title: string): Promise<CreateRoomResponse> {
+/** A link room for `project` (designText), with its blocks for the code editors (M2). */
+export async function createGuestRoom(project: string, title: string, workspaces?: Record<string, unknown>): Promise<CreateRoomResponse> {
   let response: Response
   try {
-    response = await fetch(`${httpBase()}/hackable/rooms`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project, title }) })
+    response = await fetch(`${httpBase()}/hackable/rooms`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ project, title, ...(workspaces ? { workspaces } : {}) }) })
   } catch {
     throw new RoomServiceError('The room service is unreachable. Check your connection and try again.')
   }

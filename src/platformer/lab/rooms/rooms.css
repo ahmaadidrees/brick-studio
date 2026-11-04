@@ -25,3 +25,9 @@
 .hk-finish-notices { position: absolute; z-index: var(--z-toast); top: 64px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; max-width: calc(100% - 32px); }
 .hk-finish-notice { margin: 0; padding: 6px 14px; border-radius: 999px; background: #E4F2FF; color: #0b3558; font-weight: 700; box-shadow: var(--shadow-lg); animation: p2d-pop 0.2s ease-out; }
 .hk-finish-round { text-align: center; }
+.hk-room-studio { display: contents; }
+/* Building together (M2): who may change code, and what each is editing. */
+.hk-room-role { margin-left: 4px; vertical-align: -2px; color: #1d6fb8; }
+.hk-room-editing { color: #2c4a66; font-style: italic; }
+/* The room bar's menus (Room, Changes) open over the studio's panels, like the header's own menus. */
+.hk-room-bar { position: relative; z-index: var(--z-header); }

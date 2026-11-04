@@ -11,6 +11,7 @@
  * room checks it with the same `parse` every save goes through before passing it on.
  */
 import { MAX_PLAYERS as CLASSIC_MAX_PLAYERS } from '@brick-studio/platformer-core/net/protocol'
+import { isEditOps, type EditKind, type EditOp } from './edits'
 
 export { cleanName, isCleanName } from '@brick-studio/platformer-core/net/protocol'
 
@@ -49,15 +50,21 @@ export type RoomEv =
   | { t: 'project'; text: string; restart: boolean }
   /** The host pressed Play again: a fresh game from the project as it is now, with everyone in it. */
   | { t: 'restart' }
+  /**
+   * M2: someone built or changed code (rooms/edits.ts). It lands live: copies and cells change, an edited brick's
+   * scripts restart. `undoOf`: the room's own event putting back an earlier edit (that edit's seq).
+   */
+  | { t: 'edit'; ops: EditOp[]; undoOf?: number }
 
-/** Events a player may send (the room makes joins and leaves itself). */
-export type PlayerEv = Extract<RoomEv, { t: 'key' | 'project' | 'restart' }>
+/** Events a player may send (the room makes joins, leaves and undos itself). */
+export type PlayerEv = Extract<RoomEv, { t: 'key' | 'project' | 'restart' }> | { t: 'edit'; ops: EditOp[] }
 
 export function isPlayerEv(ev: unknown): ev is PlayerEv {
   if (!ev || typeof ev !== 'object') return false
   const e = ev as Record<string, unknown>
   if (e.t === 'key') return isGameKey(e.key) && typeof e.down === 'boolean'
   if (e.t === 'project') return typeof e.text === 'string' && e.text.length <= MAX_PROJECT_BYTES && typeof e.restart === 'boolean'
+  if (e.t === 'edit') return e.undoOf === undefined && isEditOps(e.ops)
   return e.t === 'restart'
 }
 
@@ -78,14 +85,42 @@ export interface PlayerInfo {
   host: boolean
   /** Their connection dropped: their Hero waits (RECONNECT_GRACE_MS) in case they come back. */
   away?: boolean
+  /** M2: may place and paint bricks and turn sliders (the host always may). */
+  build?: boolean
+  /** M2: may change code, costumes and sounds (the host always may). */
+  code?: boolean
+  /** M2: what they are editing now, in a few words ("Walker's code", "Build"), or missing. */
+  editing?: string
 }
 
 export interface RoomSettings {
   /** Nobody new may join (people already admitted can still reconnect). */
   closed: boolean
+  /** M2: everyone may build (place, paint, tune). On by default (owner decision 2026-11-04). */
+  build: boolean
+  /** M2: everyone may change code. Off by default; the host can also turn it on for one player at a time. */
+  code: boolean
 }
 
-export const DEFAULT_SETTINGS: RoomSettings = { closed: false }
+export const DEFAULT_SETTINGS: RoomSettings = { closed: false, build: true, code: false }
+
+/** M2: one change in the room's short history. */
+export interface HistoryItem {
+  seq: number
+  /** Player number of who made it, and their name then. */
+  by: number
+  name: string
+  /** "placed Coin", "changed Walker's code". */
+  summary: string
+  kind: EditKind
+  /** Put back (undone) since. */
+  undone?: boolean
+}
+
+/** M2: how many changes the room keeps for undo. */
+export const HISTORY_LENGTH = 20
+/** M2: what someone is editing, at most this long. */
+export const MAX_EDITING_LENGTH = 40
 
 /**
  * Where a joining player starts: the project at `tick`, and either the game as tick `tick` is about to run (a
@@ -108,12 +143,20 @@ export type ClientMsg =
   | { type: 'name'; name: string }
   /** Our game fell too far behind (an event older than it can go back for): send a fresh copy. */
   | { type: 'sync' }
+  /** M2: what we are editing now (presence), or null when nothing. */
+  | { type: 'presence'; what: string | null }
+  /** M2: the blocks of a brick, for the code editor (the room answers with `workspace`). */
+  | { type: 'workspace'; id: string }
+  /** M2: put back a change from the history (our own, or anyone's for the host). */
+  | { type: 'undo'; seq: number }
   // Host only:
-  | { type: 'settings'; closed?: boolean }
+  | { type: 'settings'; closed?: boolean; build?: boolean; code?: boolean }
   | { type: 'kick'; num: number }
   | { type: 'unban' }
+  /** M2: let one player change code, or not (whatever everyone's setting is). */
+  | { type: 'grant'; num: number; code: boolean }
 
-export type RejectReason = 'invalid' | 'host_only' | 'too_big' | 'busy'
+export type RejectReason = 'invalid' | 'host_only' | 'too_big' | 'busy' | 'not_allowed'
 
 export type ServerMsg =
   | {
@@ -129,8 +172,13 @@ export type ServerMsg =
       players: PlayerInfo[]
       settings: RoomSettings
       classroom: boolean
+      /** M2: the room's recent changes, newest last. */
+      history?: HistoryItem[]
     }
   | { type: 'ev'; e: StampedEvent }
+  | { type: 'history'; history: HistoryItem[] }
+  /** M2: a brick's blocks (null when the room has none for it). */
+  | { type: 'workspace'; id: string; ws: unknown }
   | { type: 'reject'; cid: string; reason: RejectReason }
   | { type: 'pong'; c: number; s: number }
   | { type: 'players'; players: PlayerInfo[] }

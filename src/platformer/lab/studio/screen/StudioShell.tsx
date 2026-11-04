@@ -35,6 +35,10 @@ const NO_CODE = '(max-width: 539px)'
 /** Any touch screen, including a touchscreen laptop whose main pointer is a trackpad. */
 const TOUCH = '(any-pointer: coarse)'
 export const CODE_NEEDS_ROOM = 'Code needs a bigger screen'
+/** Building together (M2): in a room, until the host turns code on for this player. */
+export const ROOM_CODE_OFF = 'The host hasn’t turned on code for you yet. You can build and play.'
+/** Building together (M2): the host turned building off for everyone. */
+export const ROOM_BUILD_OFF = 'The host turned building off for now.'
 
 const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode; key: string }> = [
   { id: 'build', label: 'Build', icon: <Hammer size={16} />, key: '1' },
@@ -79,6 +83,12 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const touch = useTouch()
   const runtime = useStudio(store, (s) => s.runtime)
   const paused = useStudio(store, (s) => s.previewPaused)
+  // Building together (docs/qa/hackable-rooms M2): in a room, Build and Code are open only as far as the host allows.
+  const roomRights = useStudio(store, (s) => s.roomRights)
+  const closedScreens: Partial<Record<StudioScreen, string>> = {}
+  if (noCode) closedScreens.code = CODE_NEEDS_ROOM
+  else if (roomRights && !roomRights.code) closedScreens.code = ROOM_CODE_OFF
+  if (roomRights && !roomRights.build) closedScreens.build = ROOM_BUILD_OFF
   const session = builderSession(store)
   const history = session.history
   // The Stage places copies through this view of the store, which keeps the Hero and the Goal to one each.
@@ -133,7 +143,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
   const go = (next: StudioScreen) => {
     if (next === screen) return
-    if (next === 'code' && noCode) return setNote(CODE_NEEDS_ROOM)
+    if (closedScreens[next]) return setNote(closedScreens[next]!)
     // Play needs the kit's player (the Hero, the Car). Without one, say so kindly and stay put instead of starting a level
     // where nothing moves.
     const design = store.getState().project.design
@@ -198,7 +208,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           onRequestMode={(m) => go(m === 'build' ? 'build' : 'play')}
           canExplore
           modeLock={{ locked: false }}
-          modeSwitch={<ModeTabs screen={screen} noCode={noCode} onChange={go} />}
+          modeSwitch={<ModeTabs screen={screen} off={closedScreens} onChange={go} />}
           onOpenHelp={() => setHelp(true)}
           onGoHome={() => leave('/')}
           worldMenu={() => <>
@@ -263,7 +273,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
         )}
 
         <div className={`cl-slot cl-slot-inspector${settling ? ' cl-settling' : ''}`} inert={!inspecting ? true : undefined}>
-          {inspecting && <Inspector store={store} history={history} compact={phone} noCode={noCode} />}
+          {inspecting && <Inspector store={store} history={history} compact={phone} noCode={noCode || !!closedScreens.code} />}
         </div>
 
         <div className="cl-slot cl-slot-level" inert={screen !== 'code' ? true : undefined}>
@@ -284,7 +294,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 }
 
 /** Build · Code · Play with a sliding highlight; one tab stop, arrow keys move (radiogroup, like SegmentedControl). */
-function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: boolean; onChange: (s: StudioScreen) => void }) {
+function ModeTabs({ screen, off: closed, onChange }: { screen: StudioScreen; off: Partial<Record<StudioScreen, string>>; onChange: (s: StudioScreen) => void }) {
   const buttons = useRef<Array<HTMLButtonElement | null>>([])
   const at = SCREENS.findIndex((m) => m.id === screen)
   const move = (e: ReactKeyboardEvent, from: number) => {
@@ -292,7 +302,7 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
     if (!step) return
     e.preventDefault()
     let next = (from + step + SCREENS.length) % SCREENS.length
-    if (noCode && SCREENS[next].id === 'code') next = (next + step + SCREENS.length) % SCREENS.length
+    while (closed[SCREENS[next].id] && next !== from) next = (next + step + SCREENS.length) % SCREENS.length
     onChange(SCREENS[next].id)
     buttons.current[next]?.focus()
   }
@@ -300,10 +310,10 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
     <div className="cl-modes" role="radiogroup" aria-label="Studio mode">
       <span className="cl-modes-ind" aria-hidden="true" style={{ transform: `translateX(${at * 100}%)` }} />
       {SCREENS.map((m, i) => {
-        const off = noCode && m.id === 'code'
+        const off = closed[m.id]
         return (
           <button key={m.id} ref={(el) => { buttons.current[i] = el }} type="button" role="radio" aria-checked={m.id === screen} tabIndex={m.id === screen ? 0 : -1}
-            aria-disabled={off || undefined} title={off ? CODE_NEEDS_ROOM : `${m.label} (${m.key})`}
+            aria-disabled={off ? true : undefined} title={off ?? `${m.label} (${m.key})`}
             className="cl-mode" onClick={() => onChange(m.id)} onKeyDown={(e) => move(e, i)}>
             <span aria-hidden="true">{m.icon}</span><span>{m.label}</span>
           </button>

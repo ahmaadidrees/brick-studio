@@ -17,6 +17,8 @@ import { addPlayer, removePlayer } from '../../../src/platformer/lab/core/player
 import { exportProjectJson, importProjectJson } from '../../../src/platformer/lab/studio/persist/projectIo'
 import { createStarterProject } from '../../../src/platformer/lab/studio/starter'
 import { createRaceStarterProject } from '../../../src/platformer/lab/studio/race/raceProject'
+import { applyEdit, applyEditLive, type EditOp } from '../../../src/platformer/lab/rooms/edits'
+import { brickToWire } from '../../../src/platformer/lab/core/save'
 
 export type Kit = 'platformer' | 'race'
 
@@ -31,6 +33,11 @@ export type RoomEvent =
   | { tick: number; kind: 'flag' }
   | { tick: number; kind: 'edit-program'; what: string }
   | { tick: number; kind: 'edit-knob'; what: string }
+  /**
+   * Building together (M2): a room `edit` event (rooms/edits.ts), as the room passes it on: a copy placed, cells
+   * painted, a brick's code changed (its scripts restart), and that code change put back.
+   */
+  | { tick: number; kind: 'together'; what: 'place' | 'paint' | 'code' | 'undo-code' }
 
 export interface ScenarioOptions {
   /** The saved project text (exportProjectJson), so every engine starts from the same bytes. */
@@ -174,6 +181,29 @@ function editKnob(world: World, design: LevelDesign, playerBrickId: string): str
   return n ? `${brick.name}: "${decl.name}" x 1.3 on ${n} cop${n === 1 ? 'y' : 'ies'}` : null
 }
 
+/** The operations of a building-together edit on the project as it is now, or null when there is nothing to edit. */
+function togetherOps(what: 'place' | 'paint' | 'code', design: LevelDesign, kit: Kit): { ops: EditOp[]; said: string } | null {
+  const isPlayer = (id: string) => id === PLAYER_BRICK[kit]
+  if (what === 'place') {
+    const copy = design.copies.find((c) => !isPlayer(c.brickId) && design.bricks.find((b) => b.id === c.brickId)?.limit === undefined)
+    if (!copy) return null
+    return { ops: [{ op: 'copy', copy: { ...copy, id: `together_${copy.id}`, x: copy.x + 64 } }], said: `placed another ${copy.brickId} at x ${copy.x + 64}` }
+  }
+  if (what === 'paint') {
+    const tiles = design.tiles
+    const grid = design.bricks.find((b) => b.grid && !b.grid.finish)
+    if (!tiles || !grid) return null
+    const cells: [number, number, string][] = []
+    for (let r = 2; r < tiles.rows && cells.length < 3; r++) for (let c = 4; c < tiles.cols && cells.length < 3; c += 2) if (tiles.data[r]![c] === '.') cells.push([c, r, grid.grid!.char])
+    return cells.length ? { ops: [{ op: 'cells', cells }], said: `painted ${cells.length} ${grid.name} cells` } : null
+  }
+  // Code: a brick that is neither the player nor a grid brick, its first number one bigger.
+  const brick = design.bricks.find((b) => !isPlayer(b.id) && !b.grid && design.copies.some((c) => c.brickId === b.id) && /"value":-?\d/.test(JSON.stringify(b.program)))
+  if (!brick) return null
+  const text = JSON.stringify(brick.program).replace(/"value":(-?\d+(?:\.\d+)?)/, (_m, n: string) => `"value":${Number(n) + 1}`)
+  return { ops: [{ op: 'brick', brick: brickToWire({ ...brick, program: JSON.parse(text) }) }], said: `${brick.name}'s code changed (its scripts restart)` }
+}
+
 // ------------------------------------------------------------------------------------------------ late joiner
 
 /** What a room sends a late joiner (core/snapshot.ts), loaded into a fresh runtime with the project as edited. */
@@ -208,7 +238,8 @@ function playAgain(old: Runtime, design: LevelDesign, kit: Kit): Runtime {
 }
 
 export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResult {
-  const design = designOf(opts.projectText, opts.kit)
+  let design = designOf(opts.projectText, opts.kit)
+  let undoCode: EditOp[] | null = null
   let runtime = createRuntime(design)
   runtime.greenFlag()
   const byTick = new Map<number, RoomEvent[]>()
@@ -232,6 +263,17 @@ export function runScenario(engine: string, opts: ScenarioOptions): ScenarioResu
       else if (e.kind === 'edit-program' || e.kind === 'edit-knob') {
         const did = e.kind === 'edit-program' ? editProgram(runtime.world, design) : editKnob(runtime.world, design, PLAYER_BRICK[opts.kit])
         ;(did ? result.applied : result.skipped).push(`tick ${tick}: ${did ?? e.what}`)
+      } else if (e.kind === 'together') {
+        const edit = e.what === 'undo-code' ? (undoCode ? { ops: undoCode, said: 'the code change put back' } : null) : togetherOps(e.what, design, opts.kit)
+        if (!edit) {
+          result.skipped.push(`tick ${tick}: together ${e.what}`)
+          continue
+        }
+        const applied = applyEdit(design, edit.ops)
+        applyEditLive(runtime, edit.ops, applied)
+        design = applied.design
+        if (e.what === 'code') undoCode = applied.undo
+        result.applied.push(`tick ${tick}: ${edit.said}${applied.restarted.length ? ` [restarted ${applied.restarted.join(', ')}]` : ''}`)
       }
     }
     const t0 = clock()

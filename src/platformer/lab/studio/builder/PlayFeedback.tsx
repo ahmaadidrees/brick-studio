@@ -53,8 +53,8 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
       if (!room || room.playStart === play) return
       const again = play !== undefined
       play = room.playStart
-      // Joined part way: count from now, the nearest we know.
-      startTick = play ?? runtime.world.tick
+      // Joined part way (from a keyframe): count from the green flag of the game itself, which every screen agrees on.
+      startTick = play ?? runtime.world.timerStartTick
       startRef.current = startTick
       clearedAt = null
       if (!again) return
@@ -110,7 +110,7 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
     if (!me || !players) return []
     return players
       .filter((p) => p.num !== me && p.finished !== undefined)
-      .map((p) => ({ num: p.num, name: p.name, ticks: p.finished! - startRef.current }))
+      .map((p) => ({ num: p.num, name: room?.playerName?.(p.num) ?? p.name, ticks: p.finished! - startRef.current }))
   }, [runtime, room])
 
   if (!runtime) return null

@@ -55,6 +55,8 @@ export interface StudioRoom {
    * play's finish when it changes.
    */
   readonly playStart: number | null
+  /** A player's name in the room as it is now (they may have changed it since they joined), if they are here. */
+  playerName?(num: number): string | undefined
   /** Play up to the room's clock now: how many ticks ran, and how far into the next one we are (0 to 1). */
   frame(now: number): { ticks: number; fraction: number }
 }
@@ -89,6 +91,11 @@ export interface StudioState {
   namingBrickId: string | null
   /** The room this studio plays in, or null for a game of its own. */
   room: StudioRoom | null
+  /**
+   * Building together (docs/qa/hackable-rooms M2): what this player may change in the room's project, or null outside
+   * a room (everything). Build places, paints and tunes; code changes code, costumes and sounds.
+   */
+  roomRights: { build: boolean; code: boolean } | null
 }
 
 export function screenOf(s: Pick<StudioState, 'mode' | 'cardTab'>): StudioScreen {
@@ -144,6 +151,7 @@ export class StudioStore {
       codeSolo: false,
       namingBrickId: null,
       room: null,
+      roomRights: null,
     }
   }
 
@@ -210,18 +218,36 @@ export class StudioStore {
   }
 
   /**
-   * A player who is not the host follows the room's project (the host edited it): the screens draw its background
-   * and bounds. Nothing else changes, and there is nothing of theirs to save.
+   * Building together (M2): the room's project changed (someone else's edit, or ours refused). The studio takes it as
+   * it is, keeping the screen; a copy or brick that is gone is no longer selected. Unlike `load`, nothing resets.
    */
-  followRoomDesign(design: LevelDesign) {
-    if (!this.state.room || design === this.state.project.design) return
-    this.set({ project: { design, workspaces: this.state.project.workspaces } })
+  adoptRoomProject(design: LevelDesign, workspaces: Record<string, unknown>) {
+    const s = this.state
+    if (design === s.project.design && workspaces === s.project.workspaces) return
+    const copies = new Set(design.copies.map((c) => c.id))
+    const bricks = new Set([design.stage.id, ...design.bricks.map((b) => b.id)])
+    this.set({
+      project: { design, workspaces },
+      ...(s.selectedCopyId !== null && !copies.has(s.selectedCopyId) ? { selectedCopyId: null } : {}),
+      ...(!bricks.has(s.selectedBrickId) ? { selectedBrickId: STAGE_ID } : {}),
+      ...(s.brushBrickId !== null && !bricks.has(s.brushBrickId) ? { brushBrickId: null } : {}),
+    })
+  }
+
+  /** Building together (M2): what this player may change now (null: not in a room). */
+  setRoomRights(rights: { build: boolean; code: boolean } | null) {
+    const was = this.state.roomRights
+    if (was === rights || (was && rights && was.build === rights.build && was.code === rights.code)) return
+    this.set({ roomRights: rights })
+    // Code turned off while it was open: back to Build (or Play, when building is off too).
+    if (rights && !rights.code && this.state.cardTab === 'code') this.set({ cardTab: 'sliders' })
+    if (rights && !rights.build && !rights.code && this.state.mode !== 'play') this.play()
   }
 
   /** Back to a game of our own (the next Play starts one). */
   leaveRoom() {
     if (!this.state.room) return
-    this.set({ room: null, runtime: this.state.runtime ? this.makeRuntimeWithout() : null, previewPaused: false, pendingCodeChanges: false })
+    this.set({ roomRights: null, room: null, runtime: this.state.runtime ? this.makeRuntimeWithout() : null, previewPaused: false, pendingCodeChanges: false })
   }
 
   private makeRuntimeWithout(): Runtime {

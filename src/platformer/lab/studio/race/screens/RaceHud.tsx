@@ -37,7 +37,7 @@ function useRaceHud(runtime: Runtime | null, store: StudioStore, goRef?: { curre
     const read = () => {
       samePlay()
       if (goRef) goRef.current = startTick
-      const next = readRaceHud(runtime.world, design, startTick, room?.me ?? 0)
+      const next = readRaceHud(runtime.world, design, startTick, room?.me ?? 0, (n) => room?.playerName?.(n))
       setHud((prev) => (same(prev, next) ? prev : next))
     }
     // The first "go" of this game starts the clock, on the exact tick it was said.
@@ -67,7 +67,7 @@ export function RaceHud({ store }: { store: StudioStore }) {
   const [hint, setHint] = useState(true)
   const [watching, setWatching] = useState(false)
   // Room rules (M2): everyone else's finish, "Sam finished, 41.3s".
-  const readFinishers = useCallback(() => (runtime && room ? roomFinishers(runtime.world, go.current, room.me) : []), [runtime, room])
+  const readFinishers = useCallback(() => (runtime && room ? roomFinishers(runtime.world, go.current, room.me, (n) => room.playerName?.(n)) : []), [runtime, room])
   useEffect(() => {
     setHint(true)
     setWatching(false)

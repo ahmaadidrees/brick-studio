@@ -11,7 +11,8 @@ import type { BroadcastListener } from '../core/runtime'
 import { worldFingerprint, worldToJson } from '../core/snapshot'
 import { applyRoomEvent, gameFromBase } from './game'
 import { HackableRoomLink, type LinkOptions, type LinkStatus } from './link'
-import { HASH_EVERY, KEYFRAME_EVERY, MAX_LATE, type Base, type PlayerEv, type PlayerInfo, type RoomEv, type RoomSettings, type StampedEvent } from './protocol'
+import { workspacesIn, type EditOp } from './edits'
+import { DEFAULT_SETTINGS, HASH_EVERY, KEYFRAME_EVERY, MAX_LATE, type Base, type HistoryItem, type PlayerEv, type PlayerInfo, type RoomEv, type RoomSettings, type StampedEvent } from './protocol'
 import { HackableTimeline, type EventRecord } from './timeline'
 
 /** Runtime methods that change the game: in a room only the room's events may, so the screen's calls do nothing. */
@@ -40,6 +41,11 @@ export interface RoomView {
   notice: string | null
   /** The game started again from scratch (a join, a resync or Play again): the screen resets what it remembers. */
   generation: number
+  /** M2: the room's recent changes, newest last. */
+  history: HistoryItem[]
+  /** M2: what we may change (the host everything). */
+  build: boolean
+  code: boolean
 }
 
 export interface RoomSessionOptions extends LinkOptions {
@@ -64,14 +70,23 @@ export class RoomSession {
   private readonly heard = new Set<BroadcastListener>()
   /** When the play we joined started (a fresh game's first tick), if we know it. */
   private startedAt: number | null = null
+  /** M2: bricks' blocks this screen has (from the room, or from edits), by brick id. */
+  readonly workspaces = new Map<string, unknown>()
+  /** M2: bricks the room has no blocks for. */
+  readonly missingWorkspaces = new Set<string>()
+  /** M2: told when someone's edit lands, an edit of ours is refused, or blocks arrive. */
+  private readonly editListeners = new Set<() => void>()
+  /** M2: edits of ours the room refused (tests and the dev check read it). */
+  rejected = 0
+  private readonly ownEdits = new Set<string>()
 
   constructor(opts: RoomSessionOptions) {
-    this.view = { status: 'connecting', title: '', me: 0, host: false, players: [], settings: { closed: false }, banned: 0, classroom: false, notice: null, generation: 0 }
+    this.view = { status: 'connecting', title: '', me: 0, host: false, players: [], settings: { ...DEFAULT_SETTINGS }, banned: 0, classroom: false, notice: null, generation: 0, history: [], build: false, code: false }
     this.link = new HackableRoomLink(opts.name, {
       welcome: (w) => {
         // The room let go of our keys when we dropped; the next press goes out again.
         if (w.reconnect) this.heldKeys.clear()
-        this.set({ title: w.title, me: w.you, host: w.host, players: w.players, settings: w.settings, classroom: w.classroom })
+        this.set({ title: w.title, me: w.you, host: w.host, players: w.players, settings: { ...DEFAULT_SETTINGS, ...w.settings }, classroom: w.classroom, history: w.history, ...rightsOf(w.players, w.you, w.host) })
         this.start(w.base, w.events)
       },
       resync: (base, events) => {
@@ -81,12 +96,33 @@ export class RoomSession {
       event: (e, mine) => this.event(e, mine),
       reject: (cid, reason) => {
         this.timeline?.reject(cid)
+        this.ownEdits.delete(cid)
+        this.rejected++
         if (reason === 'too_big') this.set({ notice: 'This project is too big to share live yet. Try smaller costumes.' })
-        else if (reason === 'busy') this.set({ notice: 'Changes are going out a little slower. The newest one will follow.' })
+        else if (reason === 'busy') this.set({ notice: 'Changes are going out a little slower. Try that again in a moment.' })
+        else if (reason === 'not_allowed') this.set({ notice: this.view.build ? 'Changing code is off for you. The host can turn it on.' : 'Building is off right now. The host can turn it on.' })
+        else if (reason === 'invalid') this.set({ notice: 'That change could not be shared. Try it again.' })
+        this.checkRuntime()
+        for (const fn of this.editListeners) fn()
       },
-      players: (players) => this.set({ players, host: players.find((p) => p.num === this.view.me)?.host ?? this.view.host }),
-      settings: (settings, banned) => this.set({ settings, banned }),
+      players: (players) => {
+        const host = players.find((p) => p.num === this.view.me)?.host ?? this.view.host
+        this.set({ players, host, ...rightsOf(players, this.view.me, host) })
+      },
+      settings: (settings, banned) => this.set({ settings: { ...DEFAULT_SETTINGS, ...settings }, banned }),
       notice: (message) => this.set({ notice: message }),
+      history: (history) => {
+        // Someone else changed code: say so once, since their brick's scripts started again.
+        const seen = this.view.history.reduce((m, h) => Math.max(m, h.seq), 0)
+        const news = history.filter((h) => h.seq > seen && h.by !== this.view.me && h.kind === 'code')
+        const last = news.at(-1)
+        this.set({ history, ...(last ? { notice: `${last.name} ${last.summary}.${/code/.test(last.summary) ? ' Its scripts started again.' : ''}` } : {}) })
+      },
+      workspace: (id, ws) => {
+        if (ws === null || ws === undefined) this.missingWorkspaces.add(id)
+        else this.workspaces.set(id, ws)
+        for (const fn of this.editListeners) fn()
+      },
       status: (status, detail) => this.set({ status, detail }),
     }, opts)
   }
@@ -195,6 +231,7 @@ export class RoomSession {
       return
     }
     // A keyframe is the same play carried on (a resync, coming back), unless the events after it start it again.
+    this.ownEdits.clear()
     this.startedAt = base.world ? this.playStart : base.tick
     this.timeline = new HackableTimeline<RoomEv>(runtime, applyRoomEvent, { history: 300, snapshotEvery: 4 })
     this.timeline.onBroadcast((message, from, about) => {
@@ -211,8 +248,40 @@ export class RoomSession {
     if (!timeline) return
     // Someone joining a game already going missed its start (a race's "go"): the host can start everyone together.
     if (e.ev.t === 'join' && e.ev.num !== this.view.me && this.view.host) this.set({ notice: `${e.ev.name} joined. Press Restart to start everyone together.` })
-    if (mine && timeline.isPending(e.cid)) return timeline.confirm(e.cid, e.tick, e.seq)
+    if (e.ev.t === 'edit') this.heardEdit(e, mine)
+    if (mine && timeline.isPending(e.cid)) {
+      timeline.confirm(e.cid, e.tick, e.seq)
+      if (this.ownEdits.delete(e.cid)) for (const fn of this.editListeners) fn()
+      return
+    }
     if (!timeline.addRemote(record(e))) this.link.askSync()
+    if (e.ev.t === 'edit') {
+      this.frame()
+      for (const fn of this.editListeners) fn()
+    }
+  }
+
+  /** M2: blocks that came with an edit; a short notice when someone changed code (their brick restarted). */
+  private heardEdit(e: StampedEvent, mine: boolean) {
+    const ev = e.ev
+    if (ev.t !== 'edit') return
+    for (const [id, ws] of Object.entries(workspacesIn(ev.ops))) {
+      this.workspaces.set(id, ws)
+      this.missingWorkspaces.delete(id)
+    }
+    if (mine) return
+    const who = this.view.players.find((p) => p.num === e.by)?.name ?? 'Someone'
+    if (ev.undoOf !== undefined) {
+      const item = this.view.history.find((h) => h.seq === ev.undoOf)
+      this.set({ notice: item ? `${who} put back ${item.name === who ? 'their' : `${item.name}’s`} change: ${item.summary}.` : `${who} put back a change.` })
+      return
+    }
+  }
+
+  /** M2: hear edits landing (ours refused, someone else's arriving, blocks arriving). Returns the way to stop. */
+  onEdits(fn: () => void): () => void {
+    this.editListeners.add(fn)
+    return () => this.editListeners.delete(fn)
   }
 
   /**
@@ -264,16 +333,16 @@ export class RoomSession {
     return snap ? worldFingerprint(snap) : null
   }
 
-  private send(ev: PlayerEv) {
+  private send(ev: PlayerEv): string | null {
     const timeline = this.timeline
-    if (!timeline || this.link.status !== 'online') return false
+    if (!timeline || this.link.status !== 'online') return null
     // Stamp it with the room's tick now: a game that was not drawn for a while (a tab in the background) catches up first.
     this.frame()
     const cid = `${this.link.clientId}:${++this.nextCid}`
     const rec: EventRecord<RoomEv> = { tick: timeline.tick, seq: null, by: this.view.me, cid, ev }
     timeline.addLocal(rec)
     this.link.sendEvent(cid, rec.tick, ev)
-    return true
+    return cid
   }
 
   /** One of our keys went down or up: our Hero answers at once. */
@@ -283,12 +352,54 @@ export class RoomSession {
 
   /** The host's edited project (designText): the bricks change live, or with `restart` everyone plays again. */
   sendProject(text: string, restart: boolean): boolean {
-    return this.view.host && this.send({ t: 'project', text, restart })
+    return this.view.host && !!this.send({ t: 'project', text, restart })
   }
 
   /** The host's Play again with the project as it is. */
   restart(): boolean {
-    return this.view.host && this.send({ t: 'restart' })
+    return this.view.host && !!this.send({ t: 'restart' })
+  }
+
+  /**
+   * M2: our edit (rooms/edits.ts): it lands in our game at once and goes to the room, which may refuse it (then our
+   * game goes back). False when we may not make it or are not connected.
+   */
+  sendEdit(ops: EditOp[]): boolean {
+    if (!ops.length || (!this.view.build && !this.view.code)) return false
+    for (const [id, ws] of Object.entries(workspacesIn(ops))) this.workspaces.set(id, ws)
+    const cid = this.send({ t: 'edit', ops })
+    if (cid) this.ownEdits.add(cid)
+    return !!cid
+  }
+
+  /** M2: edits of ours the room has not answered yet. */
+  get editsInFlight(): number {
+    return this.ownEdits.size
+  }
+
+  /** M2: what we are editing now, for everyone's room bar ("Walker's code"), or null. */
+  setEditing(what: string | null) {
+    this.link.presence(what)
+  }
+
+  /** M2: ask the room for a brick's blocks (they arrive through onEdits). */
+  askWorkspace(id: string) {
+    if (!this.workspaces.has(id)) this.link.askWorkspace(id)
+  }
+
+  /** M2: put back a change (ours; the host anyone's). */
+  undo(seq: number) {
+    this.link.undo(seq)
+  }
+
+  /** M2 (host): everyone may build, or change code. */
+  setRoles(roles: { build?: boolean; code?: boolean }) {
+    if (this.view.host) this.link.setRoles(roles)
+  }
+
+  /** M2 (host): let one player change code, or not. */
+  grantCode(num: number, code: boolean) {
+    if (this.view.host && num !== this.view.me) this.link.grant(num, code)
   }
 
   // Host controls: the room ignores them from anyone else.
@@ -307,6 +418,13 @@ export class RoomSession {
   letRemovedBack() {
     if (this.view.host) this.link.unban()
   }
+}
+
+/** What we may change, from the players list (the host everything). */
+function rightsOf(players: PlayerInfo[], me: number, host: boolean): { build: boolean; code: boolean } {
+  if (host) return { build: true, code: true }
+  const p = players.find((x) => x.num === me)
+  return { build: !!p?.build, code: !!p?.code }
 }
 
 function record(e: StampedEvent): EventRecord<RoomEv> {
