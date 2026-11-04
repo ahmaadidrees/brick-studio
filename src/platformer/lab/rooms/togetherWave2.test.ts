@@ -4,7 +4,9 @@
  *
  * - a game from nothing follows M2's roles: classmates place, paint and change the backdrop; giving a job or choosing
  *   the player is code, which waits for the host; the game's player and backdrop travel as edits (`game`), not as the
- *   host's whole project.
+ *   host's whole project;
+ * - Parity B's bricks go out as edits from the drawer (with their art and sounds), are tuned and recoded live, and every
+ *   game agrees.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LevelDesign } from '../core/contracts'
@@ -14,6 +16,9 @@ import { StudioStore } from '../studio/store'
 import { createStarterProject } from '../studio/starter'
 import { createBlankProject } from '../studio/blank/blankProject'
 import { giveJob } from '../studio/blank/jobs'
+import { CHECKPOINT_BRICK_ID } from '../studio/builtins/checkpoint'
+import { SPIKY_BRICK_ID } from '../studio/builtins/critters'
+import { PLATFORM_BRICK_ID } from '../studio/builtins/platforms'
 import { chunks } from './building'
 import { applyEdit, diffDesigns, isEditOps, kindOfEdit, type EditOp } from './edits'
 import { HackableRoomCore } from './roomCore'
@@ -163,5 +168,58 @@ describe('a game from nothing in a room follows M2\'s roles', { timeout: 60_000 
     // Kit games never have either, so their diffs never carry one.
     const starter = createStarterProject().design
     expect(diffDesigns(starter, { ...starter, name: starter.name }).ops).toEqual([])
+  })
+})
+
+describe('Parity B bricks in a room, built together', { timeout: 60_000 }, () => {
+  it('a Checkpoint and a Spiky from the drawer, the platform tuned and recoded live: every game agrees', async () => {
+    const start = new StudioStore(createStarterProject())
+    start.addCopy(start.addCatalogBrick(PLATFORM_BRICK_ID)!, 600, 200)
+    const { design, workspaces } = start.getState().project
+    const { core, net, ana, ben, cy, all } = await room(design, workspaces)
+
+    // Ben adds a Checkpoint and a Spiky from the drawer: new bricks (with their art and the classic jingle) are building.
+    const add = editFrom(ben, (s) => {
+      s.addCopy(s.addCatalogBrick(CHECKPOINT_BRICK_ID)!, 220, 32)
+      s.addCopy(s.addCatalogBrick(SPIKY_BRICK_ID)!, 700, 300)
+    })
+    expect(kindOfEdit(designOf(ben), add)).toBe('build')
+    expect(send(ben, add)).toBe(true)
+    await net.run(1000, all)
+    expect(ben.rejected).toBe(0)
+    for (const s of all) {
+      expect(s.runtime!.world.targets.some((t) => t.brickId === CHECKPOINT_BRICK_ID)).toBe(true)
+      expect(s.runtime!.world.targets.some((t) => t.brickId === SPIKY_BRICK_ID)).toBe(true)
+    }
+    expect(designText(designOf(cy))).toBe(core.project)
+
+    // Cy turns the platform's speed slider (building), then, with code, changes its code (restarts only it).
+    const tune = editFrom(cy, (s) => s.setBrickSlider(PLATFORM_BRICK_ID, `${PLATFORM_BRICK_ID}_speed`, 3))
+    expect(kindOfEdit(designOf(cy), tune)).toBe('build')
+    send(cy, tune)
+    await net.run(800, all)
+    expect(cy.rejected).toBe(0)
+    for (const s of all) expect(s.runtime!.world.targets.find((t) => t.brickId === PLATFORM_BRICK_ID)!.variables[`${PLATFORM_BRICK_ID}_speed`]).toBe(3)
+    ana.setRoles({ code: true })
+    await net.run(400, all)
+    // The blocks came from the room (Cy may code now); one script fewer is a code change.
+    cy.askWorkspace(PLATFORM_BRICK_ID)
+    await net.run(300, all)
+    const recode = editFrom(cy, (s) => {
+      const ws = structuredClone(s.getState().project.workspaces[PLATFORM_BRICK_ID]) as { blocks: { blocks: unknown[] } }
+      ws.blocks.blocks = ws.blocks.blocks.slice(0, -1)
+      s.setWorkspace(PLATFORM_BRICK_ID, ws)
+    })
+    expect(kindOfEdit(designOf(cy), recode)).toBe('code')
+    send(cy, recode)
+    await net.run(1000, all)
+    expect(cy.rejected).toBe(0)
+    expect(ben.view.notice).toMatch(/Cy changed Moving platform’s code\. Its scripts started again\./)
+
+    await net.run(3000, all)
+    const prints = agree(all)
+    expect(prints[0]).not.toBeNull()
+    expect(new Set(prints).size).toBe(1)
+    expect(all.map((s) => s.stats.resyncs)).toEqual([0, 0, 0])
   })
 })
