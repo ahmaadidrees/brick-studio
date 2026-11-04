@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 2,
+  "partLibraryVersion": 1,
+  "environmentId": "classic",
+  "customParts": [],
+  "bricks": [
+    {
+      "id": "stack-0",
+      "partId": "brick_2x4",
+      "x": 10,
+      "y": 0,
+      "z": 10,
+      "rotation": 0,
+      "color": "#d01012"
+    },
+    {
+      "id": "stack-1",
+      "partId": "brick_2x4",
+      "x": 12,
+      "y": 0,
+      "z": 10,
+      "rotation": 0,
+      "color": "#0055bf"
+    },
+    {
+      "id": "stack-2",
+      "partId": "brick_2x4",
+      "x": 14,
+      "y": 0,
+      "z": 10,
+      "rotation": 0,
+      "color": "#f2cd37"
+    },
+    {
+      "id": "stack-3",
+      "partId": "brick_2x4",
+      "x": 10,
+      "y": 0,
+      "z": 14,
+      "rotation": 0,
+      "color": "#d01012"
+    },
+    {
+      "id": "stack-4",
+      "partId": "brick_2x4",
+      "x": 12,
+      "y": 0,
+      "z": 14,
+      "rotation": 0,
+      "color": "#0055bf"
+    },
+    {
+      "id": "stack-5",
+      "partId": "brick_2x4",
+      "x": 14,
+      "y": 0,
+      "z": 14,
+      "rotation": 0,
+      "color": "#f2cd37"
+    },
+    {
+      "id": "stack-6",
+      "partId": "brick_2x4",
+      "x": 10,
+      "y": 0,
+      "z": 18,
+      "rotation": 0,
+      "color": "#d01012"
+    },
+    {
+      "id": "stack-7",
+      "partId": "brick_2x4",
+      "x": 12,
+      "y": 0,
+      "z": 18,
+      "rotation": 0,
+      "color": "#0055bf"
+    },
+    {
+      "id": "stack-8",
+      "partId": "brick_2x4",
+      "x": 14,
+      "y": 0,
+      "z": 18,
+      "rotation": 0,
+      "color": "#f2cd37"
+    }
+  ]
+}
