@@ -1,4 +1,4 @@
-import { EFFECT_NAMES, type Value } from '../contracts'
+import { EFFECT_NAMES, type KitId, type Value } from '../contracts'
 
 /** A `[label, value]` pair formatted for Blockly `FieldDropdown`. */
 export type MenuOption = [label: string, value: string]
@@ -30,6 +30,11 @@ export interface EditorContext {
   getBackdrops?: () => string[]
   getKeys?: () => MenuOption[]
   isStage?: boolean
+  /**
+   * The project's Hackable kit (missing means the Platformer). In a 3D project the speed menus offer z, "when I bump"
+   * offers front and back, and the Platformer blocks are drawn in the 3D colour.
+   */
+  kit?: KitId
   /**
    * When set, every variable menu ends with "Rename variable" and "Delete the "x" variable" (as in Scratch); picking
    * one calls this with the variable the menu showed, and the block keeps its variable.
