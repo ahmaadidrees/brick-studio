@@ -75,13 +75,25 @@ export class RoomBuilder {
     return all
   }
 
-  /** The kid's rights in the studio. Code waits for every brick's blocks. */
+  /**
+   * The kid's rights in the studio. Code waits for every brick's blocks, in the studio itself: the session has them a
+   * moment before the studio takes them (follow, after FOLLOW_MS, or later while our own edits are on their way), and a
+   * Code editor opened in between started from an empty canvas, saved it over the brick (the Hero's scripts gone, the
+   * brick renamed "My Hero") and sent that to everyone as a code change (found in the wave 2 browser run).
+   */
   private rights() {
     const view = this.session.view
     if (view.status !== 'online' && !this.store.getState().roomRights) return
-    const code = view.code && this.synced !== null && this.roomAnswered()
+    const code = view.code && this.synced !== null && this.roomAnswered() && this.blocksInStudio()
     this.store.setRoomRights({ build: view.build, code })
     this.presence()
+  }
+
+  /** Every brick's blocks the room has sent are in the studio's project. */
+  private blocksInStudio(): boolean {
+    const workspaces = this.store.getState().project.workspaces
+    for (const id of this.session.workspaces.keys()) if (workspaces[id] === undefined) return false
+    return true
   }
 
   /** The kid changed something: send it soon (a stroke in progress goes in a few pieces). */

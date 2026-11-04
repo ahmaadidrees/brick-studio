@@ -19,7 +19,7 @@ import { giveJob } from '../studio/blank/jobs'
 import { CHECKPOINT_BRICK_ID } from '../studio/builtins/checkpoint'
 import { SPIKY_BRICK_ID } from '../studio/builtins/critters'
 import { PLATFORM_BRICK_ID } from '../studio/builtins/platforms'
-import { chunks } from './building'
+import { chunks, RoomBuilder } from './building'
 import { applyEdit, diffDesigns, isEditOps, kindOfEdit, type EditOp } from './edits'
 import { HackableRoomCore } from './roomCore'
 import type { RoomSession } from './session'
@@ -221,5 +221,34 @@ describe('Parity B bricks in a room, built together', { timeout: 60_000 }, () =>
     expect(prints[0]).not.toBeNull()
     expect(new Set(prints).size).toBe(1)
     expect(all.map((s) => s.stats.resyncs)).toEqual([0, 0, 0])
+  })
+})
+
+describe('a classmate let in to code (M2 RoomBuilder, found in the wave 2 browser run)', { timeout: 60_000 }, () => {
+  it('Code opens only once the room\'s blocks are in the studio, so the editor never starts from an empty canvas', async () => {
+    const project = createStarterProject()
+    const { net, ana, ben, all } = await room(project.design, project.workspaces)
+    // Ben's studio, as the join page makes it: the room's project, no blocks yet, and the bridge to the room.
+    const store = new StudioStore({ design: designOf(ben), workspaces: {} })
+    const stop = new RoomBuilder(ben, store).start()
+    const run = async (ms: number) => { for (let t = 0; t < ms; t += 10) { await net.run(10, all); vi.advanceTimersByTime(10) } }
+    await run(600)
+    expect(store.getState().roomRights).toEqual({ build: true, code: false })
+    // Every time Code is open, every block the room has sent is already in the studio.
+    const early: string[] = []
+    const off = store.subscribe(() => {
+      if (!store.getState().roomRights?.code) return
+      const ws = store.getState().project.workspaces
+      for (const id of ben.workspaces.keys()) if (ws[id] === undefined) early.push(id)
+    })
+    ana.grantCode(ben.view.me, true)
+    await run(2000)
+    off()
+    expect(store.getState().roomRights?.code).toBe(true)
+    expect(early).toEqual([])
+    expect(store.getState().project.workspaces.brick_hero).toBeDefined()
+    // Nothing went out: opening up to code changed no brick.
+    expect(ana.view.history).toEqual([])
+    stop()
   })
 })
