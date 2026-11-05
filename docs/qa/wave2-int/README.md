@@ -12,8 +12,10 @@ It also carries the fixes that only showed up once the lanes were together.
 - **Branch:** `claude/wave2-int-d16a14`, committed locally. Nothing pushed, no PR, nothing deployed to production.
 - **Staging:** the Worker was deployed to staging only (version `49a6eed8-2828-4b42-b6b4-98417967b105`) after the Worker
   tests passed. Three-kid guest rooms were run against it in real browsers.
-- **Class rooms with real sign-ins were not run.** No test teacher or class credentials are available to this session;
-  see [Staging class room](#staging-class-room-blocked-on-test-credentials).
+- **Class rooms with real sign-ins were not run.** The owner then supplied a test teacher login
+  (`.env.classroom-qa.local`, git-ignored) and approved one throwaway class. Its teacher login is refused (401
+  `invalid_credentials`) by both the staging and the production Worker, so nothing was created; see
+  [Staging class room](#6-staging-class-room-blocked-on-test-credentials).
 
 ## 1. The merges
 
@@ -233,8 +235,26 @@ M2's class rooms have never run with real sign-ins.
   - None are set here. No seed, fixture or staging doc in the repository provides them; the earlier QA run kept its
     session material in a private `/tmp` file outside the repository.
   - So, as instructed, I stopped there rather than use any other account.
+- **Second attempt, with the owner's test teacher login (2026-11-04):**
+  - The owner put `CLASSROOM_TEST_TEACHER_EMAIL` and `CLASSROOM_TEST_TEACHER_PASSWORD` in `.env.classroom-qa.local`
+    (git-ignored; loaded into the process only, never printed). The file is well formed: an email and a 10-character
+    password, with no quotes or stray whitespace.
+  - The harness is `scripts/qa/wave2-classroom.mjs`, in three phases: `setup` makes the class, two students and one
+    shared project, once; `run` runs the checks; `cleanup` switches the students off and closes the class.
+  - Its first call, `POST /classroom/auth/teacher-login`, returned **401 `invalid_credentials`** from the staging
+    Worker. One more login attempt against the production Worker's API, to tell a wiring problem from a credential
+    problem, returned the same 401.
+  - So the account or password is not accepted by the classroom sign-in. The cause could be a wrong password, an
+    account that does not exist yet, an unconfirmed email, or an account that only signs in with Google.
+  - **Nothing was created:** no class, no students, no project, no state file. So there is nothing to clean up. I did
+    not retry further, so the account is not locked out.
 - **What is needed:**
-  1. A dedicated staging QA teacher login (or a `SESSION_STORAGE_FILE` for one), and confirmation that synthetic test
+  1. A teacher login that `POST /classroom/auth/teacher-login` accepts (check it once in the browser's Teacher sign in).
+     Then run:
+     `set -a; . ./.env.classroom-qa.local; set +a; CLASSROOM_TEST_API=<staging Worker> CLASSROOM_TEST_ALLOW_FIXTURES=yes W2_STATE=<private file> node scripts/qa/wave2-classroom.mjs setup`,
+     then the same with `run` (Vite from `w2-app-staging`, which now points both the classroom API and rooms at
+     staging), then `cleanup`.
+  2. Originally needed, still the same: a dedicated staging QA teacher login (or a `SESSION_STORAGE_FILE` for one), and confirmation that synthetic test
      classes may be created on the database the staging Worker uses.
   2. With those set as environment variables: create a synthetic class, register two synthetic students, and have the
      teacher share a Hackable project with the class.
