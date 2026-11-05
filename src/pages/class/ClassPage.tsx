@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Blocks, CircleAlert, CircleCheck, Library, LoaderCircle, Pause, Play, Plus, Settings, Users } from 'lucide-react'
 import { createBrickStudioDocument } from '@brick-studio/core'
 import { Button, SegmentedControl, Sheet } from '../../ui'
@@ -146,7 +146,8 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
     return () => { cancelled = true; window.clearInterval(timer) }
   }, [client, classId, teacher, enrollmentOpen, tab, editingStudent])
 
-  useEffect(() => {
+  // A layout effect, so focus moves in the same commit that shows the panel: the heading never appears without it.
+  useLayoutEffect(() => {
     if (editingStudent && studentFocus.current === 'password') { document.querySelector<HTMLInputElement>('input[name="temporaryPassword"]')?.focus(); studentFocus.current = null }
     else if (editingStudent || selectedWorld) detailHeading.current?.focus()
   }, [editingStudent, selectedWorld])

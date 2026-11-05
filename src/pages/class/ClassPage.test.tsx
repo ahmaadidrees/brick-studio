@@ -182,24 +182,27 @@ it('opens World controls with checkpoints for a world the teacher started', asyn
   expect(screen.getByText('Restore world')).toBeInTheDocument()
 })
 
+/** The page disables its controls while a request is out; React may clear that a moment after the request is seen. */
+const ready = async (find: () => HTMLElement) => { await waitFor(() => expect(find()).toBeEnabled()); return find() }
+
 it('sends each settings switch as its own PATCH body and confirms the destructive ones', async () => {
   const { client, calls } = testClient()
   render(<ClassPage client={client} navigate={vi.fn()} />)
   fireEvent.click(await screen.findByRole('radio', { name: 'Settings' }))
   fireEvent.click(await screen.findByRole('switch', { name: 'New students can join' }))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ enrollmentOpen: false }))
-  fireEvent.click(screen.getByRole('switch', { name: 'Students can share their own builds' }))
+  fireEvent.click(await ready(() => screen.getByRole('switch', { name: 'Students can share their own builds' })))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ studentsCanShare: false }))
-  fireEvent.click(screen.getByRole('switch', { name: 'Show names on the join screen' }))
+  fireEvent.click(await ready(() => screen.getByRole('switch', { name: 'Show names on the join screen' })))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ showNamesOnJoin: false }))
 
-  fireEvent.click(screen.getByRole('switch', { name: 'Building together' }))
+  fireEvent.click(await ready(() => screen.getByRole('switch', { name: 'Building together' })))
   expect(await screen.findByRole('dialog', { name: 'Pause building together?' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Pause now' }))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ collaborationOpen: false }))
   expect(await screen.findByText('Building together paused')).toBeInTheDocument()
 
-  fireEvent.click(screen.getByRole('button', { name: 'New class code' }))
+  fireEvent.click(await ready(() => screen.getByRole('button', { name: 'New class code' })))
   expect(await screen.findByRole('dialog', { name: 'Get a new class code?' })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Get a new code' }))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ rotateCode: true }))
@@ -213,7 +216,7 @@ it('renames the class and creates another one from Settings', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
   await waitFor(() => expect(lastBody(calls, '/classes/class-1')).toEqual({ name: 'Room 12 Engineers' }))
   fireEvent.change(screen.getByLabelText('New class name'), { target: { value: 'Club' } })
-  fireEvent.click(screen.getByRole('button', { name: 'Create class' }))
+  fireEvent.click(await ready(() => screen.getByRole('button', { name: /^(Create class|Creating…)$/ })))
   await waitFor(() => expect(calls).toContainEqual(['/classes', 'POST', { name: 'Club' }]))
 })
 
