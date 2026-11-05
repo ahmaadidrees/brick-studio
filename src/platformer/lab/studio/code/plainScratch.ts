@@ -298,6 +298,23 @@ function selfMoveCards(): PlainScratchCard[] {
   const tell = b.flag([b.forever([b.sCond(b.eq(b.v(hit), 1), [b.blk('event_broadcast', { inputs: { BROADCAST_INPUT: b.text('bumped') } })])])])
   const ground = b.flag([b.forever([b.set(V.onGround, 0), b.changeY(b.v(V.ySpeed)), b.sCond(b.touching('Platform'), [b.set(V.onGround, 1)])])])
   const vars = [V.xSpeed, hit]
+  // Slip: after moving up into a Ceiling, try 4 steps right, then 4 left; if both still touch it, go back and drop out.
+  const slip = b.flag([
+    b.forever([
+      b.changeY(b.v(V.ySpeed)),
+      b.sCond(b.touching('Ceiling'), [
+        b.changeX(4),
+        b.sCond(b.touching('Ceiling'), [
+          b.changeX(-8),
+          b.sCond(b.touching('Ceiling'), [b.changeX(4), repeatUntil(not(b.touching('Ceiling')), [b.changeY(-1)]), b.set(V.ySpeed, 0)]),
+        ]),
+      ]),
+    ]),
+  ])
+  // Carry: the platform moves and tells; whoever stands on it moves the same way.
+  const lift = b.flag([b.forever([b.changeX(b.v(V.xSpeed)), b.blk('event_broadcast', { inputs: { BROADCAST_INPUT: b.text('platform moved') } })])])
+  const ride = b.blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: 'platform moved' } })
+  ride.next = { block: b.sCond(b.touching('Platform'), [b.changeX({ block: b.blk('sensing_of', { fields: { PROPERTY: 'x speed', OBJECT: 'Platform' } }) })]) }
   return [
     {
       opcode: 'platformer_setmover',
@@ -326,12 +343,41 @@ function selfMoveCards(): PlainScratchCard[] {
       extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
     },
     {
+      opcode: 'platformer_whathit',
+      name: 'what I hit',
+      explanation:
+        '"what I hit" says which brick the last move stopped at, so a car can bounce harder off a bumper than off a tire stack. ' +
+        'In plain Scratch you ask each kind in turn: touching Wall? touching Bumper? and remember the first that says yes.',
+      workspace: workspace([place(moveLoop, 20, 20)], vars),
+      extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
+    },
+    {
       opcode: 'platformer_tellhit',
       name: 'tell what I hit',
       explanation:
         '"tell what I hit" starts "when I bump" on this brick and on the brick it ran into, so a ? block knows you hit it from below. In plain Scratch you broadcast a message, and the other sprite listens for it.',
       workspace: workspace([place(tell, 20, 20)], vars),
       extras: { ...NO_EXTRAS, variables: vars, messages: ['bumped'] },
+    },
+    {
+      opcode: 'platformer_slipcorner',
+      name: 'slip past a corner',
+      explanation:
+        'Jumping up into the corner of a block, you slide around it instead of bonking your head. ' +
+        'In plain Scratch you try a few steps to the side and keep the first one where you are no longer touching the ceiling; if none works, you step back and stop. ' +
+        'The Platformer block does it with boxes, only when the corner overlaps you by a few steps, and only if the rest of the move is clear.',
+      workspace: workspace([place(slip, 20, 20)], [V.ySpeed]),
+      extras: { ...NO_EXTRAS, variables: [V.ySpeed], bricks: ['Ceiling'] },
+    },
+    {
+      opcode: 'platformer_movecarry',
+      name: 'carry what stands on me',
+      explanation:
+        'A moving platform takes you along when you stand on it. ' +
+        'In plain Scratch the platform broadcasts how far it moved, and the Hero listens: if it is touching the platform, it moves the same way. ' +
+        'The Platformer block does it in one go, for everything standing on top, and stops a rider at walls.',
+      workspace: workspace([place(lift, 20, 20), place(ride, 20, 200)], [V.xSpeed]),
+      extras: { ...NO_EXTRAS, variables: [V.xSpeed], bricks: ['Platform'], messages: ['platform moved'] },
     },
     {
       opcode: 'platformer_setonground',

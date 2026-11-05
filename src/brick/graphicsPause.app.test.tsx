@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { useBrickStore } from './store'
@@ -71,8 +71,11 @@ describe('editing while the graphics are paused', () => {
   it('parks the inspector delete button and undo while paused, even if the click still fires', () => {
     resetStore({ selectedIds: ['brick-a'], selectedId: 'brick-a' })
     render(<BrickStudioApp />)
+    // Scope the button queries to their groups: an unscoped getByRole('button', { name }) computes a name for every
+    // element of the studio, its ~5,600 SVG part thumbnails included (as in BrickStudioApp.test.tsx), which made this
+    // file time out under load.
     // Grab the visible selection action before pausing; inert subtrees leave role queries.
-    const deleteButton = screen.getByRole('button', { name: 'Delete brick' })
+    const deleteButton = within(screen.getByRole('group', { name: 'Selected brick actions' })).getByRole('button', { name: 'Delete brick' })
     const inspector = deleteButton.closest('.command-strip')
     expect(inspector).not.toBeNull()
 
@@ -81,7 +84,7 @@ describe('editing while the graphics are paused', () => {
     // jsdom does not enforce inert, so a forced click exercises the store-level backstop.
     fireEvent.click(deleteButton)
     expect(useBrickStore.getState().bricks).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
+    expect(within(screen.getByRole('group', { name: 'Edit history' })).getByRole('button', { name: 'Undo' })).toBeDisabled()
 
     act(() => useBrickStore.getState().setGraphicsPaused(false))
     expect(inspector).not.toHaveAttribute('inert')

@@ -143,7 +143,10 @@ export const buildHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
  * A Hackable project's room is played in, not built in (docs/qa/hackable-rooms): `/2d/hackable/w/<id>`.
  */
 export const liveHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
-  world.format === 'hackable' ? roomHref.classroom(world.id) : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+  world.format === 'hackable'
+    // Hackable 3D has no rooms yet (D3): a classmate's opens in the studio to look inside and copy.
+    ? (canPlayTogether(world) ? roomHref.classroom(world.id) : hackableHref.world(world.id, world.kit))
+    : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
 /** The owner's way into their own shared world's room: a Hackable project opens in the studio with its room open. */
 export const ownRoomHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =>
   world.format === 'hackable' ? hackableHref.together(world.id, world.kit) : liveHref(world)
@@ -155,8 +158,13 @@ export const invitedHref = (world: Pick<WorldsWorld, 'id' | 'format' | 'kit'>) =
 }
 /** Kinds with a live room to build in together. A Hackable project's room is played in: only its owner changes it. */
 export const canBuildTogether = (world: Pick<WorldsWorld, 'format'>) => world.format !== 'hackable'
-/** Kinds whose room is for playing together: a Hackable project (every player gets a Hero; the owner hosts). */
-export const canPlayTogether = (world: Pick<WorldsWorld, 'format'>) => world.format === 'hackable'
+/**
+ * Kinds whose room is for playing together: a Hackable project (every player gets a Hero; the owner hosts). Not Hackable
+ * 3D yet: its rooms are D3 (docs/qa/hackable-3d/SPIKE.md), so sharing one is look-only.
+ */
+export function canPlayTogether(world: Pick<WorldsWorld, 'format'> & { kit?: WorldsWorld['kit'] }): boolean {
+  return world.format === 'hackable' && world.kit !== '3d'
+}
 /** A new 2D level, next to "New build". */
 export const NEW_LEVEL_2D_HREF = '/2d/build?new=1'
 export const SAVE_DRAFT_HREF = '/build?classroom=save'

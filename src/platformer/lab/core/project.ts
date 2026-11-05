@@ -14,7 +14,7 @@
  *
  * y up, (0, 0) = bottom-left of the level, direction 90 = right.
  */
-import { EFFECT_NAMES, TILE_SIZE, gridCopyId, isKitId } from './contracts'
+import { BACKDROPS, EFFECT_NAMES, TILE_SIZE, gridCopyId, isKitId } from './contracts'
 import type {
   BrickDef,
   BrickProgram,
@@ -42,6 +42,7 @@ import type {
 import { seedState } from './rng'
 import { wrapDirection } from './motion'
 import { isCostumeSource, isSoundSource, MAX_ASSET_CHARS } from './contentRules'
+import { validateDesign3d } from '../kit3d/validate3d'
 
 export const DESIGN_LIMITS = {
   maxBricks: 400,
@@ -139,7 +140,9 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
 
   checkId(design.id, 'id', push)
   checkName(design.name, 'name', push)
-  if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race or 3d.')
+  if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race, 3d or blank.')
+  if (design.player !== undefined && !(typeof design.player === 'string' && design.player.length > 0 && design.player.length <= 64)) push('bad-value', 'player', 'The player must be a brick id.')
+  if (design.backdrop !== undefined && !BACKDROPS.includes(design.backdrop)) push('bad-value', 'backdrop', 'The backdrop must be paper, sky, grass or night.')
   if (design.pits !== undefined && typeof design.pits !== 'boolean') push('bad-value', 'pits', 'Pits must be true or false.')
   checkSeed(design.seed, push)
   checkBounds(design.bounds, push)
@@ -200,6 +203,8 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
   const gridChars = new Set<string>()
   if (bricks) bricks.forEach((brick, i) => checkGrid(brick, `bricks[${i}]`, gridChars, push))
   if (design.tiles !== undefined) checkTiles(design.tiles, gridChars, push)
+  // Hackable 3D: the build, custom parts, every copy's z and each brick's box (kit3d/validate3d.ts).
+  if (design.kit === '3d') validateDesign3d(design, push)
 
   return problems
 }
@@ -852,6 +857,7 @@ export function instantiate(design: LevelDesign): World {
     nextAskId: 1,
     hostClock: null,
     ...(design.tiles ? { tiles: structuredClone(design.tiles) } : {}),
+    ...(typeof design.player === 'string' ? { player: design.player } : {}),
   }
 }
 
@@ -873,28 +879,45 @@ function gridTargets(design: LevelDesign, bricks: Record<string, BrickDef>): Tar
       if (ch === '.') continue
       const brick = byChar.get(ch)
       if (!brick) continue
-      const covered = brick.grid?.autotile === true && brick.costumes.length > 1 && tiles.data[row + 1]?.[col] === ch
-      const locals = localsFrom(brick.program, undefined)
-      const id = gridCopyId(col, row)
-      const target = newTarget({
-        id,
-        brickId: brick.id,
-        isStage: false,
-        x: left + col * TILE_SIZE + TILE_SIZE / 2,
-        y: bottom + row * TILE_SIZE + TILE_SIZE / 2,
-        // A brick that points a way (a boost pad) faces it; every other cell faces right.
-        direction: brick.grid?.way ?? 90,
-        size: 100,
-        visible: true,
-        costumeIndex: covered ? 1 : 0,
-        variables: locals.variables,
-        lists: locals.lists,
-      })
-      target.copyId = id
-      out.push(target)
+      out.push(makeCell(brick, tiles, col, row, left, bottom))
     }
   }
   return out
+}
+
+/** The costume a grid cell starts with: costume 2 for an autotile brick when the cell above is the same. */
+export function cellCostume(brick: BrickDef, tiles: TileLayer, col: number, row: number): number {
+  const ch = tiles.data[row]?.[col]
+  return brick.grid?.autotile === true && brick.costumes.length > 1 && tiles.data[row + 1]?.[col] === ch ? 1 : 0
+}
+
+function makeCell(brick: BrickDef, tiles: TileLayer, col: number, row: number, left: number, bottom: number): Target {
+  const locals = localsFrom(brick.program, undefined)
+  const id = gridCopyId(col, row)
+  const target = newTarget({
+    id,
+    brickId: brick.id,
+    isStage: false,
+    x: left + col * TILE_SIZE + TILE_SIZE / 2,
+    y: bottom + row * TILE_SIZE + TILE_SIZE / 2,
+    // A brick that points a way (a boost pad) faces it; every other cell faces right.
+    direction: brick.grid?.way ?? 90,
+    size: 100,
+    visible: true,
+    costumeIndex: cellCostume(brick, tiles, col, row),
+    variables: locals.variables,
+    lists: locals.lists,
+  })
+  target.copyId = id
+  return target
+}
+
+/**
+ * One painted cell's target, as Play makes it (rooms: a cell painted while everyone plays, rooms/edits.ts). `tiles`
+ * is the grid with the cell already painted.
+ */
+export function cellTarget(design: Pick<LevelDesign, 'bounds'>, brick: BrickDef, tiles: TileLayer, col: number, row: number): Target {
+  return makeCell(brick, tiles, col, row, finite(design.bounds.left, 0), finite(design.bounds.bottom, 0))
 }
 
 /** A fresh painted copy's target, as Play makes it (rooms: core/players.ts makes each player's Hero this way). */

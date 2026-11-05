@@ -158,4 +158,23 @@ describe('a Hackable room timeline (docs/qa/hackable-rooms M0)', () => {
     t.advanceTo(30)
     expect(heard).toEqual([5, 15, 25])
   })
+
+  it('a broadcast a tick makes only when played again (a late event caused it) is heard then, once', () => {
+    const t = setup()
+    const heard: number[] = []
+    t.onBroadcast(() => heard.push(t.tick))
+    t.addRemote(rec(5, 0, { kind: 'shout' }))
+    t.advanceTo(20)
+    expect(heard).toEqual([5])
+    // Someone else's event for tick 8 arrives late: ticks 8 to 19 are played again, and tick 8 now shouts.
+    t.addRemote(rec(8, 2, { kind: 'shout' }))
+    t.advanceTo(21)
+    expect(t.rewinds).toBe(1)
+    expect(heard).toEqual([5, 8])
+    // Played again once more (an even earlier event): nothing new, nothing heard twice.
+    t.addRemote(rec(4, 1, { kind: 'join', name: 'Maya' }))
+    t.advanceTo(22)
+    expect(t.rewinds).toBe(2)
+    expect(heard).toEqual([5, 8])
+  })
 })

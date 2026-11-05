@@ -13,7 +13,7 @@
  * day of week 1=Sunday … 7=Saturday). With no clock, or an unknown menu, the reporter is 0.
  * Loudness is 0. Username is ''. There is no `Date` and no microphone in core.
  */
-import { TICKS_PER_SECOND, TICK_MS, YIELD } from './contracts'
+import { PLAYER_MENU, TICKS_PER_SECOND, TICK_MS, YIELD, playerBrickIdOf } from './contracts'
 import type { AskPrompt, BrickDef, HostClock, Primitive, PrimitiveCtx, PrimitiveTable, QueuedAsk, RuntimeApi, Target, Value, World } from './contracts'
 
 export type { AskPrompt, HostClock, QueuedAsk }
@@ -155,6 +155,11 @@ export function clearTargetQuestions(runtime: RuntimeApi, target: Target): void 
 }
 
 function brickNamed(world: World, name: string): BrickDef | undefined {
+  if (name === PLAYER_MENU) {
+    const id = playerBrickIdOf(world)
+    const brick = id ? world.bricks[id] : undefined
+    return brick && !brick.isStage ? brick : undefined
+  }
   for (const brick of Object.values(world.bricks)) {
     if (!brick.isStage && brick.name === name) return brick
   }
@@ -169,19 +174,60 @@ const touchingObject: Primitive = (ctx) => {
   if (!ctx.target.visible) return false
   const brick = brickNamed(world, menu)
   if (!brick) return false
+  return touchingBrick(ctx, brick)
+}
+
+/**
+ * Is this script's target touching any copy of `brick`? In a room, touching a player's copy makes the script about the
+ * players it touches (ThreadHandle.about). Shared by "touching [brick]?" and Start from nothing's "touching the player?".
+ */
+export function touchingBrick(ctx: PrimitiveCtx, brick: BrickDef): boolean {
+  const world = ctx.runtime.world
+  if (!ctx.target.visible) return false
   // Prefilter: a level can hold thousands of copies of one brick (every painted cell is one), so first skip every copy
   // whose position is too far from this target's box to reach it, whatever its size or rotation.
   const mine = targetBounds(world, ctx.target)
   if (!mine) return false
   const costumeRadius = brick.costumes.reduce((r, c) => Math.max(r, radiusOf(c)), 0)
+  // Rooms: touching a player's Hero (or its clone) makes this script about every player it touches (ThreadHandle.about),
+  // so what it says next ("hero hurt") reaches only them. A finished player's Hero sits out: nothing touches it.
+  const room = !!world.players?.length
+  const out = room ? finishedIn(world) : null
+  let players: number[] | null = null
+  let playerBrick = false
   for (const other of world.targets) {
     if (other.brickId !== brick.id || other === ctx.target) continue
+    if (room && other.player !== undefined) {
+      playerBrick = true
+      if (out?.has(other.player)) continue
+    }
     if (!other.visible || isDragged(other)) continue
     const reach = (costumeRadius * Math.abs(other.size)) / 100 + 1
     if (other.x < mine.left - reach || other.x > mine.right + reach || other.y < mine.bottom - reach || other.y > mine.top + reach) continue
-    if (targetsTouch(world, ctx.target, other)) return true
+    if (!targetsTouch(world, ctx.target, other)) continue
+    if (!room || other.player === undefined) return true
+    if (!(players ??= []).includes(other.player)) players.push(other.player)
   }
-  return false
+  if (playerBrick) ctx.thread.about = players ?? undefined
+  return players !== null
+}
+
+/** Rooms: the players who have finished the round. */
+function finishedIn(world: World): Set<number> | null {
+  let out: Set<number> | null = null
+  for (const p of world.players ?? []) if (p.finished !== undefined) (out ??= new Set()).add(p.num)
+  return out
+}
+
+/**
+ * The target a sprite menu names: the first painted copy of the brick. In a room, when it names the players' Hero and
+ * this script is about a player (it touched their Hero), that player's Hero.
+ */
+function namedTarget(ctx: PrimitiveCtx, name: string): Target | undefined {
+  const found = ctx.runtime.findOriginal(name)
+  const about = ctx.thread.about
+  if (!found || found.player === undefined || !about?.length) return found
+  return ctx.runtime.world.targets.find((t) => !t.isClone && t.brickId === found.brickId && t.player === about[0]) ?? found
 }
 
 const distanceTo: Primitive = (ctx) => {
@@ -193,7 +239,7 @@ const distanceTo: Primitive = (ctx) => {
     x = ctx.runtime.world.mouse.x
     y = ctx.runtime.world.mouse.y
   } else {
-    const other = ctx.runtime.findOriginal(menu)
+    const other = namedTarget(ctx, menu)
     if (!other || other.isStage) return 10000
     x = other.x
     y = other.y
@@ -228,7 +274,7 @@ const attributeOf: Primitive = (ctx) => {
   const objectName = menuString(ctx, 'OBJECT')
   const property = menuString(ctx, 'PROPERTY')
   const world = ctx.runtime.world
-  const target = objectName === '_stage_' ? world.stage : ctx.runtime.findOriginal(objectName)
+  const target = objectName === '_stage_' ? world.stage : namedTarget(ctx, objectName)
   if (!target) return 0
   if (target.isStage) {
     if (property === 'background #' || property === 'backdrop #') return costumeNumber(world, target)

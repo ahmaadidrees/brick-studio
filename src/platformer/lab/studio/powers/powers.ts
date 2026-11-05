@@ -203,7 +203,8 @@ export function snapPower(project: StudioProject, brickId: string, power: PowerB
     return out
   }
 
-  const right = tops.reduce((m, b) => Math.max(m, typeof b.x === 'number' ? b.x : 0), 0) + 700
+  // Onto an empty brick, the power's scripts start at the left, where the kid looks first.
+  const right = tops.length ? tops.reduce((m, b) => Math.max(m, typeof b.x === 'number' ? b.x : 0), 0) + 700 : 20
   let y = 20
   const added = power.blocks.map((b) => {
     const copy = renameProcs(remap(b, nextId, vars)) as Json
@@ -318,7 +319,8 @@ export function isPowerOn(project: StudioProject, brickId: string, snapId: strin
   const snap = brickOf(project, brickId)?.powers?.find((p) => p.id === snapId)
   if (!snap) return false
   const ids = new Set(snap.blockIds)
-  return topBlocks(workspaceOf(project, brickId)).some((b) => ids.has(b.id as string) && !turnedOff(b))
+  // A My Block definition never switches off (setPowerOn leaves it alone): only scripts count.
+  return topBlocks(workspaceOf(project, brickId)).some((b) => ids.has(b.id as string) && b.type !== 'procedures_definition' && !turnedOff(b))
 }
 
 const turnedOff = (b: Json): boolean => b.enabled === false || (Array.isArray(b.disabledReasons) && b.disabledReasons.length > 0)

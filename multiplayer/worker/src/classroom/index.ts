@@ -549,11 +549,11 @@ export type WorldFormat = 'brick' | '2d' | 'hackable';
 /** A Hackable project (Code Lab): its save envelope, wrapped so it says what it is. */
 export const HACKABLE_FORMAT = 'brickgineers-hackable';
 /** A Hackable project's game: its design's `kit` (app: src/platformer/lab/kits.ts). Missing means the Platformer. */
-export type HackableKit = 'platformer' | 'race' | '3d';
-const HACKABLE_KIT_NAMES: Record<HackableKit, string> = { platformer: 'Hackable Platformer', race: 'Hackable Racing project', '3d': 'Hackable 3D project' };
+export type HackableKit = 'platformer' | 'race' | '3d' | 'blank';
+const HACKABLE_KIT_NAMES: Record<HackableKit, string> = { platformer: 'Hackable Platformer', race: 'Hackable Racing project', '3d': 'Hackable 3D project', blank: 'Own game (Start from nothing)' };
 function hackableKit(row: Row): HackableKit {
   const kit = row.doc_hackable_kit ?? (isHackableDocument(row.document) ? (row.document as { save?: { design?: { kit?: unknown } } }).save?.design?.kit : undefined);
-  return kit === 'race' || kit === '3d' ? kit : 'platformer';
+  return kit === 'race' || kit === '3d' || kit === 'blank' ? kit : 'platformer';
 }
 /** "This is a Hackable Platformer. Open it there.", naming the project's own game. */
 const notHackableHere = (kit: HackableKit) => `This is a ${HACKABLE_KIT_NAMES[kit]}. Open it there.`;
@@ -578,7 +578,7 @@ function hackableDocument(value: unknown): Row {
  * A world's kit: 'race' for race tracks and Hackable Racing, '3d' for Hackable 3D; absent for platformers, Hackable
  * Platformers and 3D builds (so older apps see nothing new). `format` says which builder each one opens in.
  */
-export function worldKit(row: Row): 'race' | '3d' | undefined {
+export function worldKit(row: Row): 'race' | '3d' | 'blank' | undefined {
   if (worldFormat(row) === 'hackable') {
     const kit = hackableKit(row);
     return kit === 'platformer' ? undefined : kit;
@@ -1167,14 +1167,16 @@ export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Pr
   return { ...(worldView(row) as Omit<ClassroomLevelSnapshot, 'document'>), document: level.ok ? level.document : (null as never) };
 }
 /** A stored Hackable project as a HackableRoom consumes it: the save without the editor's workspaces, as text. */
-export type ClassroomHackableSnapshot = { id: string; title: string; revision: number; kit: HackableKit; project: string };
+export type ClassroomHackableSnapshot = { id: string; title: string; revision: number; kit: HackableKit; project: string; workspaces: Record<string, unknown> };
 export async function loadClassroomHackable(env: ClassroomEnv, worldId: string): Promise<ClassroomHackableSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
   if (worldFormat(row) !== 'hackable') fail(409, 'wrong_world_kind', 'This project is not a Hackable game.');
-  const { workspaces: _workspaces, ...save } = hackableDocument(row.document).save as Row;
-  return { id: row.id, title: row.title, revision: row.revision, kit: hackableKit(row), project: JSON.stringify(save) };
+  const { workspaces, ...save } = hackableDocument(row.document).save as Row;
+  // The blocks travel apart from the game (M2: the room hands them to the code editors and saves them back).
+  const blocks = workspaces && typeof workspaces === 'object' && !Array.isArray(workspaces) ? workspaces as Record<string, unknown> : {};
+  return { id: row.id, title: row.title, revision: row.revision, kit: hackableKit(row), project: JSON.stringify(save), workspaces: blocks };
 }
 export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity, format: WorldFormat = 'brick'): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');

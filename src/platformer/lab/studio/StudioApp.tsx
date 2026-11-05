@@ -7,7 +7,8 @@ import { clientKey, savedGuestName } from '../../ui/prefs'
 import { designText } from '../core/save'
 import { RoomBar } from '../rooms/RoomBar'
 import { RoomSession } from '../rooms/session'
-import { StudioRoomLink } from '../rooms/studioRoom'
+import { StudioRoomLink, roomRefusal } from '../rooms/studioRoom'
+import { RoomBuilder } from '../rooms/building'
 import { classRoomSocketUrl, createGuestRoom, guestRoomSocketUrl, rememberOwnerToken, roomHref } from '../rooms/endpoints'
 import type { HeaderSaveStatus } from '../../../shell/AppHeader'
 import { StudioShell } from './screen/StudioShell'
@@ -42,8 +43,11 @@ export interface StudioRoute {
   world?: string
   draft?: string
   fresh: boolean
-  /** The address's game (/2d/hackable-race): what a new project is, and which newest one opens. Absent: the Platformer. */
-  kit?: 'race'
+  /**
+   * The address's game (/2d/hackable-race, /2d/hackable-blank, /3d/hackable): what a new project is, and which newest one
+   * opens. Absent: the Platformer.
+   */
+  kit?: 'race' | 'blank' | '3d'
   /** Open the project's room at once (the owner, after inviting classmates to play). */
   together?: boolean
 }
@@ -82,7 +86,7 @@ const homeOf = (opened: Opened): Home =>
 
 type Opening = { kind: 'opening' } | { kind: 'problem'; title: string; body: string } | Opened
 
-/** A new project of the address's game: the Platformer's starter level, or Hackable Racing's beginner track. */
+/** A new project of the address's game: the Platformer's starter level, Hackable Racing's beginner track, or Hackable 3D's starter world. */
 const newProject = (kit: ScreensKit): StudioProject => {
   const screens = KIT_SCREENS[kit]
   const project = screens.starter()
@@ -95,7 +99,7 @@ const kitIn = (project: StudioProject) => designKit(project.design)
 /** Replace the address without a reload, so a refresh opens this same project. */
 const settle = (href: string) => window.history.replaceState(window.history.state, '', href)
 
-/** Exported for tests: what a /2d/hackable (or /2d/hackable-race) address opens. */
+/** Exported for tests: what a /2d/hackable (or /2d/hackable-race, /3d/hackable) address opens. */
 export async function openStudioRoute(route: StudioRoute): Promise<Opening> {
   return open(route)
 }
@@ -117,7 +121,7 @@ async function open(route: StudioRoute): Promise<Opening> {
 function fixAddress(opened: Opened) {
   if (opened.kind === 'new') return
   const path = window.location.pathname.replace(/\/+$/, '')
-  if (path !== '/2d/hackable' && path !== '/2d/hackable-race') return
+  if (path !== '/2d/hackable' && path !== '/2d/hackable-race' && path !== '/2d/hackable-blank' && path !== '/3d/hackable') return
   const href = opened.kind === 'local' ? hackableHref.local(opened.id, kitIn(opened.project)) : hackableHref.world(opened.world.id, kitIn(opened.project))
   if (new URL(href, window.location.origin).pathname !== path) settle(href)
 }
@@ -259,6 +263,8 @@ let compacted = false
 function stagePicture(): string | undefined {
   const canvas = document.querySelector<HTMLCanvasElement>('.cl-stage-frame canvas')
   if (!canvas || !canvas.width || !canvas.height) return undefined
+  // A WebGL stage (Hackable 3D) keeps its picture only while it draws: let it draw now, in this same task.
+  canvas.dispatchEvent(new Event('stage:picture'))
   try {
     // 16:9 like the cards; from the bottom of the stage, where the ground and most bricks are.
     const out = document.createElement('canvas')
@@ -274,8 +280,8 @@ function stagePicture(): string | undefined {
 }
 
 /**
- * /2d/hackable and /2d/hackable-race: the Hackable Platformer (Code Lab on the new core) and Hackable Racing, one studio
- * that reads the game from the project. One shell with Build · Code · Play
+ * /2d/hackable, /2d/hackable-race and /3d/hackable: the Hackable Platformer (Code Lab on the new core), Hackable Racing
+ * and Hackable 3D, one studio that reads the game from the project. One shell with Build · Code · Play
  * (docs/qa/code-lab-on-main/UX-AUDIT.md); Code is the only code editor. Each project lives in this browser or in the
  * account, like every other kind in My projects.
  */
@@ -556,7 +562,9 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
 
   const signedIn = !!browserClassroomClient.getSession()
   const saveStatus: HeaderSaveStatus = saver
-    ? saver.conflicted
+    ? saver.paused
+      ? { source: { kind: 'cloud', status: 'saved' }, detail: 'The room saves this project for everyone while you play together.', explain: SAVE_WORDS.room }
+      : saver.conflicted
       ? copyFailed
         ? { source: { kind: 'cloud', status: 'error' }, detail: 'Your changes here are not saved yet. Press This project, then Save File, so you do not lose them.', explain: SAVE_WORDS.conflictFailed }
         : { source: { kind: 'cloud', status: 'saving' }, detail: 'Keeping your changes here as a copy.', explain: SAVE_WORDS.conflict }
@@ -586,16 +594,23 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
   const roomRef = useRef(room)
   roomRef.current = room
   useEffect(() => () => roomRef.current?.stop(), [])
+  // Building together (M2): while the class room is open it saves the project for everyone, so this tab doesn't.
   const leaveRoom = useCallback(() => {
     roomRef.current?.stop()
     setRoom(null)
-  }, [])
+    if (saver?.paused) void saver.resume(store.getState().project)
+  }, [saver, store])
   const startRoom = async () => {
+    // Hackable 3D has no rooms yet (D3): its menu has no Play together, and an old ?together=1 link only says so.
+    const refused = roomRefusal(store.getState().project.design)
+    if (refused) return setStorageNotice({ id: 'room', type: 'info', message: refused })
     if (home.kind === 'viewer') return window.location.assign(roomHref.classroom(home.world.id))
     if (roomRef.current) return
     try {
+      if (home.kind === 'account' && saver) await saver.pause()
       setRoom(await openRoom(store, home.kind === 'account' ? home.world.id : null))
     } catch (error) {
+      if (saver?.paused) void saver.resume(store.getState().project)
       setStorageNotice({ id: 'room', type: 'error', message: error instanceof Error ? error.message : 'The room could not be opened. Try again.' })
     }
   }
@@ -608,6 +623,8 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
     if (home.kind === 'account') settle(hackableHref.world(home.world.id, kitIn(store.getState().project)))
     if (home.kind === 'account' || home.kind === 'viewer') void startRoom()
   })
+  // Hackable 3D has no rooms yet (D3): no Play together in This project. A project never changes its game.
+  const noRooms = roomRefusal(opened.project.design) !== null
   const viewerBanner = home.kind === 'viewer' ? <ViewerBanner world={home.world} store={store} /> : undefined
   const roomBanner = room ? <RoomBar session={room.session} invite={room.invite} onLeave={leaveRoom} leaveLabel="Stop playing together" editing /> : undefined
 
@@ -620,11 +637,11 @@ function OpenProject({ opened, together }: { opened: Opened; together: boolean }
         onLeave={saveBeforeLeaving}
         firstRunTips
         banner={roomBanner || viewerBanner ? <>{roomBanner}{viewerBanner}</> : undefined}
-        menuExtra={!room && (
+        menuExtra={!room && !noRooms && (
           <MenuItem
             icon={<Users size={18} />}
             label="Play together"
-            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : 'Open a room and send the link: everyone plays your game, each with their own Hero.'}
+            description={home.kind === 'viewer' ? 'Join this project’s room, with everyone playing it.' : `Open a room and send the link: everyone plays your game, each with their own ${designKit(store.getState().project.design) === 'blank' ? 'player' : 'Hero'}.`}
             onSelect={() => void startRoom()}
           />
         )}
@@ -653,29 +670,23 @@ async function openRoom(store: StudioStore, worldId: string | null): Promise<Ope
     url = () => classRoomSocketUrl(worldId)
     invite = roomHref.classroom(worldId)
   } else {
-    const { roomId, ownerToken } = await createGuestRoom(text, design.name)
+    const { roomId, ownerToken } = await createGuestRoom(text, design.name, store.getState().project.workspaces)
     rememberOwnerToken(roomId, ownerToken)
     url = guestRoomSocketUrl(roomId, ownerToken)
     invite = roomHref.guest(roomId)
   }
   const session = new RoomSession({ name: savedGuestName() || 'Player', url, key: clientKey() })
-  // A class room starts from the account's copy; the host's project as it is on screen goes in at once.
-  const link = new StudioRoomLink(session, worldId ? '' : text)
-  let pushed = false
-  const unsubscribe = session.subscribe(() => {
-    if (pushed || !session.view.host || !session.runtime) return
-    pushed = true
-    link.playAgain(store.getState().project.design, false)
-  })
-  const unwatch = link.watch(store)
+  // Building together (M2): the host's changes go out as edits, and everyone else's come in. A class room starts from the
+  // account's copy; the host's project as it is on screen goes in once the room has answered.
+  const builder = new RoomBuilder(session, store)
   session.connect()
-  store.enterRoom(link)
+  store.enterRoom(new StudioRoomLink(session))
+  const stopBuilding = builder.start()
   return {
     session,
     invite,
     stop: () => {
-      unsubscribe()
-      unwatch()
+      stopBuilding()
       session.close()
       store.leaveRoom()
     },
@@ -699,6 +710,7 @@ export const SAVE_WORDS = {
   conflict: 'A newer version was saved somewhere else, so your changes here are being kept as a copy.',
   conflictFailed: 'Your changes here are not saved yet. Open the ⋯ menu (This project) and press Save File, so you do not lose them.',
   viewer: 'This is someone else’s project, so changes here are not saved. Press Make my own copy to keep them.',
+  room: 'While you play together, the room saves this project to your account a moment after anyone changes it.',
   notSaved: 'This project is not saved. Open the ⋯ menu (This project) and press Save File, so you do not lose it.',
 }
 

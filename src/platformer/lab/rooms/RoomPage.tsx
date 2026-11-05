@@ -1,21 +1,25 @@
 /**
- * Joining a Hackable room (docs/qa/hackable-rooms M1): /2d/hackable/r/<room> by link, /2d/hackable/w/<project> for a
- * class project shared with you. You play the room's game with everyone: your own Hero, your keys. Changing the
- * project is the host's (hacking together is M2), so this page is Play only.
+ * Joining a Hackable room (docs/qa/hackable-rooms M1, M2): /2d/hackable/r/<room> by link, /2d/hackable/w/<project> for
+ * a class project shared with you. You play the room's game with everyone: your own Hero, your keys. Since M2 you can
+ * build too (on by default) and change code when the host turns it on for you: the page is then the studio, Build ·
+ * Code · Play, working on the room's project (rooms/building.ts). Otherwise it is Play only.
  */
 import { House, LoaderCircle, LogIn, Play } from 'lucide-react'
 import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
-import { AppHeader, joinPath, useClassroomSession } from '../../../shell'
+import { AppHeader, joinPath, useClassroomSession, type HeaderSaveStatus } from '../../../shell'
 import { Button, TextField } from '../../../ui'
 import { clientKey, savedGuestName, saveGuestName } from '../../ui/prefs'
 import { Stage } from '../studio/Stage'
 import { StudioStore } from '../studio/store'
+import { StudioShell } from '../studio/screen/StudioShell'
+import { RoomBuilder } from './building'
 import { partsFor } from '../studio/screen/kitParts'
 import { classRoomSocketUrl, guestRoomInfo, guestRoomSocketUrl, ownerTokenOf, roomHref } from './endpoints'
 import type { RoomInfo } from './protocol'
 import { RoomBar } from './RoomBar'
-import { RoomSession } from './session'
-import { StudioRoomLink } from './studioRoom'
+import { RoomSession, type RoomView } from './session'
+import { StudioRoomLink, roomRefusal } from './studioRoom'
+import { hackableHref } from '../studio/persist/hackableProjects'
 import '../studio/studio.css'
 import '../studio/screen/screen.css'
 import './rooms.css'
@@ -63,7 +67,7 @@ export default function RoomPage({ route }: { route: RoomRoute }) {
           <Button href={joinPath({ next: roomHref.classroom(route.worldId) })} variant="primary" icon={<LogIn size={18} />}>Sign in</Button>
         </Notice>
       )
-    return <RoomPlay url={() => classRoomSocketUrl(route.worldId)} name={account.displayName ?? 'Player'} invite={roomHref.classroom(route.worldId)} />
+    return <RoomPlay url={() => classRoomSocketUrl(route.worldId)} name={account.displayName ?? 'Player'} invite={roomHref.classroom(route.worldId)} lookInside={hackableHref.world(route.worldId, '3d')} />
   }
 
   const ownerToken = ownerTokenOf(route.roomId)
@@ -104,37 +108,70 @@ export default function RoomPage({ route }: { route: RoomRoute }) {
   )
 }
 
-/** Connected: the room's game fills the screen, once the room has sent it. */
-function RoomPlay({ url, name, invite }: { url: string | (() => Promise<string>); name: string; invite: string }) {
+/**
+ * Connected: the room's game fills the screen, once the room has sent it. A game this page cannot play together yet (a
+ * Hackable 3D project, D3) is refused politely and the room is left; `lookInside` is where a class project opens instead.
+ */
+function RoomPlay({ url, name, invite, lookInside }: { url: string | (() => Promise<string>); name: string; invite: string; lookInside?: string }) {
   const session = useMemo(() => new RoomSession({ name, url, key: clientKey() }), [url, name])
   const [store, setStore] = useState<StudioStore | null>(null)
+  const [refused, setRefused] = useState<string | null>(null)
   useEffect(() => {
     session.connect()
     let made: StudioStore | null = null
+    let stopped = false
     const follow = () => {
       const design = session.runtime?.world.design
-      if (!design) return
-      if (!made) {
-        made = new StudioStore({ design, workspaces: {} })
-        made.enterRoom(new StudioRoomLink(session, ''))
-        made.setScreen('play')
-        setStore(made)
-      } else made.followRoomDesign(design)
+      if (!design || stopped) return
+      // Hackable 3D has no rooms yet (D3): a room holding a 3D project turns away politely.
+      const refusal = roomRefusal(design)
+      if (refusal) {
+        stopped = true
+        session.close()
+        setRefused(refusal)
+        return
+      }
+      if (made) return
+      made = new StudioStore({ design, workspaces: {} })
+      made.enterRoom(new StudioRoomLink(session))
+      made.setScreen('play')
+      // Building together: the room's project comes in, and our changes (when we may make them) go out.
+      stopBuilding = new RoomBuilder(session, made).start()
+      setStore(made)
     }
+    let stopBuilding = () => {}
     const stop = session.onRuntime(follow)
     follow()
-    return () => { stop(); session.close() }
+    return () => { stop(); stopBuilding(); session.close() }
   }, [session])
   const view = useSyncExternalStore((fn) => session.subscribe(fn), () => session.view)
   const offline = view.status === 'offline'
   // The host may rename the project while everyone plays.
   const title = useSyncExternalStore(store ? store.subscribe : NO_STORE, () => store?.getState().project.design.name ?? 'Playing together')
 
+  const rights = useSyncExternalStore(store ? store.subscribe : NO_STORE, () => store?.getState().roomRights ?? null)
+  const bar = <RoomBar session={session} invite={invite} onLeave={leave} editing={!!rights && (rights.build || rights.code)} />
+
+  if (refused)
+    return (
+      <Notice title={refused} body="For now, open it on your own to play it and look inside.">
+        {lookInside && <Button href={lookInside} variant="primary" icon={<Play size={18} />}>Open it</Button>}
+        <Button href="/projects" variant={lookInside ? 'quiet' : 'primary'} icon={<House size={18} />}>My projects</Button>
+      </Notice>
+    )
+
+  // We may build or change code: the studio, working on the room's project, with the room bar under its header.
+  if (store && rights && (rights.build || rights.code)) {
+    return (
+      <div className="hk-room-studio">
+        <StudioShell store={store} saveStatus={roomSave(view.status, view.classroom)} banner={bar} />
+      </div>
+    )
+  }
   return (
     <div className="hk-room-page">
       <AppHeader variant="page" title={title} />
-      {/* The host here (the owner or the teacher) can't edit; the stage's Restart starts everyone again. */}
-      <RoomBar session={session} invite={invite} onLeave={leave} />
+      {bar}
       <div className="hk-room-stage p2d-game p2d-studio cl-shell" data-screen="play">
         {store ? <RoomStage store={store} /> : <Notice title={offline ? 'Couldn’t join the room' : 'Joining the room…'} body={offline ? view.detail : undefined} busy={!offline} />}
       </div>
@@ -142,6 +179,19 @@ function RoomPlay({ url, name, invite }: { url: string | (() => Promise<string>)
   )
 }
 
+/**
+ * The project lives in the room: what anyone changes is everyone's ("Shared world", as in other live rooms). A class
+ * room also saves it to the class project a moment later.
+ */
+function roomSave(status: RoomView['status'], classroom: boolean): HeaderSaveStatus {
+  return {
+    source: { kind: 'live', connection: status },
+    detail: 'Changes go to everyone in the room.',
+    explain: classroom
+      ? 'This is the room’s project: what you change, everyone sees, and the room saves it to the class project a moment later.'
+      : 'This is the room’s project: what you change, everyone sees. It stays in the room; the host keeps the project.',
+  }
+}
 function RoomStage({ store }: { store: StudioStore }) {
   const parts = partsFor(store.getState().project.design)
   const runtime = store.getState().runtime

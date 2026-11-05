@@ -59,6 +59,13 @@ function timeline(kit, scenario) {
   for (let tick = 600; tick < TICKS; tick += 600) events.push({ tick, kind: 'flag' })
   events.push({ tick: 300, kind: 'edit-program', what: 'Stage: change by 1 → by 5 (nothing to change)' })
   events.push({ tick: 750, kind: 'edit-knob', what: 'player knob x 1.3 (nothing to change)' })
+  // Building together (M2): live edits as room events, before and after the late joiner.
+  events.push({ tick: 200, kind: 'together', what: 'place' })
+  events.push({ tick: 450, kind: 'together', what: 'paint' })
+  events.push({ tick: 820, kind: 'together', what: 'code' })
+  events.push({ tick: 1300, kind: 'together', what: 'undo-code' })
+  // A game from nothing (wave 2): its backdrop changes as a room `game` edit, before and after the late joiner.
+  if (kit === 'blank') for (const tick of [520, 1100]) if (tick < TICKS) events.push({ tick, kind: 'together', what: 'backdrop' })
   return events.sort((a, b) => a.tick - b.tick)
 }
 
@@ -114,11 +121,17 @@ await mkdir(OUT, { recursive: true })
 const summary = { ticks: TICKS, rejoinAt: REJOIN_AT, node: process.version, kits: {} }
 let failed = false
 
-for (const [kit, scenario] of [['platformer', 'solo'], ['platformer', 'room'], ['race', 'solo'], ['race', 'room']]) {
-  const name = `${kit} ${scenario}`
-  const projectText = L.starterText(kit)
+// The kits' starters, then wave 2's (docs/qa/wave2-int): every Parity B brick in each kit, and a game from nothing.
+const TIMELINES = [
+  ['platformer', 'solo', 'starter'], ['platformer', 'room', 'starter'], ['race', 'solo', 'starter'], ['race', 'room', 'starter'],
+  ['platformer', 'solo', 'parity'], ['platformer', 'room', 'parity'], ['race', 'room', 'parity'],
+  ['blank', 'solo', 'starter'], ['blank', 'room', 'starter'],
+]
+for (const [kit, scenario, variant] of TIMELINES) {
+  const name = `${kit}${variant === 'parity' ? ' + Parity B' : ''} ${scenario}`
+  const projectText = L.starterText(kit, variant)
   const events = timeline(kit, scenario)
-  const opts = { projectText, kit, ticks: TICKS, events }
+  const opts = { projectText, kit, variant, ticks: TICKS, events }
   const runs = [L.runScenario(`Node ${process.version}`, opts), L.runScenario(`Node ${process.version} again`, opts)]
   for (const b of browsers) {
     try { runs.push(await inBrowser(b, opts)) } catch (e) { runs.push({ engine: b.name, error: String(e).split('\n')[0] }) }

@@ -11,8 +11,10 @@ import {
   clampCamera,
   defaultPlayCameraMode,
   FollowRig,
+  BUILD_TOOLS_INSET,
   buildCamera,
   buildFitCamera,
+  clearOfTop,
   fitCamera,
   followCamera,
   followViewWidth,
@@ -43,7 +45,8 @@ import {
   type TargetPose,
 } from './stage/renderer'
 import { StageControls } from './stage/StageControls'
-import { isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
+import { backgroundOf, isPlayerBrick, screensFor, type KitScreens } from './kitScreens'
+import { BLANK_COLS, BLANK_ROWS } from './blank/blankProject'
 import './stage/stage.css'
 
 /** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
@@ -117,7 +120,12 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   const design = useStudio(store, (s) => s.project.design)
   // The kit's screens: whom Play's camera follows, how wide, and what the level's background is.
   const screens = screensFor(design)
-  const background = screens.background
+  // Build's fitted view stays clear of the floating view tools in a game from nothing (kits keep their views).
+  const buildInset = screens.fromNothing ? BUILD_TOOLS_INSET : 0
+  // Start from nothing picks its own backdrop in the Stage card.
+  // A 3D design has its own Stage (kitParts `Stage`); were this 2D Stage ever handed one, it would draw the sky.
+  const kitBackground = backgroundOf(design)
+  const background = kitBackground === '3d' ? 'sky' : kitBackground
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const erasing = tools?.erasing ?? false
@@ -232,9 +240,10 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   useEffect(() => {
     // Until the kid moves the view, keep the whole level in view (letterboxed) as the stage or level changes size.
     // Build starts at the level's full height; Code's small preview shows it whole.
-    if (!viewDirty.current) setCamera(codeView ? fitCamera(design.bounds, viewport) : buildCamera(design.bounds, viewport))
+    // Start from nothing's stage is one screen, so its top-right cells sat under the Zoom buttons: Build fits it below them.
+    if (!viewDirty.current) setCamera(codeView ? fitCamera(design.bounds, viewport) : clearOfTop((vp) => buildCamera(design.bounds, vp), viewport, buildInset))
     else setCamera((cam) => clampCamera(cam, design.bounds))
-  }, [boundsKey, design.bounds, viewport, codeView])
+  }, [boundsKey, design.bounds, viewport, codeView, buildInset])
 
   // Each Play starts from the default camera.
   useEffect(() => {
@@ -242,10 +251,12 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
     setPlayFree(false)
   }, [mode])
 
-  const playCameraMode: PlayCameraMode = playChoice ?? defaultPlayCameraMode(design.bounds, viewport)
+  // A game from nothing on one screen shows the whole stage, like Scratch; a bigger one follows its player.
+  const oneScreen = screens.fromNothing && design.bounds.right - design.bounds.left <= BLANK_COLS * TILE_SIZE && design.bounds.top - design.bounds.bottom <= BLANK_ROWS * TILE_SIZE
+  const playCameraMode: PlayCameraMode = playChoice ?? (oneScreen ? 'whole' : defaultPlayCameraMode(design.bounds, viewport))
 
   // The follow camera eases after the player like the classic game's (stage/camera.ts FollowRig): a new one each Play.
-  const rigKind = screens.kit === 'race' ? 'top' : 'side'
+  const rigKind = screens.kit === 'race' || screens.kit === 'blank' ? 'top' : 'side'
   const rigRef = useRef<{ rig: FollowRig; at: number } | null>(null)
   useEffect(() => {
     rigRef.current = null
@@ -1012,7 +1023,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
   const handleResetView = () => {
     viewDirty.current = false
     session.viewDirty = false
-    setCamera(sceneActive ? fitCamera(design.bounds, viewport) : buildFitCamera(design.bounds, viewport, (session.camera ?? camera).x))
+    setCamera(sceneActive ? fitCamera(design.bounds, viewport) : clearOfTop((vp) => buildFitCamera(design.bounds, vp, (session.camera ?? camera).x), viewport, buildInset))
     if (sceneActive) {
       setPlayChoice('whole')
       setPlayFree(false)

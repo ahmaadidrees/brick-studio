@@ -1,0 +1,452 @@
+{
+  "origin": "http://localhost:5273",
+  "games": {
+    "platformer": {
+      "steps": [
+        {
+          "name": "Ana opens a new project and sets it up",
+          "ok": true,
+          "detail": [
+            "Hero",
+            "Walker",
+            "Coin",
+            "Spring",
+            "Goal",
+            "Ground",
+            "Hard block",
+            "Spikes",
+            "Lava",
+            "One-way platform",
+            "Brick",
+            "? block",
+            "Bounce block",
+            "Checkpoint",
+            "Spiky",
+            "Shellbug",
+            "Flyer",
+            "Moving platform",
+            "Up-down platform"
+          ]
+        },
+        {
+          "name": "Ana: This project → Play together; the room bar shows the link",
+          "ok": true,
+          "detail": {
+            "link": "http://localhost:5273/2d/hackable/r/b683b3e9d927466a794d6f3e5eaeac50"
+          }
+        },
+        {
+          "name": "Ben joins from the link",
+          "ok": true,
+          "detail": {
+            "me": 2,
+            "build": true,
+            "code": false
+          }
+        },
+        {
+          "name": "Cy joins from the link",
+          "ok": true,
+          "detail": {
+            "me": 3,
+            "build": true,
+            "code": false
+          }
+        },
+        {
+          "name": "Ana sees Ben and Cy; everyone has a player",
+          "ok": true,
+          "detail": [
+            "Player",
+            "Ben",
+            "Cy"
+          ]
+        },
+        {
+          "name": "Ben builds: a Coin from the drawer, tapped onto the stage",
+          "ok": true,
+          "detail": {
+            "history": [
+              "Ben placed Coin"
+            ],
+            "rejected": 0
+          }
+        },
+        {
+          "name": "Ben's Code is closed until Ana lets him; he opens it at once, and nothing is sent",
+          "ok": true,
+          "detail": {
+            "closedBefore": true,
+            "historyUnchanged": true
+          }
+        },
+        {
+          "name": "Ben switches a script off in Code: a live code edit, and everyone hears it",
+          "ok": true,
+          "detail": {
+            "notice": "Ben changed Moving platform’s code. Its scripts started again."
+          }
+        },
+        {
+          "name": "Each on their own: a Checkpoint gives Ben and Cy their own (Ana's start stays)",
+          "ok": true,
+          "detail": {
+            "startX": {
+              "ana": 60,
+              "ben": 80,
+              "cy": 100
+            }
+          }
+        },
+        {
+          "name": "Each on their own: a Spiky moved next to Ben hurts only Ben",
+          "ok": true,
+          "detail": {
+            "ouchOnBen": true,
+            "ouchElsewhere": [
+              false,
+              false
+            ],
+            "hurtTime": [
+              0,
+              4,
+              0
+            ]
+          }
+        },
+        {
+          "name": "Each on their own: a Goal finishes only Ben; the game goes on for Ana and Cy",
+          "ok": true,
+          "detail": {
+            "players": [
+              {
+                "num": 1,
+                "name": "Player",
+                "finished": null
+              },
+              {
+                "num": 2,
+                "name": "Ben",
+                "finished": 429
+              },
+              {
+                "num": 3,
+                "name": "Cy",
+                "finished": null
+              }
+            ],
+            "gameGoesOn": true
+          }
+        },
+        {
+          "name": "Every game agrees: fingerprints, no resyncs, no refused edits",
+          "ok": true,
+          "detail": {
+            "ticks": "240..480",
+            "compared": 5,
+            "everyStepTicksCompared": 8,
+            "resyncs": [
+              0,
+              0,
+              0
+            ],
+            "rewinds": [
+              0,
+              0,
+              0
+            ],
+            "rejected": [
+              0,
+              0,
+              0
+            ],
+            "history": [
+              "Ben placed Coin",
+              "Ben changed Moving platform’s code",
+              "Player moved Checkpoint",
+              "Player moved Checkpoint",
+              "Player moved Spiky",
+              "Player moved Goal"
+            ]
+          }
+        },
+        {
+          "name": "No console errors in any browser",
+          "ok": true,
+          "detail": {
+            "ignored": 0
+          }
+        }
+      ]
+    },
+    "race": {
+      "steps": [
+        {
+          "name": "Ana opens a new project and sets it up",
+          "ok": true,
+          "detail": [
+            "Road",
+            "Dirt",
+            "Ice",
+            "Barrier",
+            "Boost pad",
+            "Finish line",
+            "Starter",
+            "Car",
+            "Computer racer",
+            "Tire stack",
+            "Bumper",
+            "Tree",
+            "Grandstand",
+            "Flowers"
+          ]
+        },
+        {
+          "name": "Ana: This project → Play together; the room bar shows the link",
+          "ok": true,
+          "detail": {
+            "link": "http://localhost:5273/2d/hackable/r/b78e25fb61fbe1ed0cac407bd83920b1"
+          }
+        },
+        {
+          "name": "Ben joins from the link",
+          "ok": true,
+          "detail": {
+            "me": 2,
+            "build": true,
+            "code": false
+          }
+        },
+        {
+          "name": "Cy joins from the link",
+          "ok": true,
+          "detail": {
+            "me": 3,
+            "build": true,
+            "code": false
+          }
+        },
+        {
+          "name": "Ana sees Ben and Cy; everyone has a player",
+          "ok": true,
+          "detail": [
+            "Player",
+            "Ben",
+            "Cy"
+          ]
+        },
+        {
+          "name": "Ben builds: Tire stack cells painted from the drawer",
+          "ok": true,
+          "detail": {
+            "history": [
+              "Ben painted 3 cells"
+            ],
+            "rejected": 0
+          }
+        },
+        {
+          "name": "Ben's Code is closed until Ana lets him; he opens it at once, and nothing is sent",
+          "ok": true,
+          "detail": {
+            "closedBefore": true,
+            "historyUnchanged": true
+          }
+        },
+        {
+          "name": "Ben switches a script off in Code: a live code edit, and everyone hears it",
+          "ok": true,
+          "detail": {
+            "notice": "Ben changed Starter’s code. Its scripts started again."
+          }
+        },
+        {
+          "name": "Every game agrees: fingerprints, no resyncs, no refused edits",
+          "ok": true,
+          "detail": {
+            "ticks": "180..420",
+            "compared": 5,
+            "everyStepTicksCompared": 7,
+            "resyncs": [
+              0,
+              0,
+              0
+            ],
+            "rewinds": [
+              0,
+              0,
+              0
+            ],
+            "rejected": [
+              0,
+              0,
+              0
+            ],
+            "history": [
+              "Ben painted 3 cells",
+              "Ben changed Starter’s code"
+            ]
+          }
+        },
+        {
+          "name": "No console errors in any browser",
+          "ok": true,
+          "detail": {
+            "ignored": 0
+          }
+        }
+      ]
+    },
+    "blank": {
+      "steps": [
+        {
+          "name": "Ana opens a new project and sets it up",
+          "ok": true,
+          "detail": [
+            "Zip",
+            "Wall",
+            "Star",
+            "Spike",
+            "Flag",
+            "Walker",
+            "Coin",
+            "Checkpoint",
+            "Spiky"
+          ]
+        },
+        {
+          "name": "Ana: This project → Play together; the room bar shows the link",
+          "ok": true,
+          "detail": {
+            "link": "http://localhost:5273/2d/hackable/r/ad29b9e3faad2c6259ed8a0a48141c88"
+          }
+        },
+        {
+          "name": "Ben joins from the link",
+          "ok": true,
+          "detail": {
+            "me": 2,
+            "build": true,
+            "code": false
+          }
+        },
+        {
+          "name": "Cy joins from the link",
+          "ok": true,
+          "detail": {
+            "me": 3,
+            "build": true,
+            "code": false
+          }
+        },
+        {
+          "name": "Ana sees Ben and Cy; everyone has a player",
+          "ok": true,
+          "detail": [
+            "Player",
+            "Ben",
+            "Cy"
+          ]
+        },
+        {
+          "name": "Ben builds: a Star from My bricks, tapped onto the stage",
+          "ok": true,
+          "detail": {
+            "history": [
+              "Ben placed Star"
+            ],
+            "rejected": 0
+          }
+        },
+        {
+          "name": "Ben's Code is closed until Ana lets him; he opens it at once, and nothing is sent",
+          "ok": true,
+          "detail": {
+            "closedBefore": true,
+            "historyUnchanged": true
+          }
+        },
+        {
+          "name": "Ben switches a script off in Code: a live code edit, and everyone hears it",
+          "ok": true,
+          "detail": {
+            "notice": "Ben changed Walker’s code. Its scripts started again."
+          }
+        },
+        {
+          "name": "Each on their own: the Spike (Hurts job) moved next to Ben's Zip hurts only Ben",
+          "ok": true,
+          "detail": {
+            "ouchOnBen": true,
+            "ouchElsewhere": [
+              false,
+              false
+            ]
+          }
+        },
+        {
+          "name": "Each on their own: a Goal finishes only Ben; the game goes on for Ana and Cy",
+          "ok": true,
+          "detail": {
+            "players": [
+              {
+                "num": 1,
+                "name": "Player",
+                "finished": null
+              },
+              {
+                "num": 2,
+                "name": "Ben",
+                "finished": 474
+              },
+              {
+                "num": 3,
+                "name": "Cy",
+                "finished": null
+              }
+            ],
+            "gameGoesOn": true
+          }
+        },
+        {
+          "name": "Every game agrees: fingerprints, no resyncs, no refused edits",
+          "ok": true,
+          "detail": {
+            "ticks": "300..540",
+            "compared": 5,
+            "everyStepTicksCompared": 9,
+            "resyncs": [
+              0,
+              0,
+              0
+            ],
+            "rewinds": [
+              0,
+              0,
+              0
+            ],
+            "rejected": [
+              0,
+              0,
+              0
+            ],
+            "history": [
+              "Ben placed Star",
+              "Ben changed Walker’s code",
+              "Player moved Spike",
+              "Player moved Spike",
+              "Player moved Flag"
+            ]
+          }
+        },
+        {
+          "name": "No console errors in any browser",
+          "ok": true,
+          "detail": {
+            "ignored": 0
+          }
+        }
+      ]
+    }
+  }
+}

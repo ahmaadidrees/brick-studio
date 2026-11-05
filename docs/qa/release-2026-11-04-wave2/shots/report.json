@@ -1,0 +1,27 @@
+{
+  "site": "https://brickgineers.com",
+  "steps": [
+    {
+      "name": "Ana draws Zip in a game from nothing, places it, and plays together",
+      "ok": true
+    },
+    {
+      "name": "Ben joins the game from nothing",
+      "ok": true
+    },
+    {
+      "name": "Ana lets Ben code; Ben gives Zip a job (Player · walks around); Ana's Changes has it",
+      "ok": true,
+      "detail": [
+        "Ben2 changed Zip’s code, made Zip the playerPress to put it back"
+      ]
+    },
+    {
+      "name": "No console errors in any browser",
+      "ok": true,
+      "detail": {
+        "browsers": 2
+      }
+    }
+  ]
+}

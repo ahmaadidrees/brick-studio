@@ -16,7 +16,7 @@
  * rejects prototype pollution keys, decodes masks, runs migrations, and validates.
  */
 
-import type { BrickProgram, Costume, LevelDesign } from './contracts'
+import type { BrickDef, BrickProgram, Costume, LevelDesign } from './contracts'
 import { FORBIDDEN_KEYS, validateDesign } from './project'
 import type { DesignProblem } from './project'
 
@@ -281,6 +281,23 @@ export function serialize(save: SavedProjectEnvelope): string {
     envelope.originalPayload = save.originalPayload
   }
   return deterministicStringify(envelope)
+}
+
+/**
+ * One brick as plain JSON (its costume masks in base64), the way a save file holds it: what a Hackable room's edit
+ * carries (rooms/edits.ts). `brickFromWire` reads it back.
+ */
+export function brickToWire(brick: BrickDef): unknown {
+  return { ...brick, costumes: prepareSerializableCostumes(brick.costumes) }
+}
+
+/** A brick from `brickToWire`'s JSON, with its masks decoded again. Null when a mask can't be read. */
+export function brickFromWire(json: unknown): BrickDef | null {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null
+  const brick = structuredClone(json) as BrickDef
+  if (!Array.isArray(brick.costumes)) return null
+  const holder = { stage: undefined, bricks: [brick] } as unknown as LevelDesign
+  return decodeDesignMasks(holder).length ? null : brick
 }
 
 /** Decode base64 costume masks in a parsed design object into Uint8Arrays. */

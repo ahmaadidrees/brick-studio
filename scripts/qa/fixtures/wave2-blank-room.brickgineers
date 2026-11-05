@@ -1,0 +1,4598 @@
+{
+  "design": {
+    "bounds": {
+      "bottom": 0,
+      "left": 0,
+      "right": 480,
+      "top": 352
+    },
+    "bricks": [
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIElEQVR4AWM0OV79n4ECwES6FlQwasCoASAwasBgMAAAOccClfOv7NoAAAAASUVORK5CYII=",
+            "height": 16,
+            "mask": {
+              "data": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "c",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "brick1",
+        "name": "Zip",
+        "powers": [
+          {
+            "blockIds": [
+              "pw1_1",
+              "pw1_7",
+              "pw1_32"
+            ],
+            "credits": [
+              "Brickgineers"
+            ],
+            "fingerprint": "wx6jtd94xv0z",
+            "id": "pw1",
+            "job": "player:walk",
+            "name": "Player · walks around",
+            "variableIds": [
+              "pw1_speed",
+              "pw1_start_x",
+              "pw1_start_y"
+            ]
+          }
+        ],
+        "program": {
+          "lists": [],
+          "procedures": [],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "fields": {
+                    "GRAVITY": "off"
+                  },
+                  "id": "pw1_2",
+                  "inputs": {},
+                  "opcode": "platformer_setgravity"
+                },
+                {
+                  "fields": {
+                    "VARIABLE": "pw1_start_x"
+                  },
+                  "id": "pw1_3",
+                  "inputs": {
+                    "VALUE": {
+                      "fields": {},
+                      "id": "pw1_4",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "motion_xposition"
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "fields": {
+                    "VARIABLE": "pw1_start_y"
+                  },
+                  "id": "pw1_5",
+                  "inputs": {
+                    "VALUE": {
+                      "fields": {},
+                      "id": "pw1_6",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "motion_yposition"
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "pw1_1"
+            },
+            {
+              "body": [
+                {
+                  "fields": {
+                    "AXIS": "x"
+                  },
+                  "id": "pw1_8",
+                  "inputs": {
+                    "SPEED": {
+                      "kind": "lit",
+                      "value": 0
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                },
+                {
+                  "fields": {
+                    "AXIS": "y"
+                  },
+                  "id": "pw1_10",
+                  "inputs": {
+                    "SPEED": {
+                      "kind": "lit",
+                      "value": 0
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "AXIS": "x"
+                        },
+                        "id": "pw1_14",
+                        "inputs": {
+                          "SPEED": {
+                            "fields": {
+                              "VARIABLE": "pw1_speed"
+                            },
+                            "id": "pw1_15",
+                            "inputs": {},
+                            "kind": "block",
+                            "opcode": "data_variable"
+                          }
+                        },
+                        "opcode": "platformer_setspeed"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_12",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "KEY_OPTION": "right arrow"
+                      },
+                      "id": "pw1_13",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_keypressed"
+                    }
+                  },
+                  "opcode": "control_if"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "AXIS": "x"
+                        },
+                        "id": "pw1_18",
+                        "inputs": {
+                          "SPEED": {
+                            "fields": {},
+                            "id": "pw1_19",
+                            "inputs": {
+                              "NUM1": {
+                                "kind": "lit",
+                                "value": 0
+                              },
+                              "NUM2": {
+                                "fields": {
+                                  "VARIABLE": "pw1_speed"
+                                },
+                                "id": "pw1_21",
+                                "inputs": {},
+                                "kind": "block",
+                                "opcode": "data_variable"
+                              }
+                            },
+                            "kind": "block",
+                            "opcode": "operator_subtract"
+                          }
+                        },
+                        "opcode": "platformer_setspeed"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_16",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "KEY_OPTION": "left arrow"
+                      },
+                      "id": "pw1_17",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_keypressed"
+                    }
+                  },
+                  "opcode": "control_if"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "AXIS": "y"
+                        },
+                        "id": "pw1_24",
+                        "inputs": {
+                          "SPEED": {
+                            "fields": {
+                              "VARIABLE": "pw1_speed"
+                            },
+                            "id": "pw1_25",
+                            "inputs": {},
+                            "kind": "block",
+                            "opcode": "data_variable"
+                          }
+                        },
+                        "opcode": "platformer_setspeed"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_22",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "KEY_OPTION": "up arrow"
+                      },
+                      "id": "pw1_23",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_keypressed"
+                    }
+                  },
+                  "opcode": "control_if"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "AXIS": "y"
+                        },
+                        "id": "pw1_28",
+                        "inputs": {
+                          "SPEED": {
+                            "fields": {},
+                            "id": "pw1_29",
+                            "inputs": {
+                              "NUM1": {
+                                "kind": "lit",
+                                "value": 0
+                              },
+                              "NUM2": {
+                                "fields": {
+                                  "VARIABLE": "pw1_speed"
+                                },
+                                "id": "pw1_31",
+                                "inputs": {},
+                                "kind": "block",
+                                "opcode": "data_variable"
+                              }
+                            },
+                            "kind": "block",
+                            "opcode": "operator_subtract"
+                          }
+                        },
+                        "opcode": "platformer_setspeed"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_26",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "KEY_OPTION": "down arrow"
+                      },
+                      "id": "pw1_27",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_keypressed"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "platformer_everytick"
+              },
+              "id": "pw1_7"
+            },
+            {
+              "body": [
+                {
+                  "fields": {},
+                  "id": "pw1_33",
+                  "inputs": {
+                    "X": {
+                      "fields": {
+                        "VARIABLE": "pw1_start_x"
+                      },
+                      "id": "pw1_34",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "data_variable"
+                    },
+                    "Y": {
+                      "fields": {
+                        "VARIABLE": "pw1_start_y"
+                      },
+                      "id": "pw1_35",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "data_variable"
+                    }
+                  },
+                  "opcode": "motion_gotoxy"
+                },
+                {
+                  "fields": {
+                    "AXIS": "x"
+                  },
+                  "id": "pw1_36",
+                  "inputs": {
+                    "SPEED": {
+                      "kind": "lit",
+                      "value": 0
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                },
+                {
+                  "fields": {
+                    "AXIS": "y"
+                  },
+                  "id": "pw1_38",
+                  "inputs": {
+                    "SPEED": {
+                      "kind": "lit",
+                      "value": 0
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                }
+              ],
+              "hat": {
+                "fields": {
+                  "BROADCAST_OPTION": "hero hurt"
+                },
+                "inputs": {},
+                "opcode": "event_whenbroadcastreceived"
+              },
+              "id": "pw1_32"
+            }
+          ],
+          "variables": [
+            {
+              "id": "pw1_speed",
+              "name": "speed",
+              "showInBuild": true,
+              "value": 3
+            },
+            {
+              "id": "pw1_start_x",
+              "name": "start x",
+              "value": 0
+            },
+            {
+              "id": "pw1_start_y",
+              "name": "start y",
+              "value": 0
+            }
+          ]
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIElEQVR4AWM8WWL1n4ECwES6FlQwasCoASAwasBgMAAAPqsCllfX+1MAAAAASUVORK5CYII=",
+            "height": 16,
+            "mask": {
+              "data": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "c",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "grid": {
+          "char": "W"
+        },
+        "id": "brick2",
+        "name": "Wall",
+        "powers": [
+          {
+            "blockIds": [
+              "pw1_1"
+            ],
+            "credits": [
+              "Brickgineers"
+            ],
+            "fingerprint": "bnjjzdafq3ys",
+            "id": "pw1",
+            "job": "wall",
+            "name": "Wall",
+            "variableIds": []
+          }
+        ],
+        "program": {
+          "lists": [],
+          "procedures": [],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "fields": {
+                    "SOLID": "on"
+                  },
+                  "id": "pw1_2",
+                  "inputs": {},
+                  "opcode": "platformer_setsolid"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "pw1_1"
+            }
+          ],
+          "variables": []
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIElEQVR4AWP8upnxPwMFgIl0Lahg1IBRA0Bg1IDBYAAACdsCyHaWd+4AAAAASUVORK5CYII=",
+            "height": 16,
+            "mask": {
+              "data": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "c",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "brick3",
+        "name": "Star",
+        "powers": [
+          {
+            "blockIds": [
+              "pw1_1",
+              "pw1_3"
+            ],
+            "credits": [
+              "Brickgineers"
+            ],
+            "fingerprint": "1tm0jy22xgd8o",
+            "id": "pw1",
+            "job": "collect",
+            "name": "Collect",
+            "variableIds": [
+              "pw1_points"
+            ]
+          }
+        ],
+        "program": {
+          "lists": [],
+          "procedures": [],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "fields": {},
+                  "id": "pw1_2",
+                  "inputs": {},
+                  "opcode": "looks_show"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "pw1_1"
+            },
+            {
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "VARIABLE": "score"
+                        },
+                        "id": "pw1_6",
+                        "inputs": {
+                          "VALUE": {
+                            "fields": {
+                              "VARIABLE": "pw1_points"
+                            },
+                            "id": "pw1_7",
+                            "inputs": {},
+                            "kind": "block",
+                            "opcode": "data_variable"
+                          }
+                        },
+                        "opcode": "data_changevariableby"
+                      },
+                      {
+                        "fields": {},
+                        "id": "pw1_8",
+                        "inputs": {},
+                        "opcode": "looks_hide"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_4",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {},
+                      "id": "pw1_5",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "game_touchingplayer"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "platformer_everytick"
+              },
+              "id": "pw1_3"
+            }
+          ],
+          "variables": [
+            {
+              "id": "pw1_points",
+              "name": "points",
+              "showInBuild": true,
+              "value": 1
+            }
+          ]
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIElEQVR4AWOMTiv7z0ABYCJdCyoYNWDUABAYNWAwGAAAOnICVgNc9iwAAAAASUVORK5CYII=",
+            "height": 16,
+            "mask": {
+              "data": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "c",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "brick4",
+        "name": "Spike",
+        "powers": [
+          {
+            "blockIds": [
+              "pw1_1"
+            ],
+            "credits": [
+              "Brickgineers"
+            ],
+            "fingerprint": "17ow8lgpnwnp5",
+            "id": "pw1",
+            "job": "hurts",
+            "name": "Hurts",
+            "variableIds": []
+          }
+        ],
+        "program": {
+          "lists": [],
+          "procedures": [],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {},
+                        "id": "pw1_4",
+                        "inputs": {
+                          "BROADCAST_INPUT": {
+                            "kind": "lit",
+                            "value": "hero hurt"
+                          }
+                        },
+                        "opcode": "event_broadcast"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_2",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {},
+                      "id": "pw1_3",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "game_touchingplayer"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "platformer_everytick"
+              },
+              "id": "pw1_1"
+            }
+          ],
+          "variables": []
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIElEQVR4AWN86uH7n4ECwES6FlQwasCoASAwasBgMAAASt4CmbUrMxcAAAAASUVORK5CYII=",
+            "height": 16,
+            "mask": {
+              "data": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "c",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "brick5",
+        "name": "Flag",
+        "powers": [
+          {
+            "blockIds": [
+              "pw1_1"
+            ],
+            "credits": [
+              "Brickgineers"
+            ],
+            "fingerprint": "7wkfyd15gqhbi",
+            "id": "pw1",
+            "job": "goal",
+            "name": "Goal",
+            "variableIds": []
+          }
+        ],
+        "program": {
+          "lists": [],
+          "procedures": [],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {},
+                        "id": "pw1_4",
+                        "inputs": {
+                          "MESSAGE": {
+                            "kind": "lit",
+                            "value": "You win!"
+                          }
+                        },
+                        "opcode": "looks_say"
+                      },
+                      {
+                        "fields": {},
+                        "id": "pw1_6",
+                        "inputs": {
+                          "BROADCAST_INPUT": {
+                            "kind": "lit",
+                            "value": "course clear"
+                          }
+                        },
+                        "opcode": "event_broadcast"
+                      },
+                      {
+                        "fields": {
+                          "STOP_OPTION": "all"
+                        },
+                        "id": "pw1_8",
+                        "inputs": {},
+                        "opcode": "control_stop"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "pw1_2",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {},
+                      "id": "pw1_3",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "game_touchingplayer"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "platformer_everytick"
+              },
+              "id": "pw1_1"
+            }
+          ],
+          "variables": []
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAmElEQVR4AWOgFDCiC/CLa/3Hp+Hjy2soelA4IM0bcy/h08/gP1kPxRA4gxjN2AwBE8ia7auZwfTB1r8omtDFYYYwYbNBXsYHmzBWcQwXEAtgLmDBpWDfPISBTkl6uJQx4DQAnyZkgDUMSAEDbwB1EhLMABCdz70EzJ/4NQZFE7o4ep4AG1CndA6MsWUoXPIYLoABdBtwyQMACD1S6dpovE4AAAAASUVORK5CYII=",
+            "height": 16,
+            "mask": {
+              "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAABAQEBAQEBAQAAAAAAAAABAQEBAQEBAQEBAAAAAAABAQEBAQEBAQEBAQEAAAABAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEBAAABAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEBAAABAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQEAAAABAQEBAQEBAQEBAQEAAAAAAQEBAQEBAQEBAQEBAAAAAAEBAQEAAAAAAQEBAQAAAAABAQEBAAAAAAEBAQEAAA==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "Blob",
+            "opaque": {
+              "bottom": 16,
+              "left": 1,
+              "right": 15,
+              "top": 1
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "brick6",
+        "name": "Walker",
+        "program": {
+          "lists": [],
+          "procedures": [
+            {
+              "argumentNames": [
+                "speed"
+              ],
+              "body": [
+                {
+                  "fields": {
+                    "GRAVITY": "on"
+                  },
+                  "id": "b_10",
+                  "inputs": {},
+                  "opcode": "platformer_setgravity"
+                },
+                {
+                  "fields": {
+                    "STYLE": "left-right"
+                  },
+                  "id": "b_11",
+                  "inputs": {},
+                  "opcode": "motion_setrotationstyle"
+                },
+                {
+                  "fields": {},
+                  "id": "b_15",
+                  "inputs": {
+                    "DIRECTION": {
+                      "fields": {},
+                      "id": "b_14",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way"
+                          },
+                          "id": "b_12",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "kind": "lit",
+                          "value": 90
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "motion_pointindirection"
+                },
+                {
+                  "fields": {
+                    "AXIS": "x"
+                  },
+                  "id": "b_19",
+                  "inputs": {
+                    "SPEED": {
+                      "fields": {},
+                      "id": "b_18",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way"
+                          },
+                          "id": "b_16",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "boolean": false,
+                          "kind": "param",
+                          "name": "speed"
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                }
+              ],
+              "proccode": "walk at %s",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "fields": {
+                    "VARIABLE": "b_way"
+                  },
+                  "id": "b_24",
+                  "inputs": {
+                    "VALUE": {
+                      "fields": {},
+                      "id": "b_23",
+                      "inputs": {
+                        "NUM1": {
+                          "kind": "lit",
+                          "value": 0
+                        },
+                        "NUM2": {
+                          "fields": {
+                            "VARIABLE": "b_way"
+                          },
+                          "id": "b_21",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_subtract"
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "fields": {},
+                  "id": "b_28",
+                  "inputs": {
+                    "DIRECTION": {
+                      "fields": {},
+                      "id": "b_27",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way"
+                          },
+                          "id": "b_25",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "kind": "lit",
+                          "value": 90
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "motion_pointindirection"
+                },
+                {
+                  "fields": {
+                    "AXIS": "x"
+                  },
+                  "id": "b_32",
+                  "inputs": {
+                    "SPEED": {
+                      "fields": {},
+                      "id": "b_31",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way"
+                          },
+                          "id": "b_29",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "fields": {
+                            "VARIABLE": "b_speed"
+                          },
+                          "id": "b_30",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                }
+              ],
+              "proccode": "turn around",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "branches": [
+                          [
+                            {
+                              "fields": {},
+                              "id": "b_41",
+                              "inputs": {
+                                "BROADCAST_INPUT": {
+                                  "kind": "lit",
+                                  "value": "stomped"
+                                }
+                              },
+                              "opcode": "event_broadcast"
+                            },
+                            {
+                              "fields": {},
+                              "id": "b_42",
+                              "inputs": {},
+                              "opcode": "looks_hide"
+                            }
+                          ],
+                          [
+                            {
+                              "fields": {},
+                              "id": "b_44",
+                              "inputs": {
+                                "BROADCAST_INPUT": {
+                                  "kind": "lit",
+                                  "value": "hero hurt"
+                                }
+                              },
+                              "opcode": "event_broadcast"
+                            }
+                          ]
+                        ],
+                        "fields": {},
+                        "id": "b_45",
+                        "inputs": {
+                          "CONDITION": {
+                            "fields": {},
+                            "id": "b_39",
+                            "inputs": {
+                              "OPERAND1": {
+                                "fields": {
+                                  "OBJECT": "_player_",
+                                  "PROPERTY": "y position"
+                                },
+                                "id": "b_35",
+                                "inputs": {},
+                                "kind": "block",
+                                "opcode": "sensing_of"
+                              },
+                              "OPERAND2": {
+                                "fields": {},
+                                "id": "b_38",
+                                "inputs": {
+                                  "NUM1": {
+                                    "fields": {},
+                                    "id": "b_36",
+                                    "inputs": {},
+                                    "kind": "block",
+                                    "opcode": "motion_yposition"
+                                  },
+                                  "NUM2": {
+                                    "kind": "lit",
+                                    "value": 6
+                                  }
+                                },
+                                "kind": "block",
+                                "opcode": "operator_add"
+                              }
+                            },
+                            "kind": "block",
+                            "opcode": "operator_gt"
+                          }
+                        },
+                        "opcode": "control_if_else"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_46",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_34",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_touchingobject"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "proccode": "check for stomp",
+              "warp": false
+            }
+          ],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "call": {
+                    "proccode": "walk at %s"
+                  },
+                  "fields": {},
+                  "id": "b_2",
+                  "inputs": {
+                    "speed": {
+                      "fields": {
+                        "VARIABLE": "b_speed"
+                      },
+                      "id": "b_1",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "data_variable"
+                    }
+                  },
+                  "opcode": "procedures_call"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "call": {
+                          "proccode": "check for stomp"
+                        },
+                        "fields": {},
+                        "id": "b_3",
+                        "inputs": {},
+                        "opcode": "procedures_call"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_4",
+                  "inputs": {},
+                  "opcode": "control_forever"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "b_5"
+            },
+            {
+              "body": [
+                {
+                  "call": {
+                    "proccode": "turn around"
+                  },
+                  "fields": {},
+                  "id": "b_6",
+                  "inputs": {},
+                  "opcode": "procedures_call"
+                }
+              ],
+              "hat": {
+                "fields": {
+                  "BRICK": "_any_",
+                  "SIDE": "left"
+                },
+                "inputs": {},
+                "opcode": "platformer_whenbump"
+              },
+              "id": "b_7"
+            },
+            {
+              "body": [
+                {
+                  "call": {
+                    "proccode": "turn around"
+                  },
+                  "fields": {},
+                  "id": "b_8",
+                  "inputs": {},
+                  "opcode": "procedures_call"
+                }
+              ],
+              "hat": {
+                "fields": {
+                  "BRICK": "_any_",
+                  "SIDE": "right"
+                },
+                "inputs": {},
+                "opcode": "platformer_whenbump"
+              },
+              "id": "b_9"
+            }
+          ],
+          "variables": [
+            {
+              "id": "b_speed",
+              "name": "speed",
+              "showInBuild": true,
+              "value": 1
+            },
+            {
+              "id": "b_way",
+              "name": "way",
+              "value": 1
+            }
+          ]
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAcElEQVR4AWNkQAL84lr/kfkw8PHlNbg6OAOk+PXW19jUM4h6i8I1gQlkxYzH1FEU/7e6iaKJEV0xTAEMIIuBNDFhk2A1foViA7KtcA3EAqwafp8VI00DPgDXgO5WGEAPCNKDFSZBUsQha8KmATlpAAAqE0NhJqvRCAAAAABJRU5ErkJggg==",
+            "height": 12,
+            "mask": {
+              "data": "AAAAAQEBAQEBAAAAAAABAQEBAQEBAQAAAAEBAQEBAQEBAQEAAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAEBAQEBAQEBAQEAAAABAQEBAQEBAQAAAAAAAQEBAQEBAAAA",
+              "height": 12,
+              "width": 12
+            },
+            "name": "Gold",
+            "opaque": {
+              "bottom": 12,
+              "left": 0,
+              "right": 12,
+              "top": 0
+            },
+            "rotationCenterX": 6,
+            "rotationCenterY": 6,
+            "width": 12
+          }
+        ],
+        "id": "brick7",
+        "name": "Coin",
+        "program": {
+          "lists": [],
+          "procedures": [
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "fields": {},
+                  "id": "b_7",
+                  "inputs": {
+                    "DEGREES": {
+                      "kind": "lit",
+                      "value": 15
+                    }
+                  },
+                  "opcode": "motion_turnright"
+                }
+              ],
+              "proccode": "spin",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {},
+                        "id": "b_11",
+                        "inputs": {
+                          "BROADCAST_INPUT": {
+                            "kind": "lit",
+                            "value": "coin collected"
+                          }
+                        },
+                        "opcode": "event_broadcast"
+                      },
+                      {
+                        "fields": {},
+                        "id": "b_12",
+                        "inputs": {},
+                        "opcode": "looks_hide"
+                      },
+                      {
+                        "fields": {
+                          "STOP_OPTION": "this script"
+                        },
+                        "id": "b_13",
+                        "inputs": {},
+                        "opcode": "control_stop"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_14",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_9",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_touchingobject"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "proccode": "check for Hero",
+              "warp": false
+            }
+          ],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "fields": {},
+                  "id": "b_1",
+                  "inputs": {},
+                  "opcode": "looks_show"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "call": {
+                          "proccode": "spin"
+                        },
+                        "fields": {},
+                        "id": "b_2",
+                        "inputs": {},
+                        "opcode": "procedures_call"
+                      },
+                      {
+                        "call": {
+                          "proccode": "check for Hero"
+                        },
+                        "fields": {},
+                        "id": "b_3",
+                        "inputs": {},
+                        "opcode": "procedures_call"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_4",
+                  "inputs": {},
+                  "opcode": "control_forever"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "b_5"
+            }
+          ],
+          "variables": []
+        },
+        "sounds": []
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAAAsUlEQVR4AWOAgf+H9P6DMFyASMAI04wiaHcJLE4MYCJWIS4ANkAuAiGAzCYGsMAYsx92QVllDLJSxIXF42eXGOEGoINDpw/j0wsGdqa2/ykKA5AlBA1QkGABY2wA6AJEGOACD178wSoO0ow3DBqa+3FJMezbtA6sGcTGaQBIES4A0wwCWA1AVkAIUCclUgJGDRg1AARGDRgMBjDiqwOIKVhYghJScEpObMvDoxUCBj4MAL2VM1MiUwExAAAAAElFTkSuQmCC",
+            "height": 32,
+            "mask": {
+              "data": "AAABAQAAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQEBAAEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEAAQEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEAAAABAQEBAQEBAQEBAQEAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAABAQEBAQEBAAAAAAAAAAAAAQEBAQEBAQAAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAA=",
+              "height": 32,
+              "width": 16
+            },
+            "name": "down",
+            "opaque": {
+              "bottom": 32,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 16,
+            "width": 16
+          },
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAYAAAAbifjMAAAAsUlEQVR4AWOAgf+H9P6DMFyASMAI04wiaHcJLE4MYCJWIS4ANkAuAiGAzCYGsMAYsx92QVllDLJSxIXF42eXGOEGoAOh0E349ELAar//FIUByBKCBlzoEwVjbODdaj9EGOACBkWvsYqDNOMNg3c3DuOSYmC43A3WDGLidgFQES4A0wwCWA1AVkAIUCclUgJGDRg1AARGDRgMBjDiqwOIKVhYghJScEpObMvDoxUCBj4MAEfTNEq/xP52AAAAAElFTkSuQmCC",
+            "height": 32,
+            "mask": {
+              "data": "AAABAQAAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQEBAAEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEAAQEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEAAAABAQEBAQEBAQEBAQEAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAABAQEBAAAAAAAAAAAAAAAAAQEBAQAAAAAAAAAAAAAAAAEBAQEAAAAAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAABAQEBAQEBAAAAAAAAAAAAAQEBAQEBAQAAAAAAAAAAAAEBAQEBAQEAAAAAAAAAAAA=",
+              "height": 32,
+              "width": 16
+            },
+            "name": "up",
+            "opaque": {
+              "bottom": 32,
+              "left": 0,
+              "right": 16,
+              "top": 0
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 16,
+            "width": 16
+          }
+        ],
+        "id": "brick8",
+        "name": "Checkpoint",
+        "program": {
+          "lists": [],
+          "procedures": [
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "branches": [
+                          [
+                            {
+                              "call": {
+                                "proccode": "raise my flag"
+                              },
+                              "fields": {},
+                              "id": "b_29",
+                              "inputs": {},
+                              "opcode": "procedures_call"
+                            }
+                          ]
+                        ],
+                        "fields": {},
+                        "id": "b_30",
+                        "inputs": {
+                          "CONDITION": {
+                            "fields": {},
+                            "id": "b_28",
+                            "inputs": {
+                              "OPERAND1": {
+                                "fields": {
+                                  "VARIABLE": "b_up"
+                                },
+                                "id": "b_26",
+                                "inputs": {},
+                                "kind": "block",
+                                "opcode": "data_variable"
+                              },
+                              "OPERAND2": {
+                                "kind": "lit",
+                                "value": 0
+                              }
+                            },
+                            "kind": "block",
+                            "opcode": "operator_equals"
+                          }
+                        },
+                        "opcode": "control_if"
+                      },
+                      {
+                        "branches": [
+                          [
+                            {
+                              "call": {
+                                "proccode": "tell the Hero to come back here"
+                              },
+                              "fields": {},
+                              "id": "b_31",
+                              "inputs": {},
+                              "opcode": "procedures_call"
+                            }
+                          ]
+                        ],
+                        "fields": {},
+                        "id": "b_32",
+                        "inputs": {
+                          "CONDITION": {
+                            "fields": {},
+                            "id": "b_24",
+                            "inputs": {
+                              "OPERAND1": {
+                                "kind": "lit",
+                                "value": 24
+                              },
+                              "OPERAND2": {
+                                "fields": {
+                                  "OPERATOR": "abs"
+                                },
+                                "id": "b_22",
+                                "inputs": {
+                                  "NUM": {
+                                    "fields": {},
+                                    "id": "b_21",
+                                    "inputs": {
+                                      "NUM1": {
+                                        "fields": {
+                                          "OBJECT": "_player_",
+                                          "PROPERTY": "start x"
+                                        },
+                                        "id": "b_19",
+                                        "inputs": {},
+                                        "kind": "block",
+                                        "opcode": "sensing_of"
+                                      },
+                                      "NUM2": {
+                                        "fields": {},
+                                        "id": "b_20",
+                                        "inputs": {},
+                                        "kind": "block",
+                                        "opcode": "motion_xposition"
+                                      }
+                                    },
+                                    "kind": "block",
+                                    "opcode": "operator_subtract"
+                                  }
+                                },
+                                "kind": "block",
+                                "opcode": "operator_mathop"
+                              }
+                            },
+                            "kind": "block",
+                            "opcode": "operator_lt"
+                          }
+                        },
+                        "opcode": "control_if"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_33",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_25",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_touchingobject"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "proccode": "watch for the Hero",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "fields": {
+                    "VARIABLE": "b_up"
+                  },
+                  "id": "b_36",
+                  "inputs": {
+                    "VALUE": {
+                      "kind": "lit",
+                      "value": 1
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "fields": {
+                    "COSTUME": "up"
+                  },
+                  "id": "b_37",
+                  "inputs": {},
+                  "opcode": "looks_switchcostumeto"
+                },
+                {
+                  "fields": {
+                    "SOUND_MENU": "Checkpoint"
+                  },
+                  "id": "b_38",
+                  "inputs": {},
+                  "opcode": "sound_play"
+                }
+              ],
+              "proccode": "raise my flag",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "fields": {
+                    "VARIABLE": "b_mine"
+                  },
+                  "id": "b_41",
+                  "inputs": {
+                    "VALUE": {
+                      "kind": "lit",
+                      "value": 1
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "fields": {},
+                  "id": "b_43",
+                  "inputs": {
+                    "BROADCAST_INPUT": {
+                      "kind": "lit",
+                      "value": "checkpoint"
+                    }
+                  },
+                  "opcode": "event_broadcast"
+                }
+              ],
+              "proccode": "tell the Hero to come back here",
+              "warp": false
+            }
+          ],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "fields": {
+                    "COSTUME": "down"
+                  },
+                  "id": "b_1",
+                  "inputs": {},
+                  "opcode": "looks_switchcostumeto"
+                },
+                {
+                  "fields": {
+                    "VARIABLE": "b_up"
+                  },
+                  "id": "b_3",
+                  "inputs": {
+                    "VALUE": {
+                      "kind": "lit",
+                      "value": 0
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "fields": {
+                    "VARIABLE": "b_mine"
+                  },
+                  "id": "b_5",
+                  "inputs": {
+                    "VALUE": {
+                      "kind": "lit",
+                      "value": 0
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "call": {
+                          "proccode": "watch for the Hero"
+                        },
+                        "fields": {},
+                        "id": "b_6",
+                        "inputs": {},
+                        "opcode": "procedures_call"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_7",
+                  "inputs": {},
+                  "opcode": "control_forever"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "b_8"
+            },
+            {
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "VARIABLE": "b_mine"
+                        },
+                        "id": "b_13",
+                        "inputs": {
+                          "VALUE": {
+                            "kind": "lit",
+                            "value": 0
+                          }
+                        },
+                        "opcode": "data_setvariableto"
+                      }
+                    ],
+                    [
+                      {
+                        "fields": {
+                          "VARIABLE": "b_up"
+                        },
+                        "id": "b_15",
+                        "inputs": {
+                          "VALUE": {
+                            "kind": "lit",
+                            "value": 0
+                          }
+                        },
+                        "opcode": "data_setvariableto"
+                      },
+                      {
+                        "fields": {
+                          "COSTUME": "down"
+                        },
+                        "id": "b_16",
+                        "inputs": {},
+                        "opcode": "looks_switchcostumeto"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_17",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {},
+                      "id": "b_11",
+                      "inputs": {
+                        "OPERAND1": {
+                          "fields": {
+                            "VARIABLE": "b_mine"
+                          },
+                          "id": "b_9",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "OPERAND2": {
+                          "kind": "lit",
+                          "value": 1
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_equals"
+                    }
+                  },
+                  "opcode": "control_if_else"
+                }
+              ],
+              "hat": {
+                "fields": {
+                  "BROADCAST_OPTION": "checkpoint"
+                },
+                "inputs": {},
+                "opcode": "event_whenbroadcastreceived"
+              },
+              "id": "b_18"
+            }
+          ],
+          "variables": [
+            {
+              "id": "b_up",
+              "name": "flag up",
+              "value": 0
+            },
+            {
+              "id": "b_mine",
+              "name": "it was me",
+              "value": 0
+            }
+          ]
+        },
+        "sounds": [
+          {
+            "asset": "data:audio/wav;base64,UklGRqguAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YYQuAAAAAEYAjADTABkBzv/E/7r/sP+m/5z/kv+I/37/dP9q/2D/Vf9L/0H/N/8t/yP/Gf8P/wX/+/7x/uf+3f7T/sn+v/61/qv+of6X/o3+g/55/m/+Zf6FC8sLEQxYDJ4MKf4f/hT+Cv4A/vb97P3i/dj9zv3E/br9sP2m/Zz9kv2I/X79dP1q/WD9Vv1M/UL9OP0u/ST9Gv0Q/Qb9/Pzy/Oj83vzT/Mn8v/wKF1AXlhfdFyMYg/x5/G/8Zfxb/FH8R/w9/DP8Kfwf/BX8C/wB/Pf77fvj+9n7z/vF+7v7sfuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvux+7P7tfu3+7n74x3UHcUdtx2oHcX7yPvK+8z7zvvQ+9L71PvW+9j72vvc+9/74fvj++X75/vp++v77fvv+/H78/v2+/j7+vv8+/77APwC/AT8BvwI/Ar8DfwP/BH8fBtuG18bUBtCGzMbH/wh/CT8Jvwo/Cr8LPwu/DD8Mvw0/Db8OPw7/D38P/xB/EP8RfxH/En8S/xN/E/8UvxU/Fb8WPxa/Fz8Xvxg/GL8ZPxm/Gj8FhkHGfgY6hjbGM0Yd/x5/Hv8ffx//IL8hPyG/Ij8ivyM/I78kPyS/JT8lvyZ/Jv8nfyf/KH8o/yl/Kf8qfyr/K38sPyy/LT8tvy4/Lr8vPy+/MD8wvyhFpIWgxZ1FmYWz/zR/NP81fzX/Nn82/ze/OD84vzk/Ob86Pzq/Oz87vzw/PL89fz3/Pn8+/z9/P/8Af0D/QX9B/0J/Qv9Dv0Q/RL9FP0W/Rj9Gv06FCwUHRQOFAAUJ/0p/Sv9Lf0v/TH9M/01/Tf9Of08/T79QP1C/UT9Rv1I/Ur9TP1O/VD9U/1V/Vf9Wf1b/V39X/1h/WP9Zf1n/Wr9bP1u/XD9cv3UEcURtxGoEZkRfv2B/YP9hf2H/Yn9i/2N/Y/9kf2T/ZX9mP2a/Zz9nv2g/aL9pP2m/aj9qv2s/a79sf2z/bX9t/25/bv9vf2//cH9w/3F/cj9yv1uD18PUA9CDzMP1v3Y/dr93P3f/eH94/3l/ef96f3r/e397/3x/fP99v34/fr9/P3+/QD+Av4E/gb+CP4K/g3+D/4R/hP+Ff4X/hn+G/4d/h/+If4HDfkM6gzbDM0MLv4w/jL+NP42/jj+O/49/j/+Qf5D/kX+R/5J/kv+Tf5P/lL+VP5W/lj+Wv5c/l7+YP5i/mT+Zv5o/mv+bf5v/nH+c/51/nf+ef6hCpIKhAp1CmYKWAqI/or+jP6O/pD+kv6U/pb+mf6b/p3+n/6h/qP+pf6n/qn+q/6t/rD+sv60/rb+uP66/rz+vv7A/sL+xP7H/sn+y/7N/s/+0f46CCwIHQgPCAAI8Qfg/uL+5P7m/uj+6v7s/u7+8P7y/vX+9/75/vv+/f7//gH/A/8F/wf/Cf8L/w7/EP8S/xT/Fv8Y/xr/HP8e/yD/Iv8l/yf/Kf8r/8UFtwWoBZoFiwU3/zn/PP8+/0D/Qv9E/0b/SP9K/0z/Tv9Q/1P/Vf9X/1n/W/9d/1//Yf9j/2X/Z/9q/2z/bv9w/3L/dP92/3j/ev98/37/gf+D/18DUANCAzMDJQOP/5H/k/+V/5j/mv+c/57/oP+i/6T/pv+o/6r/rP+u/7H/s/+1/7f/uf+7/73/v//B/8P/xf/I/8r/zP/O/9D/0v/U/9b/2P/a//kA6gDbAM0AvgDn/+n/6//t/+//8f/z//b/+P/6//z//v8AAEYAjADTANj/zv/E/7r/sP+m/5z/kv+I/37/dP9q/2D/Vf9L/0H/N/8t/yP/Gf8P/wX/+/7x/uf+3f7T/sn+v/4NCVMJmgngCY3+g/55/m/+Zf5b/lH+R/49/jP+Kf4f/hT+Cv4A/vb97P3i/dj9zv3E/br9sP2m/Zz9kv2I/X79dP0aEmASpxLtEjMTOP0u/ST9Gv0Q/Qb9/Pzy/Oj83vzT/Mn8v/y1/Kv8ofyX/I38g/x5/G/8Zfxb/FH8R/w9/DP8Kfwf/G4btBv6G0Ac7fvj+9n7z/vF+7v7sfuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvux+7P7tfu3+7n7u/u9+8Udtx2oHZkdyPvK+8z7zvvQ+9L71PvW+9j72vvc+9/74fvj++X75/vp++v77fvv+/H78/v2+/j7+vv8+/77APwC/AT81BvFG7cbqBsP/BH8E/wV/Bf8Gfwb/B38H/wh/CT8Jvwo/Cr8LPwu/DD8Mvw0/Db8OPw7/D38P/xB/EP8RfxH/En88RnjGdQZxRlU/Fb8WPxa/Fz8Xvxg/GL8ZPxm/Gj8a/xt/G/8cfxz/HX8d/x5/Hv8ffx//IL8hPyG/Ij8ivyM/I78kPwAGPEX4xfUF5v8nfyf/KH8o/yl/Kf8qfyr/K38sPyy/LT8tvy4/Lr8vPy+/MD8wvzE/Mf8yfzL/M38z/zR/NP81fwdFg4WABbxFeD84vzk/Ob86Pzq/Oz87vzw/PL89fz3/Pn8+/z9/P/8Af0D/QX9B/0J/Qv9Dv0Q/RL9FP0W/Rj9Gv06FCwUHRQOFAAUJ/0p/Sv9Lf0v/TH9M/01/Tf9Of08/T79QP1C/UT9Rv1I/Ur9TP1O/VD9U/1V/Vf9Wf1b/V39X/1h/UkSOhIsEh0SbP1u/XD9cv10/Xb9eP16/Xz9fv2B/YP9hf2H/Yn9i/2N/Y/9kf2T/ZX9mP2a/Zz9nv2g/aL9pP2m/WYQWBBJEDoQLBCz/bX9t/25/bv9vf2//cH9w/3F/cj9yv3M/c790P3S/dT91v3Y/dr93P3f/eH94/3l/ef96f3r/e39dQ5mDlgOSQ74/fr9/P3+/QD+Av4E/gb+CP4K/g3+D/4R/hP+Ff4X/hn+G/4d/h/+If4k/ib+KP4q/iz+Lv4w/jL+kgyEDHUMZgw9/j/+Qf5D/kX+R/5J/kv+Tf5P/lL+VP5W/lj+Wv5c/l7+YP5i/mT+Zv5o/mv+bf5v/nH+c/51/nf+ef6hCpIKhAp1CoT+hv6I/or+jP6O/pD+kv6U/pb+mf6b/p3+n/6h/qP+pf6n/qn+q/6t/rD+sv60/rb+uP66/rz+vv6+CK8IoQiSCMn+y/7N/s/+0f7T/tX+1/7Z/tv+3v7g/uL+5P7m/uj+6v7s/u7+8P7y/vX+9/75/vv+/f7//gH/A/8F/80GvgavBqEGEP8S/xT/Fv8Y/xr/HP8e/yD/Iv8l/yf/Kf8r/y3/L/8x/zP/Nf83/zn/PP8+/0D/Qv9E/0b/SP9K/+oE2wTNBL4EVf9X/1n/W/9d/1//Yf9j/2X/Z/9q/2z/bv9w/3L/dP92/3j/ev98/37/gf+D/4X/h/+J/4v/jf+P/wcD+QLqAtsCzQKc/57/oP+i/6T/pv+o/6r/rP+u/7H/s/+1/7f/uf+7/73/v//B/8P/xf/I/8r/zP/O/9D/0v/U/9b/FgEHAfkA6gDh/+P/5f/n/+n/6//t/+//8f/z//b/+P/6//z//v8AAEYAjADi/9j/zv/E/7r/sP+m/5z/kv+I/37/dP9q/2D/Vf9L/0H/N/8t/yP/Gf8P/wX/+/7x/q4H9Ac6CMn+v/61/qv+of6X/o3+g/55/m/+Zf5b/lH+R/49/jP+Kf4f/hT+Cv4A/vb97P3i/dj9XA+iD+gPsP2m/Zz9kv2I/X79dP1q/WD9Vv1M/UL9OP0u/ST9Gv0Q/Qb9/Pzy/Oj83vzT/Mn8v/wKF1AXlheX/I38g/x5/G/8Zfxb/FH8R/w9/DP8Kfwf/BX8C/wB/Pf77fvj+9n7z/vF+7v7sfuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hj0ervuu+677rvux+7P7tfu3+7n7u/u9+7/7wfvD+8X7yPvK+8z7zvvQ+9L71PvW+9j7Bx34HOoc2xzj++X75/vp++v77fvv+/H78/v2+/j7+vv8+/77APwC/AT8BvwI/Ar8DfwP/BH8E/xuG18bUBtCGx38H/wh/CT8Jvwo/Cr8LPwu/DD8Mvw0/Db8OPw7/D38P/xB/EP8RfxH/En8S/xN/NQZxRm3GagZWPxa/Fz8Xvxg/GL8ZPxm/Gj8a/xt/G/8cfxz/HX8d/x5/Hv8ffx//IL8hPyG/Ij8ivwsGB0YDhiS/JT8lvyZ/Jv8nfyf/KH8o/yl/Kf8qfyr/K38sPyy/LT8tvy4/Lr8vPy+/MD8wvzE/JIWgxZ1Fs38z/zR/NP81fzX/Nn82/ze/OD84vzk/Ob86Pzq/Oz87vzw/PL89fz3/Pn8+/z9/P/8+RTqFNsUB/0J/Qv9Dv0Q/RL9FP0W/Rj9Gv0c/R79IP0i/SX9J/0p/Sv9Lf0v/TH9M/01/Tf9Of1fE1ATQhNC/UT9Rv1I/Ur9TP1O/VD9U/1V/Vf9Wf1b/V39X/1h/WP9Zf1n/Wr9bP1u/XD9cv10/cURtxGoEZkRfv2B/YP9hf2H/Yn9i/2N/Y/9kf2T/ZX9mP2a/Zz9nv2g/aL9pP2m/aj9qv2s/a79LBAdEA8QABC5/bv9vf2//cH9w/3F/cj9yv3M/c790P3S/dT91v3Y/dr93P3f/eH94/3l/ef96f2SDoQOdQ5mDvP99v34/fr9/P3+/QD+Av4E/gb+CP4K/g3+D/4R/hP+Ff4X/hn+G/4d/h/+If4k/vkM6gzbDM0MLv4w/jL+NP42/jj+O/49/j/+Qf5D/kX+R/5J/kv+Tf5P/lL+VP5W/lj+Wv5c/l7+YP5QC0ILMwto/mv+bf5v/nH+c/51/nf+ef57/n3+f/6C/oT+hv6I/or+jP6O/pD+kv6U/pb+mf6b/rcJqAmaCaP+pf6n/qn+q/6t/rD+sv60/rb+uP66/rz+vv7A/sL+xP7H/sn+y/7N/s/+0f7T/tX+HQgPCAAI3v7g/uL+5P7m/uj+6v7s/u7+8P7y/vX+9/75/vv+/f7//gH/A/8F/wf/Cf8L/w7/EP+EBnUGZgYY/xr/HP8e/yD/Iv8l/yf/Kf8r/y3/L/8x/zP/Nf83/zn/PP8+/0D/Qv9E/0b/SP9K/+oE2wTNBL4EVf9X/1n/W/9d/1//Yf9j/2X/Z/9q/2z/bv9w/3L/dP92/3j/ev98/37/gf+D/4X/UANCAzMDJQOP/5H/k/+V/5j/mv+c/57/oP+i/6T/pv+o/6r/rP+u/7H/s/+1/7f/uf+7/73/v/+3AagBmgGLAcr/zP/O/9D/0v/U/9b/2P/a/9z/3//h/+P/5f/n/+n/6//t/+//8f/z//b/+P/6/x0ADwAAAEYA7P/i/9j/zv/E/7r/sP+m/5z/kv+I/37/dP9q/2D/Vf9L/0H/N//DBQkGGf8P/wX/+/7x/uf+3f7T/sn+v/61/qv+of6X/o3+g/55/m/+Zf6FC8sLR/49/jP+Kf4f/hT+Cv4A/vb97P3i/dj9zv3E/br9sP2m/Zz9kv1IEY4RdP1q/WD9Vv1M/UL9OP0u/ST9Gv0Q/Qb9/Pzy/Oj83vzT/Mn8v/wKF1AXofyX/I38g/x5/G/8Zfxb/FH8R/w9/DP8Kfwf/BX8C/wB/Pf77fvNHBMdz/vF+7v7sfuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvs9Hj0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR6u+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+z0ePR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hq77rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvuu+677rvuu+677PR49Hj0ervuu+677rvuu+677rvuu+677rvuu+677rvux+7P7tfu3+7n74x3UHcUdwfvD+8X7yPvK+8z7zvvQ+9L71PvW+9j72vvc+9/74fvj++X7rxyhHJIc7fvv+/H78/v2+/j7+vv8+/77APwC/AT8BvwI/Ar8DfwP/BH8fBtuG18bGfwb/B38H/wh/CT8Jvwo/Cr8LPwu/DD8Mvw0/Db8OPw7/D38SRo6GiwaRfxH/En8S/xN/E/8UvxU/Fb8WPxa/Fz8Xvxg/GL8ZPxm/Gj8FhkHGfgYcfxz/HX8d/x5/Hv8ffx//IL8hPyG/Ij8ivyM/I78kPyS/JT8lvzUF8UXnfyf/KH8o/yl/Kf8qfyr/K38sPyy/LT8tvy4/Lr8vPy+/MD8wvyhFpIWyfzL/M38z/zR/NP81fzX/Nn82/ze/OD84vzk/Ob86Pzq/Oz87vxuFV8V9fz3/Pn8+/z9/P/8Af0D/QX9B/0J/Qv9Dv0Q/RL9FP0W/Rj9Gv06FCwUIP0i/SX9J/0p/Sv9Lf0v/TH9M/01/Tf9Of08/T79QP1C/UT9Rv0HE/kSTP1O/VD9U/1V/Vf9Wf1b/V39X/1h/WP9Zf1n/Wr9bP1u/XD9cv3UEcURtxF6/Xz9fv2B/YP9hf2H/Yn9i/2N/Y/9kf2T/ZX9mP2a/Zz9nv2hEJIQhBCm/aj9qv2s/a79sf2z/bX9t/25/bv9vf2//cH9w/3F/cj9yv1uD18PUA/S/dT91v3Y/dr93P3f/eH94/3l/ef96f3r/e397/3x/fP99v06DiwOHQ7+/QD+Av4E/gb+CP4K/g3+D/4R/hP+Ff4X/hn+G/4d/h/+If4HDfkM6gwq/iz+Lv4w/jL+NP42/jj+O/49/j/+Qf5D/kX+R/5J/kv+Tf7UC8ULtwtW/lj+Wv5c/l7+YP5i/mT+Zv5o/mv+bf5v/nH+c/51/nf+ef6hCpIKhAqC/oT+hv6I/or+jP6O/pD+kv6U/pb+mf6b/p3+n/6h/qP+pf5uCV8JUAmt/rD+sv60/rb+uP66/rz+vv7A/sL+xP7H/sn+y/7N/s/+0f46CCwIHQjZ/tv+3v7g/uL+5P7m/uj+6v7s/u7+8P7y/vX+9/75/vv+/f7//vkG6gYF/wf/Cf8L/w7/EP8S/xT/Fv8Y/xr/HP8e/yD/Iv8l/yf/Kf8r/8UFtwUx/zP/Nf83/zn/PP8+/0D/Qv9E/0b/SP9K/0z/Tv9Q/1P/Vf9X/5IEhARd/1//Yf9j/2X/Z/9q/2z/bv9w/3L/dP92/3j/ev98/37/gf+D/18DUAOJ/4v/jf+P/5H/k/+V/5j/mv+c/57/oP+i/6T/pv+o/6r/rP+u/ywCHQK1/7f/uf+7/73/v//B/8P/xf/I/8r/zP/O/9D/0v/U/9b/2P/a//kA6gDh/+P/5f/n/+n/6//t/+//8f/z//b/+P/6//z//v8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "durationMs": 270,
+            "name": "Checkpoint"
+          }
+        ]
+      },
+      {
+        "costumes": [
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAzUlEQVR4AWOgKpCV0vtPCh9D84u33/7DFBHiY9XcN2MdXBEhPlbNIDY+jM0ARpghIPqwNg+DvKsDWOLh7gMYLgUB26tfwPTjZ5fAellgEjDNuDQiq4MZAgKMINtBgvgASMOjx8cZ5GQtwQbAxECuYMKrEwmANCMDkEEgy+FewAewuRDFBSf+PyBkBgpAVg+PhW6tN8TqZyi9JgKPBTABM4RoE4AAIxpBABTSxADkAEUxINpQHkwffiMFtwEEQK6zFXmGVQ7FAJAkLoBLDgBlQqE+sISdZQAAAABJRU5ErkJggg==",
+            "height": 16,
+            "mask": {
+              "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAQAAAAAAAAEBAQABAQEAAQEBAAAAAAEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEBAAAAAQEBAQEBAQEBAQEBAQAAAAEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAEBAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQAAAAABAQEBAQEBAQEBAQEAAAAAAQEBAQEBAQEBAQEBAAAAAAEBAQEAAAABAQEBAAAAAAABAQEBAAAAAQEBAQAAAA==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "walk 1",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 1
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          },
+          {
+            "asset": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAzElEQVR4AWOgKpCV0vtPCh9D84u33/7DFBHiY9XcN2MdXBEhPlbNIDY+jM0ARpghIPqwNg+DvKsDWOLh7gMYLgUB26tfwPTjZ5fAellgEjDNuDQiq4MZAgKMINtBgvgASMOjx8cZ5GQtwQbAxECuYMKrEwmANCMDkEEgy+FewAewuRDFBSf+PyBkBgpAVg+PhW6tN8TqZyi9JgKPBTABM4RoE4AAIxpBABTSxADkAIW7AARArrAVeQZmH34jBbYFmxiyHoxYACkiRgwGAEcnoytcPfWbAAAAAElFTkSuQmCC",
+            "height": 16,
+            "mask": {
+              "data": "AAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAQAAAAAAAAEBAQABAQEAAQEBAAAAAAEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEBAAAAAQEBAQEBAQEBAQEBAQAAAAEBAQEBAQEBAQEBAQEAAAEBAQEBAQEBAQEBAQEBAQABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAAEBAQEBAQEBAQEBAQEBAQAAAQEBAQEBAQEBAQEBAQAAAAABAQEBAQEBAQEBAQEAAAAAAQEBAQEBAQEBAQEBAAAAAAABAQEBAAEBAQEAAAAAAAAAAQEBAQABAQEBAAAAAA==",
+              "height": 16,
+              "width": 16
+            },
+            "name": "walk 2",
+            "opaque": {
+              "bottom": 16,
+              "left": 0,
+              "right": 16,
+              "top": 1
+            },
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "brick9",
+        "name": "Spiky",
+        "program": {
+          "lists": [],
+          "procedures": [
+            {
+              "argumentNames": [
+                "speed"
+              ],
+              "body": [
+                {
+                  "fields": {
+                    "GRAVITY": "on"
+                  },
+                  "id": "b_11",
+                  "inputs": {},
+                  "opcode": "platformer_setgravity"
+                },
+                {
+                  "fields": {
+                    "STYLE": "left-right"
+                  },
+                  "id": "b_12",
+                  "inputs": {},
+                  "opcode": "motion_setrotationstyle"
+                },
+                {
+                  "fields": {},
+                  "id": "b_16",
+                  "inputs": {
+                    "DIRECTION": {
+                      "fields": {},
+                      "id": "b_15",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way_2"
+                          },
+                          "id": "b_13",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "kind": "lit",
+                          "value": 90
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "motion_pointindirection"
+                },
+                {
+                  "fields": {
+                    "AXIS": "x"
+                  },
+                  "id": "b_20",
+                  "inputs": {
+                    "SPEED": {
+                      "fields": {},
+                      "id": "b_19",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way_2"
+                          },
+                          "id": "b_17",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "boolean": false,
+                          "kind": "param",
+                          "name": "speed"
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                }
+              ],
+              "proccode": "walk at %s",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "fields": {
+                    "VARIABLE": "b_way_2"
+                  },
+                  "id": "b_25",
+                  "inputs": {
+                    "VALUE": {
+                      "fields": {},
+                      "id": "b_24",
+                      "inputs": {
+                        "NUM1": {
+                          "kind": "lit",
+                          "value": 0
+                        },
+                        "NUM2": {
+                          "fields": {
+                            "VARIABLE": "b_way_2"
+                          },
+                          "id": "b_22",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_subtract"
+                    }
+                  },
+                  "opcode": "data_setvariableto"
+                },
+                {
+                  "fields": {},
+                  "id": "b_29",
+                  "inputs": {
+                    "DIRECTION": {
+                      "fields": {},
+                      "id": "b_28",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way_2"
+                          },
+                          "id": "b_26",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "kind": "lit",
+                          "value": 90
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "motion_pointindirection"
+                },
+                {
+                  "fields": {
+                    "AXIS": "x"
+                  },
+                  "id": "b_33",
+                  "inputs": {
+                    "SPEED": {
+                      "fields": {},
+                      "id": "b_32",
+                      "inputs": {
+                        "NUM1": {
+                          "fields": {
+                            "VARIABLE": "b_way_2"
+                          },
+                          "id": "b_30",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        },
+                        "NUM2": {
+                          "fields": {
+                            "VARIABLE": "b_speed_2"
+                          },
+                          "id": "b_31",
+                          "inputs": {},
+                          "kind": "block",
+                          "opcode": "data_variable"
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_multiply"
+                    }
+                  },
+                  "opcode": "platformer_setspeed"
+                }
+              ],
+              "proccode": "turn around",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "fields": {
+                    "VARIABLE": "b_frame"
+                  },
+                  "id": "b_36",
+                  "inputs": {
+                    "VALUE": {
+                      "kind": "lit",
+                      "value": 1
+                    }
+                  },
+                  "opcode": "data_changevariableby"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "COSTUME": "walk 2"
+                        },
+                        "id": "b_42",
+                        "inputs": {},
+                        "opcode": "looks_switchcostumeto"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_43",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {},
+                      "id": "b_41",
+                      "inputs": {
+                        "OPERAND1": {
+                          "fields": {},
+                          "id": "b_39",
+                          "inputs": {
+                            "NUM1": {
+                              "fields": {
+                                "VARIABLE": "b_frame"
+                              },
+                              "id": "b_37",
+                              "inputs": {},
+                              "kind": "block",
+                              "opcode": "data_variable"
+                            },
+                            "NUM2": {
+                              "kind": "lit",
+                              "value": 16
+                            }
+                          },
+                          "kind": "block",
+                          "opcode": "operator_mod"
+                        },
+                        "OPERAND2": {
+                          "kind": "lit",
+                          "value": 8
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_equals"
+                    }
+                  },
+                  "opcode": "control_if"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {
+                          "COSTUME": "walk 1"
+                        },
+                        "id": "b_49",
+                        "inputs": {},
+                        "opcode": "looks_switchcostumeto"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_50",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {},
+                      "id": "b_48",
+                      "inputs": {
+                        "OPERAND1": {
+                          "fields": {},
+                          "id": "b_46",
+                          "inputs": {
+                            "NUM1": {
+                              "fields": {
+                                "VARIABLE": "b_frame"
+                              },
+                              "id": "b_44",
+                              "inputs": {},
+                              "kind": "block",
+                              "opcode": "data_variable"
+                            },
+                            "NUM2": {
+                              "kind": "lit",
+                              "value": 16
+                            }
+                          },
+                          "kind": "block",
+                          "opcode": "operator_mod"
+                        },
+                        "OPERAND2": {
+                          "kind": "lit",
+                          "value": 0
+                        }
+                      },
+                      "kind": "block",
+                      "opcode": "operator_equals"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "proccode": "step my feet",
+              "warp": false
+            },
+            {
+              "argumentNames": [],
+              "body": [
+                {
+                  "branches": [
+                    [
+                      {
+                        "fields": {},
+                        "id": "b_54",
+                        "inputs": {
+                          "BROADCAST_INPUT": {
+                            "kind": "lit",
+                            "value": "hero hurt"
+                          }
+                        },
+                        "opcode": "event_broadcast"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_55",
+                  "inputs": {
+                    "CONDITION": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_52",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "sensing_touchingobject"
+                    }
+                  },
+                  "opcode": "control_if"
+                }
+              ],
+              "proccode": "prickle the Hero",
+              "warp": false
+            }
+          ],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "call": {
+                    "proccode": "walk at %s"
+                  },
+                  "fields": {},
+                  "id": "b_2",
+                  "inputs": {
+                    "speed": {
+                      "fields": {
+                        "VARIABLE": "b_speed_2"
+                      },
+                      "id": "b_1",
+                      "inputs": {},
+                      "kind": "block",
+                      "opcode": "data_variable"
+                    }
+                  },
+                  "opcode": "procedures_call"
+                },
+                {
+                  "branches": [
+                    [
+                      {
+                        "call": {
+                          "proccode": "step my feet"
+                        },
+                        "fields": {},
+                        "id": "b_3",
+                        "inputs": {},
+                        "opcode": "procedures_call"
+                      },
+                      {
+                        "call": {
+                          "proccode": "prickle the Hero"
+                        },
+                        "fields": {},
+                        "id": "b_4",
+                        "inputs": {},
+                        "opcode": "procedures_call"
+                      }
+                    ]
+                  ],
+                  "fields": {},
+                  "id": "b_5",
+                  "inputs": {},
+                  "opcode": "control_forever"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "b_6"
+            },
+            {
+              "body": [
+                {
+                  "call": {
+                    "proccode": "turn around"
+                  },
+                  "fields": {},
+                  "id": "b_7",
+                  "inputs": {},
+                  "opcode": "procedures_call"
+                }
+              ],
+              "hat": {
+                "fields": {
+                  "BRICK": "_any_",
+                  "SIDE": "left"
+                },
+                "inputs": {},
+                "opcode": "platformer_whenbump"
+              },
+              "id": "b_8"
+            },
+            {
+              "body": [
+                {
+                  "call": {
+                    "proccode": "turn around"
+                  },
+                  "fields": {},
+                  "id": "b_9",
+                  "inputs": {},
+                  "opcode": "procedures_call"
+                }
+              ],
+              "hat": {
+                "fields": {
+                  "BRICK": "_any_",
+                  "SIDE": "right"
+                },
+                "inputs": {},
+                "opcode": "platformer_whenbump"
+              },
+              "id": "b_10"
+            }
+          ],
+          "variables": [
+            {
+              "id": "b_speed_2",
+              "name": "speed",
+              "showInBuild": true,
+              "value": 1
+            },
+            {
+              "id": "b_way_2",
+              "name": "way",
+              "value": -1
+            },
+            {
+              "id": "b_frame",
+              "name": "frame",
+              "value": 0
+            }
+          ]
+        },
+        "sounds": []
+      }
+    ],
+    "copies": [
+      {
+        "brickId": "brick1",
+        "id": "copy1",
+        "x": 40,
+        "y": 40
+      },
+      {
+        "brickId": "brick3",
+        "id": "copy2",
+        "x": 120,
+        "y": 60
+      },
+      {
+        "brickId": "brick3",
+        "id": "copy3",
+        "x": 200,
+        "y": 120
+      },
+      {
+        "brickId": "brick3",
+        "id": "copy4",
+        "x": 300,
+        "y": 260
+      },
+      {
+        "brickId": "brick4",
+        "id": "copy5",
+        "x": 260,
+        "y": 60
+      },
+      {
+        "brickId": "brick5",
+        "id": "copy6",
+        "x": 440,
+        "y": 300
+      },
+      {
+        "brickId": "brick6",
+        "id": "copy7",
+        "x": 160,
+        "y": 280
+      },
+      {
+        "brickId": "brick7",
+        "id": "copy8",
+        "x": 100,
+        "y": 160
+      },
+      {
+        "brickId": "brick8",
+        "id": "copy9",
+        "x": 380,
+        "y": 40
+      },
+      {
+        "brickId": "brick9",
+        "id": "copy10",
+        "x": 340,
+        "y": 200
+      }
+    ],
+    "id": "level1",
+    "kit": "blank",
+    "name": "My game",
+    "player": "brick1",
+    "seed": 1,
+    "stage": {
+      "costumes": [],
+      "id": "stage",
+      "isStage": true,
+      "name": "Stage",
+      "program": {
+        "lists": [],
+        "procedures": [],
+        "scripts": [],
+        "variables": [
+          {
+            "id": "score",
+            "name": "Score",
+            "value": 0
+          }
+        ]
+      },
+      "sounds": []
+    },
+    "tiles": {
+      "cols": 30,
+      "data": [
+        "..............................",
+        "..............................",
+        "..............................",
+        "..............................",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..WWWWWWWWWW..W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............W...............",
+        "..............................",
+        "..............................",
+        "..............................",
+        ".............................."
+      ],
+      "rows": 22
+    }
+  },
+  "editorVersion": "13.3.0",
+  "engineSemanticsVersion": 1,
+  "ir": {},
+  "pluginVersions": {
+    "@blockly/block-shareable-procedures": "13.3.0",
+    "@blockly/continuous-toolbox": "13.3.0"
+  },
+  "schemaVersion": 1,
+  "workspaces": {
+    "brick1": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the game starts: no gravity, and remember where I start",
+            "id": "pw1_1",
+            "next": {
+              "block": {
+                "fields": {
+                  "GRAVITY": "off"
+                },
+                "id": "pw1_2",
+                "next": {
+                  "block": {
+                    "fields": {
+                      "VARIABLE": "pw1_start_x"
+                    },
+                    "id": "pw1_3",
+                    "inputs": {
+                      "VALUE": {
+                        "block": {
+                          "id": "pw1_4",
+                          "type": "motion_xposition"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "fields": {
+                          "VARIABLE": "pw1_start_y"
+                        },
+                        "id": "pw1_5",
+                        "inputs": {
+                          "VALUE": {
+                            "block": {
+                              "id": "pw1_6",
+                              "type": "motion_yposition"
+                            }
+                          }
+                        },
+                        "type": "data_setvariableto"
+                      }
+                    },
+                    "type": "data_setvariableto"
+                  }
+                },
+                "type": "platformer_setgravity"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          },
+          {
+            "data": "label:Move with the arrow keys",
+            "id": "pw1_7",
+            "next": {
+              "block": {
+                "fields": {
+                  "AXIS": "x"
+                },
+                "id": "pw1_8",
+                "inputs": {
+                  "SPEED": {
+                    "shadow": {
+                      "fields": {
+                        "NUM": 0
+                      },
+                      "id": "pw1_9",
+                      "type": "math_number"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "fields": {
+                      "AXIS": "y"
+                    },
+                    "id": "pw1_10",
+                    "inputs": {
+                      "SPEED": {
+                        "shadow": {
+                          "fields": {
+                            "NUM": 0
+                          },
+                          "id": "pw1_11",
+                          "type": "math_number"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "id": "pw1_12",
+                        "inputs": {
+                          "CONDITION": {
+                            "block": {
+                              "fields": {
+                                "KEY_OPTION": "right arrow"
+                              },
+                              "id": "pw1_13",
+                              "type": "sensing_keypressed"
+                            }
+                          },
+                          "SUBSTACK": {
+                            "block": {
+                              "fields": {
+                                "AXIS": "x"
+                              },
+                              "id": "pw1_14",
+                              "inputs": {
+                                "SPEED": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "pw1_speed"
+                                    },
+                                    "id": "pw1_15",
+                                    "type": "data_variable"
+                                  }
+                                }
+                              },
+                              "type": "platformer_setspeed"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "id": "pw1_16",
+                            "inputs": {
+                              "CONDITION": {
+                                "block": {
+                                  "fields": {
+                                    "KEY_OPTION": "left arrow"
+                                  },
+                                  "id": "pw1_17",
+                                  "type": "sensing_keypressed"
+                                }
+                              },
+                              "SUBSTACK": {
+                                "block": {
+                                  "fields": {
+                                    "AXIS": "x"
+                                  },
+                                  "id": "pw1_18",
+                                  "inputs": {
+                                    "SPEED": {
+                                      "block": {
+                                        "id": "pw1_19",
+                                        "inputs": {
+                                          "NUM1": {
+                                            "shadow": {
+                                              "fields": {
+                                                "NUM": 0
+                                              },
+                                              "id": "pw1_20",
+                                              "type": "math_number"
+                                            }
+                                          },
+                                          "NUM2": {
+                                            "block": {
+                                              "fields": {
+                                                "VARIABLE": "pw1_speed"
+                                              },
+                                              "id": "pw1_21",
+                                              "type": "data_variable"
+                                            }
+                                          }
+                                        },
+                                        "type": "operator_subtract"
+                                      }
+                                    }
+                                  },
+                                  "type": "platformer_setspeed"
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "id": "pw1_22",
+                                "inputs": {
+                                  "CONDITION": {
+                                    "block": {
+                                      "fields": {
+                                        "KEY_OPTION": "up arrow"
+                                      },
+                                      "id": "pw1_23",
+                                      "type": "sensing_keypressed"
+                                    }
+                                  },
+                                  "SUBSTACK": {
+                                    "block": {
+                                      "fields": {
+                                        "AXIS": "y"
+                                      },
+                                      "id": "pw1_24",
+                                      "inputs": {
+                                        "SPEED": {
+                                          "block": {
+                                            "fields": {
+                                              "VARIABLE": "pw1_speed"
+                                            },
+                                            "id": "pw1_25",
+                                            "type": "data_variable"
+                                          }
+                                        }
+                                      },
+                                      "type": "platformer_setspeed"
+                                    }
+                                  }
+                                },
+                                "next": {
+                                  "block": {
+                                    "id": "pw1_26",
+                                    "inputs": {
+                                      "CONDITION": {
+                                        "block": {
+                                          "fields": {
+                                            "KEY_OPTION": "down arrow"
+                                          },
+                                          "id": "pw1_27",
+                                          "type": "sensing_keypressed"
+                                        }
+                                      },
+                                      "SUBSTACK": {
+                                        "block": {
+                                          "fields": {
+                                            "AXIS": "y"
+                                          },
+                                          "id": "pw1_28",
+                                          "inputs": {
+                                            "SPEED": {
+                                              "block": {
+                                                "id": "pw1_29",
+                                                "inputs": {
+                                                  "NUM1": {
+                                                    "shadow": {
+                                                      "fields": {
+                                                        "NUM": 0
+                                                      },
+                                                      "id": "pw1_30",
+                                                      "type": "math_number"
+                                                    }
+                                                  },
+                                                  "NUM2": {
+                                                    "block": {
+                                                      "fields": {
+                                                        "VARIABLE": "pw1_speed"
+                                                      },
+                                                      "id": "pw1_31",
+                                                      "type": "data_variable"
+                                                    }
+                                                  }
+                                                },
+                                                "type": "operator_subtract"
+                                              }
+                                            }
+                                          },
+                                          "type": "platformer_setspeed"
+                                        }
+                                      }
+                                    },
+                                    "type": "control_if"
+                                  }
+                                },
+                                "type": "control_if"
+                              }
+                            },
+                            "type": "control_if"
+                          }
+                        },
+                        "type": "control_if"
+                      }
+                    },
+                    "type": "platformer_setspeed"
+                  }
+                },
+                "type": "platformer_setspeed"
+              }
+            },
+            "type": "platformer_everytick",
+            "x": 20,
+            "y": 420
+          },
+          {
+            "data": "label:When I get hurt: back to the start",
+            "fields": {
+              "BROADCAST_OPTION": "hero hurt"
+            },
+            "id": "pw1_32",
+            "next": {
+              "block": {
+                "id": "pw1_33",
+                "inputs": {
+                  "X": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "pw1_start_x"
+                      },
+                      "id": "pw1_34",
+                      "type": "data_variable"
+                    }
+                  },
+                  "Y": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "pw1_start_y"
+                      },
+                      "id": "pw1_35",
+                      "type": "data_variable"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "fields": {
+                      "AXIS": "x"
+                    },
+                    "id": "pw1_36",
+                    "inputs": {
+                      "SPEED": {
+                        "shadow": {
+                          "fields": {
+                            "NUM": 0
+                          },
+                          "id": "pw1_37",
+                          "type": "math_number"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "fields": {
+                          "AXIS": "y"
+                        },
+                        "id": "pw1_38",
+                        "inputs": {
+                          "SPEED": {
+                            "shadow": {
+                              "fields": {
+                                "NUM": 0
+                              },
+                              "id": "pw1_39",
+                              "type": "math_number"
+                            }
+                          }
+                        },
+                        "type": "platformer_setspeed"
+                      }
+                    },
+                    "type": "platformer_setspeed"
+                  }
+                },
+                "type": "motion_gotoxy"
+              }
+            },
+            "type": "event_whenbroadcastreceived",
+            "x": 20,
+            "y": 820
+          }
+        ],
+        "languageVersion": 0
+      },
+      "variables": [
+        {
+          "id": "pw1_speed",
+          "name": "speed",
+          "type": ""
+        },
+        {
+          "id": "pw1_start_x",
+          "name": "start x",
+          "type": ""
+        },
+        {
+          "id": "pw1_start_y",
+          "name": "start y",
+          "type": ""
+        }
+      ]
+    },
+    "brick2": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the game starts: be solid",
+            "id": "pw1_1",
+            "next": {
+              "block": {
+                "fields": {
+                  "SOLID": "on"
+                },
+                "id": "pw1_2",
+                "type": "platformer_setsolid"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          }
+        ],
+        "languageVersion": 0
+      },
+      "variables": []
+    },
+    "brick3": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the game starts: show me",
+            "id": "pw1_1",
+            "next": {
+              "block": {
+                "id": "pw1_2",
+                "type": "looks_show"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          },
+          {
+            "data": "label:When the player touches me: add my points to the Score, and vanish",
+            "id": "pw1_3",
+            "next": {
+              "block": {
+                "id": "pw1_4",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "id": "pw1_5",
+                      "type": "game_touchingplayer"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "score"
+                      },
+                      "id": "pw1_6",
+                      "inputs": {
+                        "VALUE": {
+                          "block": {
+                            "fields": {
+                              "VARIABLE": "pw1_points"
+                            },
+                            "id": "pw1_7",
+                            "type": "data_variable"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "id": "pw1_8",
+                          "type": "looks_hide"
+                        }
+                      },
+                      "type": "data_changevariableby"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "platformer_everytick",
+            "x": 20,
+            "y": 420
+          }
+        ],
+        "languageVersion": 0
+      },
+      "variables": [
+        {
+          "id": "pw1_points",
+          "name": "points",
+          "type": ""
+        }
+      ]
+    },
+    "brick4": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the player touches me: say hurt (the player goes back to the start)",
+            "id": "pw1_1",
+            "next": {
+              "block": {
+                "id": "pw1_2",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "id": "pw1_3",
+                      "type": "game_touchingplayer"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "id": "pw1_4",
+                      "inputs": {
+                        "BROADCAST_INPUT": {
+                          "shadow": {
+                            "fields": {
+                              "TEXT": "hero hurt"
+                            },
+                            "id": "pw1_5",
+                            "type": "text"
+                          }
+                        }
+                      },
+                      "type": "event_broadcast"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "platformer_everytick",
+            "x": 20,
+            "y": 20
+          }
+        ],
+        "languageVersion": 0
+      },
+      "variables": []
+    },
+    "brick5": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the player touches me: You win!",
+            "id": "pw1_1",
+            "next": {
+              "block": {
+                "id": "pw1_2",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "id": "pw1_3",
+                      "type": "game_touchingplayer"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "id": "pw1_4",
+                      "inputs": {
+                        "MESSAGE": {
+                          "shadow": {
+                            "fields": {
+                              "TEXT": "You win!"
+                            },
+                            "id": "pw1_5",
+                            "type": "text"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "id": "pw1_6",
+                          "inputs": {
+                            "BROADCAST_INPUT": {
+                              "shadow": {
+                                "fields": {
+                                  "TEXT": "course clear"
+                                },
+                                "id": "pw1_7",
+                                "type": "text"
+                              }
+                            }
+                          },
+                          "next": {
+                            "block": {
+                              "fields": {
+                                "STOP_OPTION": "all"
+                              },
+                              "id": "pw1_8",
+                              "type": "control_stop"
+                            }
+                          },
+                          "type": "event_broadcast"
+                        }
+                      },
+                      "type": "looks_say"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "platformer_everytick",
+            "x": 20,
+            "y": 20
+          }
+        ],
+        "languageVersion": 0
+      },
+      "variables": []
+    },
+    "brick6": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the level starts: walk, and watch for the Hero",
+            "id": "b_5",
+            "next": {
+              "block": {
+                "extraState": {
+                  "argumentNames": [
+                    "speed"
+                  ],
+                  "proccode": "walk at %s",
+                  "warp": false
+                },
+                "id": "b_2",
+                "inputs": {
+                  "speed": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "b_speed"
+                      },
+                      "id": "b_1",
+                      "type": "data_variable"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "id": "b_4",
+                    "inputs": {
+                      "SUBSTACK": {
+                        "block": {
+                          "extraState": {
+                            "argumentNames": [],
+                            "proccode": "check for stomp",
+                            "warp": false
+                          },
+                          "id": "b_3",
+                          "type": "procedures_call"
+                        }
+                      }
+                    },
+                    "type": "control_forever"
+                  }
+                },
+                "type": "procedures_call"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          },
+          {
+            "data": "label:When I run into something on my right: turn around",
+            "fields": {
+              "BRICK": "_any_",
+              "SIDE": "left"
+            },
+            "id": "b_7",
+            "next": {
+              "block": {
+                "extraState": {
+                  "argumentNames": [],
+                  "proccode": "turn around",
+                  "warp": false
+                },
+                "id": "b_6",
+                "type": "procedures_call"
+              }
+            },
+            "type": "platformer_whenbump",
+            "x": 20,
+            "y": 260
+          },
+          {
+            "data": "label:When I run into something on my left: turn around",
+            "fields": {
+              "BRICK": "_any_",
+              "SIDE": "right"
+            },
+            "id": "b_9",
+            "next": {
+              "block": {
+                "extraState": {
+                  "argumentNames": [],
+                  "proccode": "turn around",
+                  "warp": false
+                },
+                "id": "b_8",
+                "type": "procedures_call"
+              }
+            },
+            "type": "platformer_whenbump",
+            "x": 20,
+            "y": 500
+          },
+          {
+            "data": "label:Walk the way I face at this speed",
+            "extraState": {
+              "argumentNames": [
+                "speed"
+              ],
+              "proccode": "walk at %s",
+              "warp": false
+            },
+            "id": "b_20",
+            "next": {
+              "block": {
+                "fields": {
+                  "GRAVITY": "on"
+                },
+                "id": "b_10",
+                "next": {
+                  "block": {
+                    "fields": {
+                      "STYLE": "left-right"
+                    },
+                    "id": "b_11",
+                    "next": {
+                      "block": {
+                        "id": "b_15",
+                        "inputs": {
+                          "DIRECTION": {
+                            "block": {
+                              "id": "b_14",
+                              "inputs": {
+                                "NUM1": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "b_way"
+                                    },
+                                    "id": "b_12",
+                                    "type": "data_variable"
+                                  }
+                                },
+                                "NUM2": {
+                                  "shadow": {
+                                    "fields": {
+                                      "NUM": 90
+                                    },
+                                    "id": "b_13",
+                                    "type": "math_number"
+                                  }
+                                }
+                              },
+                              "type": "operator_multiply"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "fields": {
+                              "AXIS": "x"
+                            },
+                            "id": "b_19",
+                            "inputs": {
+                              "SPEED": {
+                                "block": {
+                                  "id": "b_18",
+                                  "inputs": {
+                                    "NUM1": {
+                                      "block": {
+                                        "fields": {
+                                          "VARIABLE": "b_way"
+                                        },
+                                        "id": "b_16",
+                                        "type": "data_variable"
+                                      }
+                                    },
+                                    "NUM2": {
+                                      "block": {
+                                        "fields": {
+                                          "VALUE": "speed"
+                                        },
+                                        "id": "b_17",
+                                        "type": "argument_reporter_string_number"
+                                      }
+                                    }
+                                  },
+                                  "type": "operator_multiply"
+                                }
+                              }
+                            },
+                            "type": "platformer_setspeed"
+                          }
+                        },
+                        "type": "motion_pointindirection"
+                      }
+                    },
+                    "type": "motion_setrotationstyle"
+                  }
+                },
+                "type": "platformer_setgravity"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 20
+          },
+          {
+            "data": "label:Face the other way and keep walking",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "turn around",
+              "warp": false
+            },
+            "id": "b_33",
+            "next": {
+              "block": {
+                "fields": {
+                  "VARIABLE": "b_way"
+                },
+                "id": "b_24",
+                "inputs": {
+                  "VALUE": {
+                    "block": {
+                      "id": "b_23",
+                      "inputs": {
+                        "NUM1": {
+                          "shadow": {
+                            "fields": {
+                              "NUM": 0
+                            },
+                            "id": "b_22",
+                            "type": "math_number"
+                          }
+                        },
+                        "NUM2": {
+                          "block": {
+                            "fields": {
+                              "VARIABLE": "b_way"
+                            },
+                            "id": "b_21",
+                            "type": "data_variable"
+                          }
+                        }
+                      },
+                      "type": "operator_subtract"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "id": "b_28",
+                    "inputs": {
+                      "DIRECTION": {
+                        "block": {
+                          "id": "b_27",
+                          "inputs": {
+                            "NUM1": {
+                              "block": {
+                                "fields": {
+                                  "VARIABLE": "b_way"
+                                },
+                                "id": "b_25",
+                                "type": "data_variable"
+                              }
+                            },
+                            "NUM2": {
+                              "shadow": {
+                                "fields": {
+                                  "NUM": 90
+                                },
+                                "id": "b_26",
+                                "type": "math_number"
+                              }
+                            }
+                          },
+                          "type": "operator_multiply"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "fields": {
+                          "AXIS": "x"
+                        },
+                        "id": "b_32",
+                        "inputs": {
+                          "SPEED": {
+                            "block": {
+                              "id": "b_31",
+                              "inputs": {
+                                "NUM1": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "b_way"
+                                    },
+                                    "id": "b_29",
+                                    "type": "data_variable"
+                                  }
+                                },
+                                "NUM2": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "b_speed"
+                                    },
+                                    "id": "b_30",
+                                    "type": "data_variable"
+                                  }
+                                }
+                              },
+                              "type": "operator_multiply"
+                            }
+                          }
+                        },
+                        "type": "platformer_setspeed"
+                      }
+                    },
+                    "type": "motion_pointindirection"
+                  }
+                },
+                "type": "data_setvariableto"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 260
+          },
+          {
+            "data": "label:Stomped from above, or hurt the Hero",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "check for stomp",
+              "warp": false
+            },
+            "id": "b_47",
+            "next": {
+              "block": {
+                "id": "b_46",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_34",
+                      "type": "sensing_touchingobject"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "id": "b_45",
+                      "inputs": {
+                        "CONDITION": {
+                          "block": {
+                            "id": "b_39",
+                            "inputs": {
+                              "OPERAND1": {
+                                "block": {
+                                  "fields": {
+                                    "OBJECT": "_player_",
+                                    "PROPERTY": "y position"
+                                  },
+                                  "id": "b_35",
+                                  "type": "sensing_of"
+                                }
+                              },
+                              "OPERAND2": {
+                                "block": {
+                                  "id": "b_38",
+                                  "inputs": {
+                                    "NUM1": {
+                                      "block": {
+                                        "id": "b_36",
+                                        "type": "motion_yposition"
+                                      }
+                                    },
+                                    "NUM2": {
+                                      "shadow": {
+                                        "fields": {
+                                          "NUM": 6
+                                        },
+                                        "id": "b_37",
+                                        "type": "math_number"
+                                      }
+                                    }
+                                  },
+                                  "type": "operator_add"
+                                }
+                              }
+                            },
+                            "type": "operator_gt"
+                          }
+                        },
+                        "SUBSTACK": {
+                          "block": {
+                            "id": "b_41",
+                            "inputs": {
+                              "BROADCAST_INPUT": {
+                                "shadow": {
+                                  "fields": {
+                                    "TEXT": "stomped"
+                                  },
+                                  "id": "b_40",
+                                  "type": "text"
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "id": "b_42",
+                                "type": "looks_hide"
+                              }
+                            },
+                            "type": "event_broadcast"
+                          }
+                        },
+                        "SUBSTACK2": {
+                          "block": {
+                            "id": "b_44",
+                            "inputs": {
+                              "BROADCAST_INPUT": {
+                                "shadow": {
+                                  "fields": {
+                                    "TEXT": "hero hurt"
+                                  },
+                                  "id": "b_43",
+                                  "type": "text"
+                                }
+                              }
+                            },
+                            "type": "event_broadcast"
+                          }
+                        }
+                      },
+                      "type": "control_if_else"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 500
+          }
+        ]
+      },
+      "variables": [
+        {
+          "id": "b_speed",
+          "name": "speed"
+        },
+        {
+          "id": "b_way",
+          "name": "way"
+        }
+      ]
+    },
+    "brick7": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the level starts: spin and wait for the Hero",
+            "id": "b_5",
+            "next": {
+              "block": {
+                "id": "b_1",
+                "next": {
+                  "block": {
+                    "id": "b_4",
+                    "inputs": {
+                      "SUBSTACK": {
+                        "block": {
+                          "extraState": {
+                            "argumentNames": [],
+                            "proccode": "spin",
+                            "warp": false
+                          },
+                          "id": "b_2",
+                          "next": {
+                            "block": {
+                              "extraState": {
+                                "argumentNames": [],
+                                "proccode": "check for Hero",
+                                "warp": false
+                              },
+                              "id": "b_3",
+                              "type": "procedures_call"
+                            }
+                          },
+                          "type": "procedures_call"
+                        }
+                      }
+                    },
+                    "type": "control_forever"
+                  }
+                },
+                "type": "looks_show"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          },
+          {
+            "data": "label:Turn a little",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "spin",
+              "warp": false
+            },
+            "id": "b_8",
+            "next": {
+              "block": {
+                "id": "b_7",
+                "inputs": {
+                  "DEGREES": {
+                    "shadow": {
+                      "fields": {
+                        "NUM": 15
+                      },
+                      "id": "b_6",
+                      "type": "math_number"
+                    }
+                  }
+                },
+                "type": "motion_turnright"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 20
+          },
+          {
+            "data": "label:Count me and vanish when the Hero touches me",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "check for Hero",
+              "warp": false
+            },
+            "id": "b_15",
+            "next": {
+              "block": {
+                "id": "b_14",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_9",
+                      "type": "sensing_touchingobject"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "id": "b_11",
+                      "inputs": {
+                        "BROADCAST_INPUT": {
+                          "shadow": {
+                            "fields": {
+                              "TEXT": "coin collected"
+                            },
+                            "id": "b_10",
+                            "type": "text"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "id": "b_12",
+                          "next": {
+                            "block": {
+                              "fields": {
+                                "STOP_OPTION": "this script"
+                              },
+                              "id": "b_13",
+                              "type": "control_stop"
+                            }
+                          },
+                          "type": "looks_hide"
+                        }
+                      },
+                      "type": "event_broadcast"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 260
+          }
+        ]
+      }
+    },
+    "brick8": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the level starts: flag down, and watch for the Hero",
+            "id": "b_8",
+            "next": {
+              "block": {
+                "fields": {
+                  "COSTUME": "down"
+                },
+                "id": "b_1",
+                "next": {
+                  "block": {
+                    "fields": {
+                      "VARIABLE": "b_up"
+                    },
+                    "id": "b_3",
+                    "inputs": {
+                      "VALUE": {
+                        "shadow": {
+                          "fields": {
+                            "NUM": 0
+                          },
+                          "id": "b_2",
+                          "type": "math_number"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "fields": {
+                          "VARIABLE": "b_mine"
+                        },
+                        "id": "b_5",
+                        "inputs": {
+                          "VALUE": {
+                            "shadow": {
+                              "fields": {
+                                "NUM": 0
+                              },
+                              "id": "b_4",
+                              "type": "math_number"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "id": "b_7",
+                            "inputs": {
+                              "SUBSTACK": {
+                                "block": {
+                                  "extraState": {
+                                    "argumentNames": [],
+                                    "proccode": "watch for the Hero",
+                                    "warp": false
+                                  },
+                                  "id": "b_6",
+                                  "type": "procedures_call"
+                                }
+                              }
+                            },
+                            "type": "control_forever"
+                          }
+                        },
+                        "type": "data_setvariableto"
+                      }
+                    },
+                    "type": "data_setvariableto"
+                  }
+                },
+                "type": "looks_switchcostumeto"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          },
+          {
+            "data": "label:When the Hero reaches a checkpoint: lower my flag, unless it was me",
+            "fields": {
+              "BROADCAST_OPTION": "checkpoint"
+            },
+            "id": "b_18",
+            "next": {
+              "block": {
+                "id": "b_17",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "id": "b_11",
+                      "inputs": {
+                        "OPERAND1": {
+                          "block": {
+                            "fields": {
+                              "VARIABLE": "b_mine"
+                            },
+                            "id": "b_9",
+                            "type": "data_variable"
+                          }
+                        },
+                        "OPERAND2": {
+                          "shadow": {
+                            "fields": {
+                              "NUM": 1
+                            },
+                            "id": "b_10",
+                            "type": "math_number"
+                          }
+                        }
+                      },
+                      "type": "operator_equals"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "b_mine"
+                      },
+                      "id": "b_13",
+                      "inputs": {
+                        "VALUE": {
+                          "shadow": {
+                            "fields": {
+                              "NUM": 0
+                            },
+                            "id": "b_12",
+                            "type": "math_number"
+                          }
+                        }
+                      },
+                      "type": "data_setvariableto"
+                    }
+                  },
+                  "SUBSTACK2": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "b_up"
+                      },
+                      "id": "b_15",
+                      "inputs": {
+                        "VALUE": {
+                          "shadow": {
+                            "fields": {
+                              "NUM": 0
+                            },
+                            "id": "b_14",
+                            "type": "math_number"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "fields": {
+                            "COSTUME": "down"
+                          },
+                          "id": "b_16",
+                          "type": "looks_switchcostumeto"
+                        }
+                      },
+                      "type": "data_setvariableto"
+                    }
+                  }
+                },
+                "type": "control_if_else"
+              }
+            },
+            "type": "event_whenbroadcastreceived",
+            "x": 20,
+            "y": 260
+          },
+          {
+            "data": "label:The Hero touched me: raise my flag if it is down, and tell the Hero to come back here if its start is elsewhere",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "watch for the Hero",
+              "warp": false
+            },
+            "id": "b_34",
+            "next": {
+              "block": {
+                "id": "b_33",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_25",
+                      "type": "sensing_touchingobject"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "id": "b_30",
+                      "inputs": {
+                        "CONDITION": {
+                          "block": {
+                            "id": "b_28",
+                            "inputs": {
+                              "OPERAND1": {
+                                "block": {
+                                  "fields": {
+                                    "VARIABLE": "b_up"
+                                  },
+                                  "id": "b_26",
+                                  "type": "data_variable"
+                                }
+                              },
+                              "OPERAND2": {
+                                "shadow": {
+                                  "fields": {
+                                    "NUM": 0
+                                  },
+                                  "id": "b_27",
+                                  "type": "math_number"
+                                }
+                              }
+                            },
+                            "type": "operator_equals"
+                          }
+                        },
+                        "SUBSTACK": {
+                          "block": {
+                            "extraState": {
+                              "argumentNames": [],
+                              "proccode": "raise my flag",
+                              "warp": false
+                            },
+                            "id": "b_29",
+                            "type": "procedures_call"
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "id": "b_32",
+                          "inputs": {
+                            "CONDITION": {
+                              "block": {
+                                "id": "b_24",
+                                "inputs": {
+                                  "OPERAND1": {
+                                    "shadow": {
+                                      "fields": {
+                                        "NUM": 24
+                                      },
+                                      "id": "b_23",
+                                      "type": "math_number"
+                                    }
+                                  },
+                                  "OPERAND2": {
+                                    "block": {
+                                      "fields": {
+                                        "OPERATOR": "abs"
+                                      },
+                                      "id": "b_22",
+                                      "inputs": {
+                                        "NUM": {
+                                          "block": {
+                                            "id": "b_21",
+                                            "inputs": {
+                                              "NUM1": {
+                                                "block": {
+                                                  "fields": {
+                                                    "OBJECT": "_player_",
+                                                    "PROPERTY": "start x"
+                                                  },
+                                                  "id": "b_19",
+                                                  "type": "sensing_of"
+                                                }
+                                              },
+                                              "NUM2": {
+                                                "block": {
+                                                  "id": "b_20",
+                                                  "type": "motion_xposition"
+                                                }
+                                              }
+                                            },
+                                            "type": "operator_subtract"
+                                          }
+                                        }
+                                      },
+                                      "type": "operator_mathop"
+                                    }
+                                  }
+                                },
+                                "type": "operator_lt"
+                              }
+                            },
+                            "SUBSTACK": {
+                              "block": {
+                                "extraState": {
+                                  "argumentNames": [],
+                                  "proccode": "tell the Hero to come back here",
+                                  "warp": false
+                                },
+                                "id": "b_31",
+                                "type": "procedures_call"
+                              }
+                            }
+                          },
+                          "type": "control_if"
+                        }
+                      },
+                      "type": "control_if"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 20
+          },
+          {
+            "data": "label:Flag up, and play the jingle",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "raise my flag",
+              "warp": false
+            },
+            "id": "b_39",
+            "next": {
+              "block": {
+                "fields": {
+                  "VARIABLE": "b_up"
+                },
+                "id": "b_36",
+                "inputs": {
+                  "VALUE": {
+                    "shadow": {
+                      "fields": {
+                        "NUM": 1
+                      },
+                      "id": "b_35",
+                      "type": "math_number"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "fields": {
+                      "COSTUME": "up"
+                    },
+                    "id": "b_37",
+                    "next": {
+                      "block": {
+                        "fields": {
+                          "SOUND_MENU": "Checkpoint"
+                        },
+                        "id": "b_38",
+                        "type": "sound_play"
+                      }
+                    },
+                    "type": "looks_switchcostumeto"
+                  }
+                },
+                "type": "data_setvariableto"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 260
+          },
+          {
+            "data": "label:Tell the Hero to come back here (and the other flags to go down)",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "tell the Hero to come back here",
+              "warp": false
+            },
+            "id": "b_44",
+            "next": {
+              "block": {
+                "fields": {
+                  "VARIABLE": "b_mine"
+                },
+                "id": "b_41",
+                "inputs": {
+                  "VALUE": {
+                    "shadow": {
+                      "fields": {
+                        "NUM": 1
+                      },
+                      "id": "b_40",
+                      "type": "math_number"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "id": "b_43",
+                    "inputs": {
+                      "BROADCAST_INPUT": {
+                        "shadow": {
+                          "fields": {
+                            "TEXT": "checkpoint"
+                          },
+                          "id": "b_42",
+                          "type": "text"
+                        }
+                      }
+                    },
+                    "type": "event_broadcast"
+                  }
+                },
+                "type": "data_setvariableto"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 500
+          }
+        ]
+      },
+      "variables": [
+        {
+          "id": "b_up",
+          "name": "flag up"
+        },
+        {
+          "id": "b_mine",
+          "name": "it was me"
+        }
+      ]
+    },
+    "brick9": {
+      "blocks": {
+        "blocks": [
+          {
+            "data": "label:When the level starts: walk, and watch for the Hero",
+            "id": "b_6",
+            "next": {
+              "block": {
+                "extraState": {
+                  "argumentNames": [
+                    "speed"
+                  ],
+                  "proccode": "walk at %s",
+                  "warp": false
+                },
+                "id": "b_2",
+                "inputs": {
+                  "speed": {
+                    "block": {
+                      "fields": {
+                        "VARIABLE": "b_speed_2"
+                      },
+                      "id": "b_1",
+                      "type": "data_variable"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "id": "b_5",
+                    "inputs": {
+                      "SUBSTACK": {
+                        "block": {
+                          "extraState": {
+                            "argumentNames": [],
+                            "proccode": "step my feet",
+                            "warp": false
+                          },
+                          "id": "b_3",
+                          "next": {
+                            "block": {
+                              "extraState": {
+                                "argumentNames": [],
+                                "proccode": "prickle the Hero",
+                                "warp": false
+                              },
+                              "id": "b_4",
+                              "type": "procedures_call"
+                            }
+                          },
+                          "type": "procedures_call"
+                        }
+                      }
+                    },
+                    "type": "control_forever"
+                  }
+                },
+                "type": "procedures_call"
+              }
+            },
+            "type": "event_whenflagclicked",
+            "x": 20,
+            "y": 20
+          },
+          {
+            "data": "label:When I run into something on my right: turn around",
+            "fields": {
+              "BRICK": "_any_",
+              "SIDE": "left"
+            },
+            "id": "b_8",
+            "next": {
+              "block": {
+                "extraState": {
+                  "argumentNames": [],
+                  "proccode": "turn around",
+                  "warp": false
+                },
+                "id": "b_7",
+                "type": "procedures_call"
+              }
+            },
+            "type": "platformer_whenbump",
+            "x": 20,
+            "y": 260
+          },
+          {
+            "data": "label:When I run into something on my left: turn around",
+            "fields": {
+              "BRICK": "_any_",
+              "SIDE": "right"
+            },
+            "id": "b_10",
+            "next": {
+              "block": {
+                "extraState": {
+                  "argumentNames": [],
+                  "proccode": "turn around",
+                  "warp": false
+                },
+                "id": "b_9",
+                "type": "procedures_call"
+              }
+            },
+            "type": "platformer_whenbump",
+            "x": 20,
+            "y": 500
+          },
+          {
+            "data": "label:Walk the way I face at this speed",
+            "extraState": {
+              "argumentNames": [
+                "speed"
+              ],
+              "proccode": "walk at %s",
+              "warp": false
+            },
+            "id": "b_21",
+            "next": {
+              "block": {
+                "fields": {
+                  "GRAVITY": "on"
+                },
+                "id": "b_11",
+                "next": {
+                  "block": {
+                    "fields": {
+                      "STYLE": "left-right"
+                    },
+                    "id": "b_12",
+                    "next": {
+                      "block": {
+                        "id": "b_16",
+                        "inputs": {
+                          "DIRECTION": {
+                            "block": {
+                              "id": "b_15",
+                              "inputs": {
+                                "NUM1": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "b_way_2"
+                                    },
+                                    "id": "b_13",
+                                    "type": "data_variable"
+                                  }
+                                },
+                                "NUM2": {
+                                  "shadow": {
+                                    "fields": {
+                                      "NUM": 90
+                                    },
+                                    "id": "b_14",
+                                    "type": "math_number"
+                                  }
+                                }
+                              },
+                              "type": "operator_multiply"
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "fields": {
+                              "AXIS": "x"
+                            },
+                            "id": "b_20",
+                            "inputs": {
+                              "SPEED": {
+                                "block": {
+                                  "id": "b_19",
+                                  "inputs": {
+                                    "NUM1": {
+                                      "block": {
+                                        "fields": {
+                                          "VARIABLE": "b_way_2"
+                                        },
+                                        "id": "b_17",
+                                        "type": "data_variable"
+                                      }
+                                    },
+                                    "NUM2": {
+                                      "block": {
+                                        "fields": {
+                                          "VALUE": "speed"
+                                        },
+                                        "id": "b_18",
+                                        "type": "argument_reporter_string_number"
+                                      }
+                                    }
+                                  },
+                                  "type": "operator_multiply"
+                                }
+                              }
+                            },
+                            "type": "platformer_setspeed"
+                          }
+                        },
+                        "type": "motion_pointindirection"
+                      }
+                    },
+                    "type": "motion_setrotationstyle"
+                  }
+                },
+                "type": "platformer_setgravity"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 20
+          },
+          {
+            "data": "label:Face the other way and keep going",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "turn around",
+              "warp": false
+            },
+            "id": "b_34",
+            "next": {
+              "block": {
+                "fields": {
+                  "VARIABLE": "b_way_2"
+                },
+                "id": "b_25",
+                "inputs": {
+                  "VALUE": {
+                    "block": {
+                      "id": "b_24",
+                      "inputs": {
+                        "NUM1": {
+                          "shadow": {
+                            "fields": {
+                              "NUM": 0
+                            },
+                            "id": "b_23",
+                            "type": "math_number"
+                          }
+                        },
+                        "NUM2": {
+                          "block": {
+                            "fields": {
+                              "VARIABLE": "b_way_2"
+                            },
+                            "id": "b_22",
+                            "type": "data_variable"
+                          }
+                        }
+                      },
+                      "type": "operator_subtract"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "id": "b_29",
+                    "inputs": {
+                      "DIRECTION": {
+                        "block": {
+                          "id": "b_28",
+                          "inputs": {
+                            "NUM1": {
+                              "block": {
+                                "fields": {
+                                  "VARIABLE": "b_way_2"
+                                },
+                                "id": "b_26",
+                                "type": "data_variable"
+                              }
+                            },
+                            "NUM2": {
+                              "shadow": {
+                                "fields": {
+                                  "NUM": 90
+                                },
+                                "id": "b_27",
+                                "type": "math_number"
+                              }
+                            }
+                          },
+                          "type": "operator_multiply"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "fields": {
+                          "AXIS": "x"
+                        },
+                        "id": "b_33",
+                        "inputs": {
+                          "SPEED": {
+                            "block": {
+                              "id": "b_32",
+                              "inputs": {
+                                "NUM1": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "b_way_2"
+                                    },
+                                    "id": "b_30",
+                                    "type": "data_variable"
+                                  }
+                                },
+                                "NUM2": {
+                                  "block": {
+                                    "fields": {
+                                      "VARIABLE": "b_speed_2"
+                                    },
+                                    "id": "b_31",
+                                    "type": "data_variable"
+                                  }
+                                }
+                              },
+                              "type": "operator_multiply"
+                            }
+                          }
+                        },
+                        "type": "platformer_setspeed"
+                      }
+                    },
+                    "type": "motion_pointindirection"
+                  }
+                },
+                "type": "data_setvariableto"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 260
+          },
+          {
+            "data": "label:Every 8 ticks, the other foot",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "step my feet",
+              "warp": false
+            },
+            "id": "b_51",
+            "next": {
+              "block": {
+                "fields": {
+                  "VARIABLE": "b_frame"
+                },
+                "id": "b_36",
+                "inputs": {
+                  "VALUE": {
+                    "shadow": {
+                      "fields": {
+                        "NUM": 1
+                      },
+                      "id": "b_35",
+                      "type": "math_number"
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "id": "b_43",
+                    "inputs": {
+                      "CONDITION": {
+                        "block": {
+                          "id": "b_41",
+                          "inputs": {
+                            "OPERAND1": {
+                              "block": {
+                                "id": "b_39",
+                                "inputs": {
+                                  "NUM1": {
+                                    "block": {
+                                      "fields": {
+                                        "VARIABLE": "b_frame"
+                                      },
+                                      "id": "b_37",
+                                      "type": "data_variable"
+                                    }
+                                  },
+                                  "NUM2": {
+                                    "shadow": {
+                                      "fields": {
+                                        "NUM": 16
+                                      },
+                                      "id": "b_38",
+                                      "type": "math_number"
+                                    }
+                                  }
+                                },
+                                "type": "operator_mod"
+                              }
+                            },
+                            "OPERAND2": {
+                              "shadow": {
+                                "fields": {
+                                  "NUM": 8
+                                },
+                                "id": "b_40",
+                                "type": "math_number"
+                              }
+                            }
+                          },
+                          "type": "operator_equals"
+                        }
+                      },
+                      "SUBSTACK": {
+                        "block": {
+                          "fields": {
+                            "COSTUME": "walk 2"
+                          },
+                          "id": "b_42",
+                          "type": "looks_switchcostumeto"
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "id": "b_50",
+                        "inputs": {
+                          "CONDITION": {
+                            "block": {
+                              "id": "b_48",
+                              "inputs": {
+                                "OPERAND1": {
+                                  "block": {
+                                    "id": "b_46",
+                                    "inputs": {
+                                      "NUM1": {
+                                        "block": {
+                                          "fields": {
+                                            "VARIABLE": "b_frame"
+                                          },
+                                          "id": "b_44",
+                                          "type": "data_variable"
+                                        }
+                                      },
+                                      "NUM2": {
+                                        "shadow": {
+                                          "fields": {
+                                            "NUM": 16
+                                          },
+                                          "id": "b_45",
+                                          "type": "math_number"
+                                        }
+                                      }
+                                    },
+                                    "type": "operator_mod"
+                                  }
+                                },
+                                "OPERAND2": {
+                                  "shadow": {
+                                    "fields": {
+                                      "NUM": 0
+                                    },
+                                    "id": "b_47",
+                                    "type": "math_number"
+                                  }
+                                }
+                              },
+                              "type": "operator_equals"
+                            }
+                          },
+                          "SUBSTACK": {
+                            "block": {
+                              "fields": {
+                                "COSTUME": "walk 1"
+                              },
+                              "id": "b_49",
+                              "type": "looks_switchcostumeto"
+                            }
+                          }
+                        },
+                        "type": "control_if"
+                      }
+                    },
+                    "type": "control_if"
+                  }
+                },
+                "type": "data_changevariableby"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 500
+          },
+          {
+            "data": "label:Touching the Hero from any side hurts it: you can't stomp spikes",
+            "extraState": {
+              "argumentNames": [],
+              "proccode": "prickle the Hero",
+              "warp": false
+            },
+            "id": "b_56",
+            "next": {
+              "block": {
+                "id": "b_55",
+                "inputs": {
+                  "CONDITION": {
+                    "block": {
+                      "fields": {
+                        "TOUCHINGOBJECTMENU": "_player_"
+                      },
+                      "id": "b_52",
+                      "type": "sensing_touchingobject"
+                    }
+                  },
+                  "SUBSTACK": {
+                    "block": {
+                      "id": "b_54",
+                      "inputs": {
+                        "BROADCAST_INPUT": {
+                          "shadow": {
+                            "fields": {
+                              "TEXT": "hero hurt"
+                            },
+                            "id": "b_53",
+                            "type": "text"
+                          }
+                        }
+                      },
+                      "type": "event_broadcast"
+                    }
+                  }
+                },
+                "type": "control_if"
+              }
+            },
+            "type": "procedures_definition",
+            "x": 520,
+            "y": 740
+          }
+        ]
+      },
+      "variables": [
+        {
+          "id": "b_speed_2",
+          "name": "speed"
+        },
+        {
+          "id": "b_way_2",
+          "name": "way"
+        },
+        {
+          "id": "b_frame",
+          "name": "frame"
+        }
+      ]
+    },
+    "stage": {
+      "blocks": {
+        "blocks": [],
+        "languageVersion": 0
+      },
+      "variables": [
+        {
+          "id": "score",
+          "name": "Score"
+        }
+      ]
+    }
+  }
+}

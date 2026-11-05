@@ -882,4 +882,11 @@ describe('what kind of project a world is', () => {
     expect(worldFormat({ doc_format: 'brickgineers-hackable' })).toBe('hackable');
     expect(worldFormat({ document: { format: 'brickgineers-hackable', version: 1, save: {} } })).toBe('hackable');
   });
+
+  it('reports a Start from nothing game (kit blank, "Own game") as its own kit', async () => {
+    const { worldKit } = await import('../src/classroom');
+    expect(worldKit({ doc_format: 'brickgineers-hackable', doc_hackable_kit: 'blank' })).toBe('blank');
+    expect(worldKit({ document: { format: 'brickgineers-hackable', version: 1, save: { design: { kit: 'blank' } } } })).toBe('blank');
+    expect(worldKit({ doc_format: 'brickgineers-hackable', doc_hackable_kit: 'lava' })).toBeUndefined();
+  });
 });

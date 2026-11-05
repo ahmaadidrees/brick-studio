@@ -1,5 +1,5 @@
 import * as Blockly from 'blockly/core'
-import type { HatOpcode } from '../contracts'
+import { PLAYER_MENU, type HatOpcode } from '../contracts'
 import {
   DEFAULT_CURRENT_MENU,
   DEFAULT_GRAPHIC_EFFECTS,
@@ -19,6 +19,7 @@ import {
   VARIABLE_MENU_RENAME,
   type EditorContext,
   type MenuOption,
+  type SpecialTarget,
 } from './context'
 import { CATEGORY_COLORS } from './colors'
 
@@ -73,20 +74,26 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
   const motionTowardsOptions = () =>
     getTargetOptions(context, [{ label: 'mouse-pointer', value: '_mouse_' }])
 
+  // Start from nothing names its player by id (core/contracts.ts PLAYER_MENU): its sprite menus offer "the player" first,
+  // read when the menu is built (and when a block loads, since Blockly checks a saved value against the menu).
+  const isBlank = (): boolean => (context ?? getEditorContext()).kit === 'blank'
+  const thePlayer = (): Array<{ label: string; value: SpecialTarget }> => (isBlank() ? [{ label: 'the player', value: PLAYER_MENU }] : [])
+
   const sensingTouchingOptions = () =>
     getTargetOptions(context, [
+      ...thePlayer(),
       { label: 'mouse-pointer', value: '_mouse_' },
       { label: 'edge', value: '_edge_' },
     ])
 
   const sensingDistanceOptions = () =>
-    getTargetOptions(context, [{ label: 'mouse-pointer', value: '_mouse_' }])
+    getTargetOptions(context, [...thePlayer(), { label: 'mouse-pointer', value: '_mouse_' }])
 
   const cloneOfOptions = () =>
     getTargetOptions(context, [{ label: 'myself', value: '_myself_' }])
 
   const sensingOfObjects = () =>
-    getTargetOptions(context, [{ label: 'Stage', value: '_stage_' }])
+    getTargetOptions(context, [{ label: 'Stage', value: '_stage_' }, ...thePlayer()])
 
   const onOff: MenuOption[] = [
     ['on', 'on'],
@@ -109,8 +116,14 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     ['left', 'left'],
     ['right', 'right'],
   ]
+  // Hackable 3D: the speed menus gain z and "when I bump" gains front and back, read from the editor context when the
+  // menu is built (and when a block loads, since Blockly checks a saved value against the menu). 2D keeps its menus.
+  const is3d = (): boolean => (context ?? getEditorContext()).kit === '3d'
+  const speedAxisOptions = (): MenuOption[] => (is3d() ? [...axisOptions, ['z', 'z']] : [...axisOptions])
+  const bumpSideMenu = (): MenuOption[] => (is3d() ? [...bumpSideOptions, ['front', 'front'], ['back', 'back']] : [...bumpSideOptions])
   const bumpBrickOptions = (): MenuOption[] => [
     ['anything', '_any_'],
+    ...(isBlank() ? [['the player', PLAYER_MENU] as MenuOption] : []),
     ['edge', '_edge_'],
     ...(context?.getBricks?.() ?? getEditorContext().getBricks?.() ?? []).map((b): MenuOption => [b, b]),
   ]
@@ -1554,6 +1567,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       args0: [{ type: 'field_dropdown', name: 'GRAVITY', options: onOff }],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'Turns gravity on or off for this brick. With gravity on, it falls until it lands on something solid.',
@@ -1564,6 +1578,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       args0: [{ type: 'field_dropdown', name: 'SOLID', options: solidOptions }],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'Solid bricks stop other bricks. With "only on top", bricks can jump up through it and land on top.',
@@ -1572,11 +1587,12 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       type: 'platformer_setspeed',
       message0: 'set %1 speed to %2',
       args0: [
-        { type: 'field_dropdown', name: 'AXIS', options: axisOptions },
+        { type: 'field_dropdown', name: 'AXIS', options: speedAxisOptions },
         { type: 'input_value', name: 'SPEED' },
       ],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'x speed moves me sideways: more than 0 goes right, less than 0 goes left. y speed: more than 0 goes up.',
@@ -1585,11 +1601,12 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       type: 'platformer_changespeed',
       message0: 'change %1 speed by %2',
       args0: [
-        { type: 'field_dropdown', name: 'AXIS', options: axisOptions },
+        { type: 'field_dropdown', name: 'AXIS', options: speedAxisOptions },
         { type: 'input_value', name: 'SPEED' },
       ],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'Adds to my x or y speed. A minus number takes away.',
@@ -1597,9 +1614,10 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     {
       type: 'platformer_speed',
       message0: '%1 speed',
-      args0: [{ type: 'field_dropdown', name: 'AXIS', options: axisOptions }],
+      args0: [{ type: 'field_dropdown', name: 'AXIS', options: speedAxisOptions }],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       output: 'Number',
       tooltip: 'How fast I am moving: x is sideways, y is up and down.',
     },
@@ -1608,6 +1626,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       message0: 'on ground?',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       output: 'Boolean',
       tooltip: 'Yes when I am standing on something solid.',
     },
@@ -1615,11 +1634,12 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       type: 'platformer_whenbump',
       message0: 'when I bump %1 of %2',
       args0: [
-        { type: 'field_dropdown', name: 'SIDE', options: bumpSideOptions },
+        { type: 'field_dropdown', name: 'SIDE', options: bumpSideMenu },
         { type: 'field_dropdown', name: 'BRICK', options: bumpBrickOptions },
       ],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       nextStatement: null,
       hat: 'cap',
       tooltip: 'Runs when this brick bumps into something on that side.',
@@ -1631,6 +1651,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       args0: [{ type: 'field_dropdown', name: 'MOVER', options: [['the Platformer', 'platformer'], ['my own blocks', 'self']] }],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'With "my own blocks", the Platformer stops moving this brick: no gravity, no speed, no bumps. Move it yourself with "move until I hit something". Other bricks still bump into it if it is solid.',
@@ -1644,6 +1665,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       ],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'Moves this brick until it touches something solid in the way: a brick, a level wall or the floor. Then "hit something?" says if it stopped early.',
@@ -1653,17 +1675,50 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       message0: 'hit something?',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       output: 'Boolean',
       tooltip: 'Yes when the last "move until I hit something" stopped before it went the whole way.',
+    },
+    {
+      type: 'platformer_whathit',
+      message0: 'what I hit',
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      output: 'String',
+      tooltip: 'The name of the brick the last "move until I hit something" stopped at, "edge" for a level wall or the floor, or nothing when it went the whole way.',
     },
     {
       type: 'platformer_tellhit',
       message0: 'tell what I hit',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'Starts "when I bump" on this brick and on the brick it hit, a moment later, just like the Platformer does when it stops a brick.',
+    },
+    {
+      type: 'platformer_movecarry',
+      message0: 'move %1 by %2 and carry what stands on me',
+      args0: [
+        { type: 'field_dropdown', name: 'AXIS', options: axisOptions },
+        { type: 'input_value', name: 'DISTANCE' },
+      ],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: 'Moves this brick through anything, like "change x by", and takes along whatever is standing on top of it (a Hero, a Walker). Moving platforms and lifts use it.',
+    },
+    {
+      type: 'platformer_slipcorner',
+      message0: 'slip past a corner up to %1 steps',
+      args0: [{ type: 'input_value', name: 'STEPS' }],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: 'After "move until I hit something" stopped at a brick that only just overlaps me (this many steps or less), step aside and finish the move. Bumping your head on a corner, you slide past it instead.',
     },
     {
       type: 'platformer_setonground',
@@ -1671,6 +1726,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       args0: [{ type: 'field_dropdown', name: 'ONGROUND', options: [['yes', 'yes'], ['no', 'no']] }],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       previousStatement: null,
       nextStatement: null,
       tooltip: 'What "on ground?" says, for a brick that moves itself. "when I land" and "when I leave the ground" follow it.',
@@ -1680,6 +1736,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       message0: 'over and over',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       nextStatement: null,
       hat: 'cap',
       tooltip: 'Runs these blocks over and over, 30 times a second, while the level plays. Scripts take turns in the order they were made.',
@@ -1689,6 +1746,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       message0: 'when I land',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       nextStatement: null,
       hat: 'cap',
       tooltip: 'Runs when this brick lands on something solid.',
@@ -1698,9 +1756,19 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       message0: 'when I leave the ground',
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
+      extensions: [PLATFORMER_3D_EXTENSION],
       nextStatement: null,
       hat: 'cap',
       tooltip: 'Runs when this brick stops standing on something: it jumped, fell or walked off an edge.',
+    },
+    // Start from nothing's Game category (docs/qa/blank-2d, core/game.ts).
+    {
+      type: 'game_touchingplayer',
+      message0: 'touching the player?',
+      category: 'game',
+      colour: CATEGORY_COLORS.game,
+      output: 'Boolean',
+      tooltip: 'True when I touch the player: the brick with the Player job (or made the player from its menu), any copy of it.',
     },
     // Racing extension (Hackable Racing R1): built in, like touching. Laps count from the finish line (core/race.ts).
     {
@@ -1744,7 +1812,97 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       output: 'Number',
       tooltip: '1 when I am furthest round the race, 2 for second, and so on. Racers are the bricks that move themselves.',
     },
+    // =========================================================================
+    // 3D (Hackable 3D, kit3d/blocks3d.ts). Every distance is in studs and every speed in studs a second. The z blocks
+    // sit in Motion, in Motion's colour; the 3D category holds the ones a 2D game has no word for.
+    // =========================================================================
+    {
+      type: 'kit3d_gotoxyz',
+      message0: 'go to x: %1 y: %2 z: %3',
+      args0: [
+        { type: 'input_value', name: 'X', check: 'Number' },
+        { type: 'input_value', name: 'Y', check: 'Number' },
+        { type: 'input_value', name: 'Z', check: 'Number' },
+      ],
+      category: 'motion',
+      colour: CATEGORY_COLORS.motion,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: `Jumps me to that spot. ${DIRECTIONS_3D} ${STUDS_TIP}`,
+    },
+    {
+      type: 'kit3d_changez',
+      message0: 'change z by %1',
+      args0: [{ type: 'input_value', name: 'DZ', check: 'Number' }],
+      category: 'motion',
+      colour: CATEGORY_COLORS.motion,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: `Moves me that many studs toward you. A minus number moves me away from you. ${STUDS_TIP}`,
+    },
+    {
+      type: 'kit3d_setz',
+      message0: 'set z to %1',
+      args0: [{ type: 'input_value', name: 'Z', check: 'Number' }],
+      category: 'motion',
+      colour: CATEGORY_COLORS.motion,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: `Puts me that many studs toward you from the middle of the build plate (0 is the middle). ${STUDS_TIP}`,
+    },
+    {
+      type: 'kit3d_zposition',
+      message0: 'z position',
+      category: 'motion',
+      colour: CATEGORY_COLORS.motion,
+      output: 'Number',
+      tooltip: `How many studs toward you I am from the middle of the build plate. Away from you is less than 0. ${STUDS_TIP}`,
+    },
+    {
+      type: 'kit3d_launchlanders',
+      message0: 'launch who landed on me up at %1',
+      args0: [{ type: 'input_value', name: 'SPEED' }],
+      category: 'threeD',
+      colour: CATEGORY_COLORS.threeD,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: `Throws everyone who just landed on top of me up into the air, this many studs a second. ${STUDS_TIP}`,
+    },
+    {
+      type: 'kit3d_gohome',
+      message0: 'go back to where I started',
+      category: 'threeD',
+      colour: CATEGORY_COLORS.threeD,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: 'Puts me back where I was placed in the build, standing still.',
+    },
   ]
+}
+
+/** The 3D words every distance block shares. */
+const STUDS_TIP = 'Studs are brick widths: a 2 × 4 brick is 2 studs by 4 studs.'
+const DIRECTIONS_3D = 'x is across the plate, y is up, z is toward you. The middle of the build plate is 0, 0, 0.'
+
+/** What the speed blocks say in a 3D project, where they have a z and count in studs. */
+const SPEED_TIPS_3D: Record<string, string> = {
+  platformer_setspeed: `x speed moves me across the plate, y speed up (less than 0 is down), z speed toward you. In studs a second. ${STUDS_TIP}`,
+  platformer_changespeed: `Adds to my x, y or z speed, in studs a second. A minus number takes away. ${STUDS_TIP}`,
+  platformer_speed: `How fast I am moving, in studs a second: x is across the plate, y is up and down, z is toward you. ${STUDS_TIP}`,
+}
+
+/**
+ * In a 3D project the Platformer blocks are the 3D category's: they are drawn in its colour, and the speed blocks say
+ * studs. Read from the editor context as each block is made; a 2D project's blocks are untouched.
+ */
+const PLATFORMER_3D_EXTENSION = 'platformer_3d_look'
+/** The context the blocks were last registered with (as the menus read it), else the active one. */
+let registeredContext: EditorContext | undefined
+function platformer3dLook(this: Blockly.Block): void {
+  if ((registeredContext ?? getEditorContext()).kit !== '3d') return
+  this.setColour(CATEGORY_COLORS.threeD)
+  const tip = SPEED_TIPS_3D[this.type]
+  if (tip) this.setTooltip(tip)
 }
 
 /**
@@ -1876,9 +2034,13 @@ export function registerEditorBlocks(context?: EditorContext): void {
   if (!Blockly.Extensions.isRegistered(VARIABLE_MENU_EXTENSION)) {
     Blockly.Extensions.register(VARIABLE_MENU_EXTENSION, variableMenuActions)
   }
+  if (!Blockly.Extensions.isRegistered(PLATFORMER_3D_EXTENSION)) {
+    Blockly.Extensions.register(PLATFORMER_3D_EXTENSION, platformer3dLook)
+  }
   if (!Blockly.Extensions.isRegistered(PROCEDURE_STATE_MUTATOR)) {
     Blockly.Extensions.registerMutator(PROCEDURE_STATE_MUTATOR, procedureStateMixin)
   }
+  registeredContext = context
   const definitions = createBlockDefinitions(context)
   for (const def of definitions) {
     const type = def.type as string

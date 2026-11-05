@@ -153,6 +153,11 @@ export interface SnappedPower {
    * changed them. Missing on snaps made before it was recorded.
    */
   fingerprint?: string
+  /**
+   * Start from nothing (docs/qa/blank-2d): this power is one of the built-in jobs (studio/blank/jobs.ts), named by its
+   * job id ('player', 'wall', ...), and for the Player job its way of moving ('player:walk'). Missing: a power.
+   */
+  job?: string
 }
 
 export interface BrickDef {
@@ -200,17 +205,38 @@ export interface CopyPlacement {
  * Which Hackable game a project is (docs/qa/hackable-modes): the Platformer, Racing or 3D. Every kit shares this core's
  * scheduler, blocks and save format; a kit adds its own blocks, lifecycle and Stage on top.
  */
-export type KitId = 'platformer' | 'race' | '3d'
-export const KIT_IDS: readonly KitId[] = ['platformer', 'race', '3d']
+export type KitId = 'platformer' | 'race' | '3d' | 'blank'
+export const KIT_IDS: readonly KitId[] = ['platformer', 'race', '3d', 'blank']
 export const isKitId = (value: unknown): value is KitId => typeof value === 'string' && (KIT_IDS as readonly string[]).includes(value)
 /** A design's kit. Missing means the Platformer, so every save made before kits opens unchanged. */
 export const designKit = (design: Pick<LevelDesign, 'kit'>): KitId => design.kit ?? 'platformer'
+
+/**
+ * Start from nothing (docs/qa/blank-2d): the sprite menus' "the player" (touching, distance to, "of", and the bump hat's
+ * brick). It names the game's player brick by id (LevelDesign.player), so a brick borrowed from the Platformer reacts to
+ * Zip as it did to the Hero. A game with no player (every kit game: they name their Hero) has nothing it names.
+ */
+export const PLAYER_MENU = '_player_'
+
+/** The game's player brick id: the running design's (a room changes it live), else the one the game started with. */
+export const playerBrickIdOf = (world: Pick<World, 'design' | 'player'>): string | undefined => world.design?.player ?? world.player
+
+/** The plain backdrops a Start from nothing game can have (the Stage card): paper with a grid, sky, grass, night. */
+export type Backdrop = 'paper' | 'sky' | 'grass' | 'night'
+export const BACKDROPS: readonly Backdrop[] = ['paper', 'sky', 'grass', 'night']
 
 export interface LevelDesign {
   id: string
   name: string
   /** Which Hackable game this is. Missing means the Platformer; the studio never writes 'platformer' itself. */
   kit?: KitId
+  /**
+   * Start from nothing (kit `blank`, docs/qa/blank-2d): the id of the brick that is the player (its job made it so, or
+   * "Make this the player"). The kits name their player by its own id instead (the Hero, the Car). Missing: no player.
+   */
+  player?: string
+  /** Start from nothing: what the Stage draws behind everything (the Stage card). Missing means plain paper. */
+  backdrop?: Backdrop
   /** The level is the stage (decision 2): fencing, edge, random position. */
   bounds: StageBounds
   /** Holds global variables/lists, stage scripts and backdrops. */
@@ -368,6 +394,12 @@ export interface PlayerSlot {
   name: string
   /** Keys this player holds, Scratch names (like World.keysDown). */
   keys: string[]
+  /**
+   * The tick this player finished the round (their Hero reached the Goal: a "stop all" about them, runtime.ts
+   * `finishPlayers`). Their Hero and its clones stop and sit out the rest of the round; the round ends when every player
+   * has finished. Missing: still playing.
+   */
+  finished?: number
 }
 
 /** A bump kept in the world: the side, and the solid's target id (null for a level wall or the floor). */
@@ -376,6 +408,11 @@ export interface SavedBump {
   otherId: string | null
   /** The solid's brick, so its name is still known if it is gone by the time the bump is told. */
   otherBrickId?: string
+  /**
+   * Self-move (parity bucket B): how much of the move was left when it stopped, signed, and on which axis, so "slip past
+   * a corner" can finish it. Missing on bumps told by the engine and on saves made before.
+   */
+  rest?: { axis: 'x' | 'y'; by: number }
 }
 
 /** Hackable Racing: one racer's progress round the loop (core/race.ts). */
@@ -482,6 +519,8 @@ export interface SerializedThread {
   stack: ExecutionFrame[]
   warpOpCount: number
   isStackClick: boolean
+  /** Rooms: the players this script is about (ThreadHandle.about). Missing: no one in particular. */
+  about?: readonly number[]
 }
 
 export interface World {
@@ -531,6 +570,8 @@ export interface World {
    * Like `bricks` it is shared between copies and never changed in place; an edit replaces it.
    */
   design?: LevelDesign
+  /** Start from nothing: the player brick's id (LevelDesign.player) when the game started. Rooms read `design` first. */
+  player?: string
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives
@@ -539,6 +580,13 @@ export interface ThreadHandle {
   readonly id: number
   readonly target: Target
   readonly done: boolean
+  /**
+   * Rooms: the players this script is about, set when it touches or bumps a player's Hero, or passed on by the broadcast
+   * that started it. Its broadcasts reach only these players' Heroes (bricks that are no one's hear everything), "y
+   * position of Hero" reads the first one's Hero, and "stop all" finishes only them. A script on a player's own Hero is
+   * about that player unless it says otherwise. Never set outside a room.
+   */
+  about?: readonly number[]
 }
 
 /** Things the host shows or plays. The core never touches audio or the DOM. */
@@ -560,7 +608,7 @@ export interface RuntimeApi {
    * Start every matching hat. Restart/ignore rules for already-running scripts follow H02–H06. `only` skips targets
    * (rooms: a player's key starts hats only on their own Hero and on bricks that are no one's).
    */
-  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean }): ThreadHandle[]
+  startHats(opcode: HatOpcode, opts?: { fields?: Fields; target?: Target; only?: (target: Target) => boolean; about?: readonly number[] }): ThreadHandle[]
   /** Starts event_whenbroadcastreceived scripts for `message` (case-insensitive match, like Scratch). */
   broadcast(message: string): ThreadHandle[]
   stopAll(): void

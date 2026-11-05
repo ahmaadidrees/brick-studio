@@ -9,21 +9,28 @@ import { Stage } from '../Stage'
 import { screenOf, useStudio, type StudioScreen, type StudioStore } from '../store'
 import { TestRoom } from '../workshop/TestRoom'
 import { hasPlayer, screensFor } from '../kitScreens'
-import { KIT_PARTS } from './kitParts'
+import { KIT_PARTS, type KitParts } from './kitParts'
+
+type KitTestRoom = NonNullable<KitParts['TestRoom']>
 import { ensureTiles } from '../builder/ensureTiles'
 import { limitedStore } from '../builder/limits'
 import { builderSession } from '../builder/session'
 import { BuildDrawer, PaintStrip } from './BuildDrawer'
+import type { BrickKind } from './NewBrickSheet'
+import { giveJob } from '../blank/jobs'
 import { CodeColumn } from './CodeColumn'
 import { Inspector } from './Inspector'
 import { LevelBricks } from './LevelBricks'
 import { FirstRunTips, HelpSheet } from './StudioHelp'
+import { BuildScore, EmptyStage, NextStepLine } from '../blank/BlankBuild'
 import { markTipsSeen, tipsSeen } from './firstRunTips'
 import type { BrickTemplate } from '../templates'
 import '../builder/builder.css'
 import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
+/** After + New brick in a game from nothing: Tiles start solid (the Wall job, which comes off like any job). */
+const onBrickMade = (store: StudioStore, brickId: string, kind?: BrickKind) => { if (kind === 'tiles') giveJob(store, brickId, 'wall') }
 const LEAVE_WAIT_MS = 5000
 /** How long the small-screen brick card ignores touches after it opens (longer than a tap's trailing click). */
 const INSPECTOR_SETTLE_MS = 400
@@ -35,6 +42,10 @@ const NO_CODE = '(max-width: 539px)'
 /** Any touch screen, including a touchscreen laptop whose main pointer is a trackpad. */
 const TOUCH = '(any-pointer: coarse)'
 export const CODE_NEEDS_ROOM = 'Code needs a bigger screen'
+/** Building together (M2): in a room, until the host turns code on for this player. */
+export const ROOM_CODE_OFF = 'The host hasn’t turned on code for you yet. You can build and play.'
+/** Building together (M2): the host turned building off for everyone. */
+export const ROOM_BUILD_OFF = 'The host turned building off for now.'
 
 const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode; key: string }> = [
   { id: 'build', label: 'Build', icon: <Hammer size={16} />, key: '1' },
@@ -74,11 +85,21 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   // The kit's screens (kitScreens.ts) and its React slots (kitParts.tsx).
   const screens = useStudio(store, (s) => screensFor(s.project.design))
   const parts = KIT_PARTS[screens.kit]
+  // A kit may bring its own world view, drawer and paint strip (Hackable 3D); the rest of the shell is shared.
+  const KitStage = parts.Stage ?? Stage
+  const Drawer = parts.Drawer ?? BuildDrawer
+  const Strip = parts.Strip ?? PaintStrip
   const phone = useMedia(PHONE)
   const noCode = useMedia(NO_CODE)
   const touch = useTouch()
   const runtime = useStudio(store, (s) => s.runtime)
   const paused = useStudio(store, (s) => s.previewPaused)
+  // Building together (docs/qa/hackable-rooms M2): in a room, Build and Code are open only as far as the host allows.
+  const roomRights = useStudio(store, (s) => s.roomRights)
+  const closedScreens: Partial<Record<StudioScreen, string>> = {}
+  if (noCode) closedScreens.code = CODE_NEEDS_ROOM
+  else if (roomRights && !roomRights.code) closedScreens.code = ROOM_CODE_OFF
+  if (roomRights && !roomRights.build) closedScreens.build = ROOM_BUILD_OFF
   const session = builderSession(store)
   const history = session.history
   // The Stage places copies through this view of the store, which keeps the Hero and the Goal to one each.
@@ -133,11 +154,11 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
   const go = (next: StudioScreen) => {
     if (next === screen) return
-    if (next === 'code' && noCode) return setNote(CODE_NEEDS_ROOM)
+    if (closedScreens[next]) return setNote(closedScreens[next]!)
     // Play needs the kit's player (the Hero, the Car). Without one, say so kindly and stay put instead of starting a level
     // where nothing moves.
     const design = store.getState().project.design
-    if (next === 'play' && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
+    if (next === 'play' && screensFor(design).playNeedsPlayer && !hasPlayer(design)) return setNote(screensFor(design).copy.noPlayer)
     setNote(null)
     setSheet(false)
     if (next !== 'build') setErasing(false)
@@ -198,7 +219,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           onRequestMode={(m) => go(m === 'build' ? 'build' : 'play')}
           canExplore
           modeLock={{ locked: false }}
-          modeSwitch={<ModeTabs screen={screen} noCode={noCode} onChange={go} />}
+          modeSwitch={<ModeTabs screen={screen} off={closedScreens} onChange={go} />}
           onOpenHelp={() => setHelp(true)}
           onGoHome={() => leave('/')}
           worldMenu={() => <>
@@ -228,7 +249,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
       <div className="cl-body">
         <div className="cl-slot cl-slot-drawer" inert={screen !== 'build' || (phone && !sheet) ? true : undefined}>
-          <BuildDrawer store={store} history={history} erasing={erasing} onErasing={setErasing} onPicked={phone ? () => setSheet(false) : undefined} />
+          <Drawer store={store} history={history} erasing={erasing} onErasing={setErasing} onPicked={phone ? () => setSheet(false) : undefined} onBrickMade={(id, kind) => onBrickMade(store, id, kind)} />
         </div>
 
         <div className="cl-slot cl-slot-code" inert={screen !== 'code' ? true : undefined}>
@@ -237,14 +258,19 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 
         <div className="cl-slot cl-slot-stage">
           <div className="cl-stage-frame">
-            <Stage store={stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
-            {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} />}
+            {/* A kit's own world keeps its own one-per-world rules (Hackable 3D: studio/three/build3d.ts). */}
+            <KitStage store={parts.Stage ? store : stageStore} tools={{ history, erasing }} codeView={screen === 'code'} onOpenCode={noCode ? undefined : () => go('code')} />
+            {screen === 'code' && <CodeStageBar store={store} testRoom={screens.testRoom} Room={parts.TestRoom} />}
+            {screen === 'build' && screens.fromNothing && <EmptyStage store={store} onMade={(id, kind) => onBrickMade(store, id, kind)} />}
+            {screen === 'build' && screens.fromNothing && <BuildScore store={store} />}
           </div>
-          {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
+          {screen === 'build' && <Strip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'build' && parts.BuildChip && <parts.BuildChip store={store} />}
           {screen === 'play' && <parts.PlayHud store={store} />}
           {screen === 'play' && touch && runtime && !paused && <parts.TouchControls runtime={runtime} store={store} />}
-          {tips && screen === 'build' && <FirstRunTips phone={phone} noCode={noCode} copy={screens.copy} onClose={() => setTips(false)} />}
+          {tips && screen === 'build' && !screens.fromNothing && <FirstRunTips phone={phone} noCode={noCode} copy={screens.copy} onClose={() => setTips(false)} />}
+          {/* A game from nothing has the next-step line instead of the tips. */}
+          {screen === 'build' && screens.fromNothing && <NextStepLine store={store} />}
         </div>
 
         {/* Phones and a Duo: the Bricks sheet is closed most of the time, so Undo and Erase stay out here in their own
@@ -263,7 +289,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
         )}
 
         <div className={`cl-slot cl-slot-inspector${settling ? ' cl-settling' : ''}`} inert={!inspecting ? true : undefined}>
-          {inspecting && <Inspector store={store} history={history} compact={phone} noCode={noCode} />}
+          {inspecting && <Inspector store={store} history={history} compact={phone} noCode={noCode || !!closedScreens.code} />}
         </div>
 
         <div className="cl-slot cl-slot-level" inert={screen !== 'code' ? true : undefined}>
@@ -284,7 +310,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
 }
 
 /** Build · Code · Play with a sliding highlight; one tab stop, arrow keys move (radiogroup, like SegmentedControl). */
-function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: boolean; onChange: (s: StudioScreen) => void }) {
+function ModeTabs({ screen, off: closed, onChange }: { screen: StudioScreen; off: Partial<Record<StudioScreen, string>>; onChange: (s: StudioScreen) => void }) {
   const buttons = useRef<Array<HTMLButtonElement | null>>([])
   const at = SCREENS.findIndex((m) => m.id === screen)
   const move = (e: ReactKeyboardEvent, from: number) => {
@@ -292,7 +318,7 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
     if (!step) return
     e.preventDefault()
     let next = (from + step + SCREENS.length) % SCREENS.length
-    if (noCode && SCREENS[next].id === 'code') next = (next + step + SCREENS.length) % SCREENS.length
+    while (closed[SCREENS[next].id] && next !== from) next = (next + step + SCREENS.length) % SCREENS.length
     onChange(SCREENS[next].id)
     buttons.current[next]?.focus()
   }
@@ -300,10 +326,10 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
     <div className="cl-modes" role="radiogroup" aria-label="Studio mode">
       <span className="cl-modes-ind" aria-hidden="true" style={{ transform: `translateX(${at * 100}%)` }} />
       {SCREENS.map((m, i) => {
-        const off = noCode && m.id === 'code'
+        const off = closed[m.id]
         return (
           <button key={m.id} ref={(el) => { buttons.current[i] = el }} type="button" role="radio" aria-checked={m.id === screen} tabIndex={m.id === screen ? 0 : -1}
-            aria-disabled={off || undefined} title={off ? CODE_NEEDS_ROOM : `${m.label} (${m.key})`}
+            aria-disabled={off ? true : undefined} title={off ?? `${m.label} (${m.key})`}
             className="cl-mode" onClick={() => onChange(m.id)} onKeyDown={(e) => move(e, i)}>
             <span aria-hidden="true">{m.icon}</span><span>{m.label}</span>
           </button>
@@ -317,14 +343,14 @@ function ModeTabs({ screen, noCode, onChange }: { screen: StudioScreen; noCode: 
  * Over Code's small level: pause, restart, and run the whole level or just this brick. A kit without a test room
  * (`testRoom`, Racing for now: the room is built around a helper Hero) always runs the whole level.
  */
-function CodeStageBar({ store, testRoom }: { store: StudioStore; testRoom: boolean }) {
+function CodeStageBar({ store, testRoom, Room = TestRoom }: { store: StudioStore; testRoom: boolean; Room?: typeof TestRoom | KitTestRoom }) {
   const solo = useStudio(store, (s) => s.codeSolo) && testRoom
   const paused = useStudio(store, (s) => s.previewPaused)
   const pending = useStudio(store, (s) => s.pendingCodeChanges)
   const brickId = useStudio(store, (s) => s.selectedBrickId)
   const [restartKey, setRestartKey] = useState(0)
   return <>
-    {solo && <div className="cl-room-box cl-fade"><TestRoom store={store} brickId={brickId} bare restartKey={restartKey} /></div>}
+    {solo && <div className="cl-room-box cl-fade"><Room store={store} brickId={brickId} bare restartKey={restartKey} /></div>}
     <div className="cl-stage-bar" role="toolbar" aria-label="Level preview">
       {!solo && <button type="button" className="cl-btn cl-btn-sm cl-btn-icon" aria-label={paused ? 'Play' : 'Pause'} title={paused ? 'Play' : 'Pause'} onMouseDown={(e) => e.preventDefault()} onClick={() => paused ? store.startPreview() : store.pausePreview()}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}
       <button type="button" className={`cl-btn cl-btn-sm cl-btn-icon${pending && !solo ? ' cl-btn-attn' : ''}`} aria-label="Restart" title={pending && !solo ? 'Restart to try your changes' : 'Restart'} onMouseDown={(e) => e.preventDefault()} onClick={() => solo ? setRestartKey((n) => n + 1) : store.restartPreview()}><RotateCcw size={16} /></button>

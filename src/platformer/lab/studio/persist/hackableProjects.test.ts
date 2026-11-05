@@ -3,6 +3,7 @@ import type { ClassroomClientSurface } from '../../../../classroom/client'
 import type { ClassroomWorld } from '../../../../classroom/contracts'
 import { createStarterProject } from '../starter'
 import { createRaceStarterProject } from '../race/raceProject'
+import { createStarter3dProject } from '../three/project3d'
 import { KIT_SCREENS } from '../kitScreens'
 import { KITS } from '../../kits'
 import { exportProjectJson } from './projectIo'
@@ -263,12 +264,55 @@ describe('each project remembers its game (Hackable Racing, R1)', () => {
     expect(hackableHref.fresh('race')).toBe('/2d/hackable-race?new=1')
     expect(hackableRoute('platformer')).toBe(KITS.platformer.route)
     expect(hackableRoute('race')).toBe(KITS.race.route)
-    // Hackable 3D has no studio address yet: the Platformer's says what it is.
-    expect(hackableRoute('3d')).toBe('/2d/hackable')
+    expect(hackableRoute('3d')).toBe(KITS['3d'].route)
   })
 
   it('a new project’s name is the one the studio gives it', () => {
     expect(newProjectName()).toBe(KIT_SCREENS.platformer.copy.projectName)
     expect(newProjectName('race')).toBe(KIT_SCREENS.race.copy.projectName)
+    expect(newProjectName('3d')).toBe(KIT_SCREENS['3d'].copy.projectName)
+  })
+})
+
+describe('Hackable 3D projects keep their game too (D1)', () => {
+  const world3d = (name = 'My 3D world') => { const p = createStarter3dProject(); return { ...p, design: { ...p.design, name } } }
+
+  it('a 3D project is listed as one, and keeps its kit through later saves, renames and a pending account world', () => {
+    saveHackableProject('d', world3d(), undefined, undefined, { id: 'w-uuid', owner: 'me' })
+    expect(listHackableProjects()[0]).toMatchObject({ id: 'd', title: 'My 3D world', kit: '3d', pendingWorld: { id: 'w-uuid', owner: 'me' } })
+    touchHackableEntry('d', 'Sky castle', undefined, 'data:image/jpeg;base64,AAA')
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'Sky castle', kit: '3d', picture: 'data:image/jpeg;base64,AAA' })
+    expect(entryKit(listHackableProjects()[0])).toBe('3d')
+  })
+
+  it('reads the kit from the save when the list is rebuilt, and an untitled one is named like a new 3D world', () => {
+    localStorage.setItem(projectKey('d'), exportProjectJson(world3d('')))
+    expect(listHackableProjects()[0]).toMatchObject({ id: 'd', title: 'My 3D world', kit: '3d' })
+    touchHackableEntry('d', '   ')
+    expect(listHackableProjects()[0]).toMatchObject({ title: 'My 3D world', kit: '3d' })
+  })
+
+  it('opens at /3d/hackable, and its "play together" link just opens it (no 3D rooms yet)', () => {
+    expect(hackableHref.local('h1', '3d')).toBe('/3d/hackable?draft=h1')
+    expect(hackableHref.world('w1', '3d')).toBe('/3d/hackable?world=w1')
+    expect(hackableHref.fresh('3d')).toBe('/3d/hackable?new=1')
+    expect(hackableHref.together('w1', '3d')).toBe('/3d/hackable?world=w1')
+    expect(hackableHref.together('w1', 'race')).toBe('/2d/hackable-race?world=w1&together=1')
+  })
+
+  it('the account takes a 3D world of 2,000 build bricks with room to spare (the Worker and the table both allow 2,000,000 bytes)', () => {
+    const project = world3d('Big build')
+    const colors = ['#e7473c', '#3e83d7', '#65b85a', '#f5eee0']
+    const scenery = Array.from({ length: 2000 }, (_, i) => ({ partId: i % 3 ? 'brick_2x4' : 'plate_6x8', x: (i * 7) % 60, z: (i * 13) % 60, y: Math.floor(i / 40), rotation: (i % 4) as 0 | 1 | 2 | 3, color: colors[i % 4] }))
+    const big = { ...project, design: { ...project.design, scenery3d: scenery } }
+    const bytes = documentBytes(big)
+    const sceneryBytes = new TextEncoder().encode(JSON.stringify(scenery)).byteLength
+    expect(sceneryBytes).toBeGreaterThan(100_000)
+    expect(bytes).toBeLessThan(ACCOUNT_DOCUMENT_MAX_BYTES / 4)
+    expect(ACCOUNT_DOCUMENT_MAX_BYTES).toBe(2_000_000)
+    // It is kept in the account the way every Hackable project is, and comes back as the same 3D world.
+    const back = projectFromDocument(hackableDocument(big))
+    expect(back?.design.kit).toBe('3d')
+    expect((back?.design as { scenery3d?: unknown[] }).scenery3d).toHaveLength(2000)
   })
 })

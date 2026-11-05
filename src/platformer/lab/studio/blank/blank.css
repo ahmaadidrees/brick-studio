@@ -1,0 +1,106 @@
+/* Start from nothing (docs/qa/blank-2d): the empty stage, the next-step line, Borrow, the Stage card, jobs and Score. */
+
+/* Board 1: the empty stage's one button. */
+.cl-blank-empty { position: absolute; inset: 0; z-index: 11; display: flex; align-items: center; justify-content: center; padding: 16px; pointer-events: none; }
+.cl-blank-empty-card { pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(330px, 100%); padding: 26px 28px; box-sizing: border-box; text-align: center; background: var(--cl-panel); border-radius: 20px; box-shadow: 0 6px 24px rgba(38, 60, 81, .14); }
+.cl-blank-empty-card h2 { margin: 0; font-family: Fredoka, Nunito, system-ui, sans-serif; font-size: 26px; font-weight: 600; }
+.cl-blank-empty-card p { margin: 0; color: var(--cl-muted); font-size: 15px; line-height: 1.45; }
+.cl-blank-empty-card .cl-link { align-self: center; font-size: 14px; }
+.cl-blank-empty-icon { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border: 2.5px dashed #a9b5e8; border-radius: 12px; color: var(--cl-blue); background: var(--cl-blue-soft); }
+
+/* Board 4a: the next-step line. Above the paint strip while painting. */
+.cl-blank-next { position: absolute; z-index: 12; left: 50%; bottom: 14px; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 28px); padding: 8px 8px 8px 16px; box-sizing: border-box; transform: translateX(-50%); color: #fff; background: #263c51; border-radius: 999px; font-size: 14px; font-weight: 700; box-shadow: 0 6px 18px rgba(31, 35, 64, .2); }
+.cl-blank-next span { min-width: 0; }
+/* The line sits over the stage's bottom row: taps go through it to the stage, all but its × button's. */
+.cl-blank-next { pointer-events: none; }
+.cl-blank-next button { pointer-events: auto; }
+.cl-blank-next button { flex: none; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 999px; color: #fff; background: rgba(255, 255, 255, .16); cursor: pointer; }
+.cl-blank-next button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.cl-slot-stage:has(.cl-strip) .cl-blank-next { bottom: 76px; }
+
+/* Under the drawer: the Stage row and Borrow a brick. */
+.cl-blank-extras { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
+.cl-blank-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 10px 12px; box-sizing: border-box; border: 0; border-radius: 12px; color: var(--cl-ink); background: var(--cl-soft); font: inherit; text-align: left; cursor: pointer; }
+.cl-blank-row:hover { background: #ebe4d6; }
+.cl-blank-row:focus-visible { outline: none; box-shadow: var(--focus-ring, 0 0 0 3px #93a8f4); }
+.cl-blank-row-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 2px; }
+.cl-blank-row-text strong { font-size: 14px; }
+.cl-blank-row-text small { color: var(--cl-muted); font-size: 13px; }
+.cl-blank-swatch { flex: none; width: 34px; height: 24px; border-radius: 5px; box-shadow: 0 0 0 1px #dcd3c0; background-size: 6px 6px; }
+.cl-blank-swatch.is-paper { background-color: #fcfaf5; background-image: linear-gradient(#ede7da 1px, transparent 1px), linear-gradient(90deg, #ede7da 1px, transparent 1px); }
+.cl-blank-swatch.is-night { background-color: #1f2a44; background-image: linear-gradient(#2b3858 1px, transparent 1px), linear-gradient(90deg, #2b3858 1px, transparent 1px); }
+.cl-blank-swatch.is-sky { background: linear-gradient(#bfe2f5, #e3f2fb 70%, #8fcf7a 70%); }
+.cl-blank-swatch.is-grass { background: repeating-linear-gradient(#4d9a3a 0 6px, #53a03f 6px 12px); }
+
+/* Borrow a brick: the drawer's other page. */
+.cl-blank-borrow { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto; padding: 12px; }
+.cl-blank-borrow header { display: flex; align-items: center; gap: 6px; }
+.cl-blank-borrow h2 { margin: 0; font-family: Fredoka, Nunito, system-ui, sans-serif; font-size: 21px; font-weight: 600; }
+.cl-blank-borrow p { margin: 0; font-size: 14px; line-height: 1.45; }
+.cl-blank-shelf h3 { margin: 0 0 8px; color: #5b6676; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.cl-blank-shelf ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cl-blank-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; min-height: 84px; padding: 8px 4px 6px; box-sizing: border-box; border: 2px solid transparent; border-radius: 12px; color: var(--cl-ink); background: #f6f3ec; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.cl-blank-tile small { color: var(--cl-muted); font-size: 11px; font-weight: 700; }
+.cl-blank-tile:hover { border-color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-blank-tile:focus-visible { outline: none; box-shadow: var(--focus-ring, 0 0 0 3px #93a8f4); }
+
+/* The Stage card. */
+.cl-blank-field { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; padding: 0; border: 0; }
+.cl-blank-field legend { margin-bottom: 8px; padding: 0; font-size: 14px; font-weight: 800; }
+.cl-blank-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.cl-blank-choice { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 64px; padding: 10px; box-sizing: border-box; border: 2px solid var(--cl-line); border-radius: 12px; color: var(--cl-ink); background: var(--cl-panel); font: inherit; text-align: left; cursor: pointer; }
+.cl-blank-choice small { color: var(--cl-muted); font-size: 12px; }
+.cl-blank-choice[aria-pressed='true'] { border-color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-blank-choice:focus-visible { outline: none; box-shadow: var(--focus-ring, 0 0 0 3px #93a8f4); }
+.cl-blank-size { display: block; height: 22px; max-width: 64px; border-radius: 3px; background: #fcfaf5; box-shadow: 0 0 0 1px #c9bfa9; }
+.cl-blank-ask { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: #fff7e0; }
+.cl-blank-ask p { margin: 0; font-size: 14px; }
+
+/* Board 2b: One thing or Tiles. */
+.cl-newbrick-kinds { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; }
+.cl-newbrick-kinds legend { margin-bottom: 8px; padding: 0; font-size: 14px; font-weight: 800; }
+.cl-newbrick-kind-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.cl-newbrick-kind { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px; box-sizing: border-box; border: 2px solid var(--border, #e4dfd3); border-radius: 14px; color: var(--text, #1f2340); background: var(--surface, #fff); font: inherit; text-align: left; cursor: pointer; }
+.cl-newbrick-kind span { display: flex; flex-direction: column; gap: 2px; }
+.cl-newbrick-kind strong { font-size: 16px; }
+.cl-newbrick-kind small { color: var(--text-muted, #4a5068); font-size: 13px; }
+.cl-newbrick-kind[aria-pressed='true'] { border-color: var(--primary, #3e5bd9); background: #eef2fe; }
+.cl-newbrick-kind:disabled { opacity: .55; cursor: not-allowed; }
+.cl-newbrick-kind:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Board 3c: the Score, like a Scratch variable monitor. */
+.cl-blank-score { position: absolute; z-index: 13; left: 16px; top: 16px; display: flex; align-items: center; gap: 6px; padding: 3px 4px 3px 8px; border: 1px solid #c9c9c9; border-radius: 6px; color: #263c51; background: #f1f1f1; font-size: 13px; font-weight: 800; pointer-events: none; }
+.cl-blank-score b { min-width: 18px; padding: 1px 8px; border-radius: 4px; color: #fff; background: #ff8c1a; text-align: center; }
+
+/* The Stage card is a sheet portaled outside the shell: it brings the shell's colours with it. */
+.cl-blank-stagecard { --cl-line: #e4dfd3; --cl-blue: #3e5bd9; --cl-blue-soft: #eef2fe; --cl-ink: #1f2340; --cl-muted: #4a5068; --cl-panel: #fff; }
+.cl-blank-stagecard .cl-blank-choices { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+
+/* The drawer of a game from nothing holds only the kid's own bricks: no search, no categories (board 1). */
+.cl-drawer-blank .part-search-row { display: none; }
+.cl-blank-drawer-title { flex: none; margin: 4px 12px 8px; color: #5b6676; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+/* Boards 3a and 3c: Give it a job, and the job a brick has. */
+.cl-blank-jobs { display: flex; flex-direction: column; gap: 10px; padding: 0 14px 14px; overflow-y: auto; min-height: 0; }
+.cl-blank-jobs-title { margin: 0; font-family: Fredoka, Nunito, system-ui, sans-serif; font-size: 20px; font-weight: 600; }
+.cl-blank-jobs .cl-muted { margin: 2px 0 0; font-size: 13px; }
+.cl-blank-jobgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cl-blank-job, .cl-blank-way { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px; box-sizing: border-box; border: 2px solid #e6dfd0; border-radius: 14px; color: var(--cl-ink); background: var(--cl-panel); font: inherit; text-align: left; cursor: pointer; }
+.cl-blank-job span, .cl-blank-way span, .cl-blank-chip span { display: flex; flex-direction: column; min-width: 0; }
+.cl-blank-job b, .cl-blank-way b, .cl-blank-chip b { font-size: 14px; }
+.cl-blank-job small, .cl-blank-way small, .cl-blank-chip small { color: var(--cl-muted); font-size: 12px; }
+.cl-blank-job:hover, .cl-blank-way:hover { border-color: var(--cl-blue); }
+.cl-blank-job:focus-visible, .cl-blank-way:focus-visible { outline: none; box-shadow: var(--focus-ring, 0 0 0 3px #93a8f4); }
+.cl-blank-player.is-open { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 2px solid var(--cl-blue); border-radius: 14px; background: var(--cl-blue-soft); }
+.cl-blank-player.is-open .cl-blank-job { border: 0; padding: 0; min-height: 40px; background: none; }
+.cl-blank-ways { display: flex; flex-direction: column; gap: 8px; }
+.cl-blank-ways-title { font-size: 13px; font-weight: 800; }
+.cl-blank-way { min-height: 48px; padding: 9px 10px; border: 1px solid #c9d2f4; border-radius: 12px; }
+.cl-blank-chips { display: flex; flex-direction: column; gap: 8px; }
+.cl-blank-chip { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 12px; color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-blank-chip span { flex: 1; color: var(--cl-ink); }
+.cl-blank-chip.is-off { color: var(--cl-muted); background: var(--cl-soft); }
+.cl-blank-change { display: flex; flex-direction: column; gap: 8px; }
+.cl-blank-change .cl-blank-jobs { padding: 0; }
+.cl-blank-player-pill { align-self: flex-start; padding: 2px 8px; border-radius: 999px; color: #17663f; background: #e7f7ee; font-size: 12px; font-weight: 800; }
+.cl-drawer-blank .cl-drawer-picker > .cl-blank-drawer-title { flex: 0 0 auto; }

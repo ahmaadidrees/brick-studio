@@ -10,7 +10,9 @@ import { play, type Runtime } from '../core/index'
 import { deterministicStringify } from '../core/save'
 import { designKit, parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
-import { screensFor } from './kitScreens'
+import { playerIdOf, screensFor } from './kitScreens'
+import { freshExtra } from './builtins/extras'
+import { withLength } from './builder/levelLength'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, powerProblem, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
@@ -55,6 +57,8 @@ export interface StudioRoom {
    * play's finish when it changes.
    */
   readonly playStart: number | null
+  /** A player's name in the room as it is now (they may have changed it since they joined), if they are here. */
+  playerName?(num: number): string | undefined
   /** Play up to the room's clock now: how many ticks ran, and how far into the next one we are (0 to 1). */
   frame(now: number): { ticks: number; fraction: number }
 }
@@ -89,6 +93,11 @@ export interface StudioState {
   namingBrickId: string | null
   /** The room this studio plays in, or null for a game of its own. */
   room: StudioRoom | null
+  /**
+   * Building together (docs/qa/hackable-rooms M2): what this player may change in the room's project, or null outside
+   * a room (everything). Build places, paints and tunes; code changes code, costumes and sounds.
+   */
+  roomRights: { build: boolean; code: boolean } | null
 }
 
 export function screenOf(s: Pick<StudioState, 'mode' | 'cardTab'>): StudioScreen {
@@ -144,6 +153,7 @@ export class StudioStore {
       codeSolo: false,
       namingBrickId: null,
       room: null,
+      roomRights: null,
     }
   }
 
@@ -210,18 +220,36 @@ export class StudioStore {
   }
 
   /**
-   * A player who is not the host follows the room's project (the host edited it): the screens draw its background
-   * and bounds. Nothing else changes, and there is nothing of theirs to save.
+   * Building together (M2): the room's project changed (someone else's edit, or ours refused). The studio takes it as
+   * it is, keeping the screen; a copy or brick that is gone is no longer selected. Unlike `load`, nothing resets.
    */
-  followRoomDesign(design: LevelDesign) {
-    if (!this.state.room || design === this.state.project.design) return
-    this.set({ project: { design, workspaces: this.state.project.workspaces } })
+  adoptRoomProject(design: LevelDesign, workspaces: Record<string, unknown>) {
+    const s = this.state
+    if (design === s.project.design && workspaces === s.project.workspaces) return
+    const copies = new Set(design.copies.map((c) => c.id))
+    const bricks = new Set([design.stage.id, ...design.bricks.map((b) => b.id)])
+    this.set({
+      project: { design, workspaces },
+      ...(s.selectedCopyId !== null && !copies.has(s.selectedCopyId) ? { selectedCopyId: null } : {}),
+      ...(!bricks.has(s.selectedBrickId) ? { selectedBrickId: STAGE_ID } : {}),
+      ...(s.brushBrickId !== null && !bricks.has(s.brushBrickId) ? { brushBrickId: null } : {}),
+    })
+  }
+
+  /** Building together (M2): what this player may change now (null: not in a room). */
+  setRoomRights(rights: { build: boolean; code: boolean } | null) {
+    const was = this.state.roomRights
+    if (was === rights || (was && rights && was.build === rights.build && was.code === rights.code)) return
+    this.set({ roomRights: rights })
+    // Code turned off while it was open: back to Build (or Play, when building is off too).
+    if (rights && !rights.code && this.state.cardTab === 'code') this.set({ cardTab: 'sliders' })
+    if (rights && !rights.build && !rights.code && this.state.mode !== 'play') this.play()
   }
 
   /** Back to a game of our own (the next Play starts one). */
   leaveRoom() {
     if (!this.state.room) return
-    this.set({ room: null, runtime: this.state.runtime ? this.makeRuntimeWithout() : null, previewPaused: false, pendingCodeChanges: false })
+    this.set({ roomRights: null, room: null, runtime: this.state.runtime ? this.makeRuntimeWithout() : null, previewPaused: false, pendingCodeChanges: false })
   }
 
   private makeRuntimeWithout(): Runtime {
@@ -255,8 +283,8 @@ export class StudioStore {
     const copyBrick = s.selectedCopyId ? (parseGridCopyId(s.selectedCopyId) ? s.selectedBrickId : d.copies.find((c) => c.id === s.selectedCopyId)?.brickId) : undefined
     if (copyBrick && this.brick(copyBrick)) return copyBrick
     if (this.codeVisited && this.brick(s.selectedBrickId)) return s.selectedBrickId
-    const player = screensFor(d).playerBrickId
-    return (d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player))?.id ?? d.bricks[0]?.id ?? STAGE_ID
+    const player = playerIdOf(d)
+    return (player ? d.bricks.find((b) => b.id === player) ?? d.bricks.find((b) => b.remixOf === player) : undefined)?.id ?? d.bricks[0]?.id ?? STAGE_ID
   }
 
   /** Code: run the whole level, or just the open brick. */
@@ -390,6 +418,31 @@ export class StudioStore {
     return id
   }
 
+  /** Build's length chip: make the level `cols` tiles long (builder/levelLength.ts; it never loses a brick). */
+  setLevelLength(cols: number) {
+    const d = this.state.project.design
+    const next = withLength(d, cols)
+    if (next !== d) this.setDesign(next)
+  }
+
+  /**
+   * Add a built-in brick the level doesn't have yet (builtins/extras.ts) under its catalog id, armed and selected, so
+   * it stays a built-in brick. Returns its id, or null for an unknown brick. A level that has it already just arms it.
+   */
+  addCatalogBrick(catalogId: string): string | null {
+    const d = this.state.project.design
+    if (d.bricks.some((b) => b.id === catalogId)) {
+      this.set({ selectedBrickId: catalogId, brushBrickId: catalogId, brushTile: null })
+      return catalogId
+    }
+    const fresh = freshExtra(catalogId, new Set(d.bricks.flatMap((b) => (b.grid ? [b.grid.char] : []))))
+    if (!fresh) return null
+    this.setDesign({ ...d, bricks: [...d.bricks, fresh.brick] }, { ...this.state.project.workspaces, [catalogId]: fresh.workspace })
+    this.setWorkspace(catalogId, fresh.workspace)
+    this.set({ selectedBrickId: catalogId, brushBrickId: catalogId, brushTile: null })
+    return catalogId
+  }
+
   /**
    * + New brick: one step. Makes "My brick N" (an empty brick with a blank costume), opens it in Code and asks for its
    * name to be selected, so typing replaces it. The Build brush is left alone: Select stays the default tool.
@@ -434,7 +487,25 @@ export class StudioStore {
 
   takeOffPower(brickId: string, snapId: string) {
     this.flushEditor()
+    const job = this.brick(brickId)?.powers?.find((p) => p.id === snapId)?.job
     this.applyPowerChange(brickId, takeOffPowerFrom(this.state.project, brickId, snapId))
+    // Start from nothing: taking the Player job off the player leaves the game with no player (unless it has another).
+    const d = this.state.project.design
+    if (job?.startsWith('player') && d.player === brickId && !this.brick(brickId)?.powers?.some((p) => p.job?.startsWith('player'))) this.setPlayer(null)
+  }
+
+  /**
+   * Start from nothing: snap a job (studio/blank/jobs.ts) onto a brick, tagged with its job. Unlike a power it fits a
+   * grid brick too (a Wall of tiles). The editor reloads to show its blocks.
+   */
+  giveJob(brickId: string, power: PowerBrick, job: string): SnappedPower | null {
+    if (!this.brick(brickId) || brickId === STAGE_ID) return null
+    this.flushEditor()
+    const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
+    const tagged: SnappedPower = { ...snap, job }
+    const design = { ...project.design, bricks: project.design.bricks.map((b) => (b.id === brickId ? { ...b, powers: (b.powers ?? []).map((p) => (p.id === snap.id ? tagged : p)) } : b)) }
+    this.applyPowerChange(brickId, { ...project, design })
+    return tagged
   }
 
   setPowerOn(brickId: string, snapId: string, on: boolean) {
@@ -458,6 +529,56 @@ export class StudioStore {
     this.set({ editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
+  // ------------------------------------------------------------ Start from nothing (docs/qa/blank-2d)
+
+  /** Make this brick the player (or nobody, with null): the camera follows it, and a room gives each friend a copy. */
+  setPlayer(brickId: string | null) {
+    const d = this.state.project.design
+    if ((d.player ?? null) === brickId || (brickId !== null && !d.bricks.some((b) => b.id === brickId))) return
+    const { player: _player, ...rest } = d
+    this.setDesign(brickId === null ? rest : { ...rest, player: brickId })
+  }
+
+  /** The Stage card: the stage's size (its bounds, cells and placed bricks together) and backdrop. */
+  setStageLayout(layout: { bounds: LevelDesign['bounds']; tiles: NonNullable<LevelDesign['tiles']>; copies: CopyPlacement[] }) {
+    this.setDesign({ ...this.state.project.design, bounds: layout.bounds, tiles: layout.tiles, copies: layout.copies })
+  }
+
+  setBackdrop(backdrop: NonNullable<LevelDesign['backdrop']>) {
+    const d = this.state.project.design
+    if ((d.backdrop ?? 'paper') === backdrop) return
+    const { backdrop: _b, ...rest } = d
+    this.setDesign(backdrop === 'paper' ? rest : { ...rest, backdrop })
+  }
+
+  /** One thing / Tiles: a brick painted on the grid with this character, or placed one at a time (null). */
+  setGridChar(brickId: string, char: string | null) {
+    this.updateBrick(brickId, (b) => {
+      if (char === null) {
+        const { grid: _grid, ...rest } = b
+        return rest
+      }
+      return { ...b, grid: { ...b.grid, char } }
+    })
+  }
+
+  /**
+   * Stage variables and lists some borrowed code reads (Score, Racing's laps to win), added when missing. The Stage's
+   * workspace declares them too, so they show in its Variables.
+   */
+  ensureStageData(variables: ReadonlyArray<{ id: string; name: string; value: Value }>, lists: ReadonlyArray<{ id: string; name: string }> = []) {
+    const d = this.state.project.design
+    const program = d.stage.program
+    const newVars = variables.filter((v) => !program.variables.some((x) => x.id === v.id))
+    const newLists = lists.filter((l) => !program.lists.some((x) => x.id === l.id))
+    if (!newVars.length && !newLists.length) return
+    const raw = this.state.project.workspaces[STAGE_ID]
+    const ws = (typeof raw === 'string' ? JSON.parse(raw) : raw && typeof raw === 'object' ? structuredClone(raw) : { blocks: { languageVersion: 0, blocks: [] } }) as { variables?: Array<{ id: string; name: string; type?: string }> }
+    ws.variables = [...(ws.variables ?? []), ...newVars.map((v) => ({ id: v.id, name: v.name })), ...newLists.map((l) => ({ id: l.id, name: l.name, type: 'list' }))]
+    this.setDesign({ ...d, stage: { ...d.stage, program: { ...program, variables: [...program.variables, ...newVars.map((v) => ({ id: v.id, name: v.name, value: v.value }))], lists: [...program.lists, ...newLists.map((l) => ({ id: l.id, name: l.name, value: [] }))] } } },
+      { ...this.state.project.workspaces, [STAGE_ID]: ws })
+  }
+
   /** The project's own name (the header's title, and its name in My projects). */
   renameProject(name: string) {
     const clean = name.trim().slice(0, 80)
@@ -473,7 +594,8 @@ export class StudioStore {
     const d = this.state.project.design
     const workspaces = { ...this.state.project.workspaces }
     delete workspaces[brickId]
-    this.setDesign({ ...d, bricks: d.bricks.filter((b) => b.id !== brickId), copies: d.copies.filter((c) => c.brickId !== brickId) }, workspaces)
+    const { player, ...rest } = d
+    this.setDesign({ ...rest, ...(player && player !== brickId ? { player } : {}), bricks: d.bricks.filter((b) => b.id !== brickId), copies: d.copies.filter((c) => c.brickId !== brickId) }, workspaces)
     const s = this.state
     this.set({
       selectedBrickId: s.selectedBrickId === brickId ? (d.bricks.find((b) => b.id !== brickId)?.id ?? STAGE_ID) : s.selectedBrickId,
@@ -526,6 +648,14 @@ export class StudioStore {
     const d = this.state.project.design
     if (brickId === STAGE_ID) this.setDesign({ ...d, stage: fn(d.stage) }, workspaces)
     else this.setDesign({ ...d, bricks: d.bricks.map((b) => (b.id === brickId ? fn(b) : b)) }, workspaces)
+  }
+
+  /**
+   * Hackable 3D's Build (studio/three/build3d.ts): change the design where no other action fits (the build bricks, a
+   * copy's z), and add workspaces for bricks it adds. Code and costumes still change only through their own actions.
+   */
+  updateDesign(fn: (design: LevelDesign) => LevelDesign, workspaces?: Record<string, unknown>) {
+    this.setDesign(fn(this.state.project.design), workspaces ? { ...this.state.project.workspaces, ...workspaces } : undefined)
   }
 
   // ------------------------------------------------------------ painted copies (Build)

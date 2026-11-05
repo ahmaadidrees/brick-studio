@@ -16,7 +16,8 @@ describe('Make a game', () => {
     const dialog = screen.getByRole('dialog', { name: 'What do you want to make?' })
     expect(within(dialog).getByText('Pick a start. Every brick can be changed later, and you can always make your own.')).toBeInTheDocument()
     const cards = [...dialog.querySelectorAll('article')].map((a) => a.querySelector('h3')?.textContent)
-    expect(cards).toEqual(['Platformer', 'Racing'])
+    // From nothing is on (Blank 2D, docs/qa/blank-2d), outlined after the two kits.
+    expect(cards).toEqual(['Platformer', 'Racing', 'From nothing'])
     expect(within(dialog).getByRole('button', { name: 'Or build in 3D' })).toBeInTheDocument()
     const starters = within(screen.getByRole('region', { name: 'Or play one first, then make it yours' })).getAllByRole('button')
     expect(starters.map((b) => b.querySelector('.projects-starter-title')?.textContent)).toEqual(['Workshop Run', 'Brick Speedway', 'Snowy Oval'])
@@ -63,10 +64,16 @@ describe('Make a game', () => {
     expect(onPick).toHaveBeenLastCalledWith('/2d/hackable?new=1')
   })
 
-  it('keeps "From nothing" off until Blank 2D has an address', () => {
-    expect(FROM_NOTHING_HREF).toBeNull()
-    render(<NewProjectSheet open onClose={vi.fn()} onPick={vi.fn()} />)
+  it('shows "From nothing" now that Blank 2D has an address, and hides it again without one', () => {
+    expect(FROM_NOTHING_HREF).toBe('/2d/hackable-blank?new=1')
+    render(<NewProjectSheet open onClose={vi.fn()} onPick={vi.fn()} fromNothingHref={null} />)
     expect(screen.queryByRole('heading', { name: 'From nothing' })).toBeNull()
+    cleanup()
+
+    const picked = vi.fn()
+    render(<NewProjectSheet open onClose={vi.fn()} onPick={picked} />)
+    fireEvent.click(within(card('From nothing')).getByRole('button', { name: 'Start from nothing' }))
+    expect(picked).toHaveBeenLastCalledWith('/2d/hackable-blank?new=1')
     cleanup()
 
     const onPick = vi.fn()
@@ -86,6 +93,25 @@ describe('Make a game', () => {
     expect(onPick).toHaveBeenLastCalledWith('/2d/build?new=1&template=oval')
     fireEvent.click(screen.getByRole('button', { name: /Workshop Run/ }))
     expect(onPick).toHaveBeenLastCalledWith('/2d/build?new=1&template=workshop')
+  })
+
+  it('keeps the classic 3D builder first in the 3D row, with Hackable 3D one link away', () => {
+    const onPick = vi.fn()
+    render(<NewProjectSheet open onClose={vi.fn()} onPick={onPick} />)
+    const build3d = screen.getByRole('button', { name: 'Or build in 3D' })
+    const row = build3d.closest('.projects-3d') as HTMLElement
+    const buttons = within(row).getAllByRole('button')
+    // Start (the classic builder) comes first; the Hackable link is second.
+    expect(buttons[0]).toBe(build3d)
+    const hackable = within(row).getByRole('button', { name: 'Start with code inside' })
+    expect(buttons.indexOf(hackable)).toBe(1)
+    expect(hackable).toHaveAccessibleDescription('Or build in 3D')
+    fireEvent.click(hackable)
+    expect(onPick).toHaveBeenLastCalledWith('/3d/hackable?new=1')
+    fireEvent.click(build3d)
+    expect(onPick).toHaveBeenLastCalledWith('/build?new=1')
+    expect(NEW_PROJECT_HREF.hackable3d).toBe(`${KITS['3d'].route}?new=1`)
+    expect(NEW_PROJECT_HREF.build3d).toBe('/build?new=1')
   })
 
   it('tells a guest where the game saves, and signs in through onPick so an open game saves first', () => {

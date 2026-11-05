@@ -14,4 +14,8 @@ export const CATEGORY_COLORS = {
   platformer: '#2BB3A3',
   /** Racing extension (Hackable Racing R1): its own color too. */
   race: '#E8553E',
+  /** Start from nothing's Game category (its own blocks, then every Platformer and Racing block). */
+  game: '#2BA58A',
+  /** 3D category (Hackable 3D): in a 3D project it takes the Platformer category's place, in its own colour. */
+  threeD: '#4B58B8',
 } as const

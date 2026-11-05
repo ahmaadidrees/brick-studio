@@ -35,7 +35,7 @@ export type SoundName =
 
 type Wave = 'square' | 'triangle' | 'pulse25' | 'pulse12' | 'noise'
 
-interface Note {
+export interface Note {
   wave: Wave
   /** Start and end frequency (Hz). Ignored for noise except as a filter hint. */
   f0: number
@@ -88,6 +88,9 @@ const SOUNDS: Record<SoundName, Note[]> = {
   erase: [n('square', 300, 220, 0, 0.04, 0.18)],
   toggle: arp('pulse12', [67, 74], 0.05, 0.2),
 }
+
+/** A sound effect's notes, for rendering it outside the browser's audio (the Hackable bricks' sounds). */
+export const soundNotes = (name: SoundName): readonly Note[] => SOUNDS[name]
 
 // ---------------------------------------------------------------------------------------------
 // Music: an original 16-bar loop. Notes are [midi, sixteenths]; 0 is a rest.

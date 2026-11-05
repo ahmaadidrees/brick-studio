@@ -1,0 +1,58 @@
+[
+  {
+    "chrome": "156.0.8078.80",
+    "cpu": "1×",
+    "bricks": 500,
+    "meshesMs": 12.7,
+    "tickMs": 0.05,
+    "drawMs": 0.12,
+    "drawP95Ms": 0.2,
+    "finishMs": 0.12,
+    "finishP95Ms": 0.2,
+    "calls": 37,
+    "triangles": 256796,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  },
+  {
+    "chrome": "156.0.8078.80",
+    "cpu": "1×",
+    "bricks": 2000,
+    "meshesMs": 1.5,
+    "tickMs": 0.04,
+    "drawMs": 0.22,
+    "drawP95Ms": 0.3,
+    "finishMs": 0.22,
+    "finishP95Ms": 0.3,
+    "calls": 37,
+    "triangles": 735228,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  },
+  {
+    "chrome": "156.0.8078.80",
+    "cpu": "6×",
+    "bricks": 500,
+    "meshesMs": 88.7,
+    "tickMs": 0.35,
+    "drawMs": 0.93,
+    "drawP95Ms": 1.8,
+    "finishMs": 0.94,
+    "finishP95Ms": 1.8,
+    "calls": 37,
+    "triangles": 256796,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  },
+  {
+    "chrome": "156.0.8078.80",
+    "cpu": "6×",
+    "bricks": 2000,
+    "meshesMs": 10.5,
+    "tickMs": 0.43,
+    "drawMs": 1.6,
+    "drawP95Ms": 2.6,
+    "finishMs": 1.63,
+    "finishP95Ms": 2.6,
+    "calls": 37,
+    "triangles": 735228,
+    "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)"
+  }
+]

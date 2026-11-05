@@ -3,6 +3,7 @@ import { designKit, type BrickDef } from '../core/contracts'
 import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
 import { createRaceStarterProject } from './race/raceProject'
+import { createExtrasProject } from './builtins/extras'
 import { boostCostume, boostCostumeR1 } from './race/raceTrack'
 import { HERO_DEFAULT_CHANGES, HERO_OLD_VARIABLE_NAMES } from './hero/heroBrick'
 import type { StudioProject } from './store'
@@ -11,9 +12,10 @@ type Original = { brick: BrickDef; workspace: unknown }
 
 /**
  * The built-in bricks of every kit's starter (docs/qa/hackable-modes/R1-SCREENS.md): the Platformer's and Hackable
- * Racing's. Their ids never collide, so one catalog serves both. Each starter is built the first time it is needed.
+ * Racing's, plus the Platformer bricks a level adds from the drawer (builtins/extras.ts, parity bucket B). Their ids
+ * never collide, so one catalog serves all. Each is built the first time it is needed.
  */
-const STARTERS: ReadonlyArray<() => StudioProject> = [createStarterProject, createRaceStarterProject]
+const STARTERS: ReadonlyArray<() => StudioProject> = [createStarterProject, createRaceStarterProject, createExtrasProject]
 const originals: Array<Map<string, Original> | undefined> = []
 
 function catalogOf(index: number): Map<string, Original> {
@@ -102,7 +104,11 @@ export function isStructuralWorkspaceChange(before: unknown, after: unknown): bo
 // These menu sockets identify another brick by its displayed name. Never rewrite arbitrary text/broadcasts.
 const TARGET_FIELDS = new Set(['TO', 'TOWARDS', 'TOUCHINGOBJECTMENU', 'DISTANCETOMENU', 'OBJECT', 'CLONE_OPTION', 'BRICK'])
 
-function rewriteReferences(value: unknown, from: string, to: string): unknown {
+/**
+ * Point every menu that names brick `from` (sensing, bump, clone and motion menus) at `to` instead, in a brick's program
+ * or a workspace. Broadcasts and other text are never touched.
+ */
+export function rewriteReferences(value: unknown, from: string, to: string): unknown {
   if (Array.isArray(value)) return value.map((entry) => rewriteReferences(entry, from, to))
   if (!record(value) || ArrayBuffer.isView(value)) return value
   const result: Record<string, unknown> = {}
@@ -234,9 +240,9 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
  * Earlier built-in Heroes' blocks, as generated and after a trip through the editor: the two My Blocks versions, and the
  * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
  * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits. '88bce6fb' is the Hero just
- * before pits (2026-11-03).
+ * before pits (2026-11-03); 'c4c19cce' is the Hero shipped with parity bucket A (2026-11-04), before the corner slip.
  */
-export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65', '88bce6fb']
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65', '88bce6fb', 'c4c19cce']
 
 let currentHeroFingerprint: string | undefined
 
@@ -246,10 +252,10 @@ let currentHeroFingerprint: string | undefined
  * parity bucket A (2026-11-03).
  */
 export const EARLIER_BUILT_IN_FINGERPRINTS: Readonly<Record<string, readonly string[]>> = {
-  // R1 as shipped: before W A S D and boost pads that point a way.
-  brick_car: ['f3157bf8'],
-  // R1 as shipped: before steering and braking like the classic computer driver.
-  brick_racer: ['3f8004eb'],
+  // R1 as shipped: before W A S D and boost pads that point a way. Then parity A as shipped: before "what I hit".
+  brick_car: ['f3157bf8', 'cd3793ca'],
+  // R1 as shipped: before steering and braking like the classic computer driver. Then parity A as shipped.
+  brick_racer: ['3f8004eb', '68d4e698'],
 }
 
 /**

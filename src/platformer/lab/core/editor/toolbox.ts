@@ -58,10 +58,19 @@ function textShadow(value: string): { shadow: ToolboxShadow } {
   return { shadow: { type: 'text', fields: { TEXT: value } } }
 }
 
-/** What a kit changes in the palette: a Racing category, and block types left out (studio/kitScreens.ts `toolbox`). */
+/**
+ * What a kit changes in the palette: a Racing category, the 3D category in place of Platformer (with the z blocks in
+ * Motion), and block types left out (studio/kitScreens.ts `toolbox`).
+ */
 export interface KitPalette {
   racing: boolean
+  threeD?: boolean
   hide: readonly string[]
+  /**
+   * Start from nothing (docs/qa/blank-2d): one Game category instead of Platformer and Racing, holding its own blocks
+   * ("touching the player?") and then every Platformer and Racing block.
+   */
+  game?: boolean
 }
 
 /** The Platformer's palette: everything, as it has always been. */
@@ -77,9 +86,40 @@ export const RACE_PALETTE: KitPalette = {
   hide: ['platformer_whenland', 'platformer_whenleaveground', 'platformer_setgravity', 'platformer_onground', 'platformer_setonground'],
 }
 
-/** A kit's palette: Hackable Racing's, or the Platformer's (no kit, the Platformer, or a kit with no palette of its own). */
+/** Start from nothing's palette: everything, in one Game category. */
+export const GAME_PALETTE: KitPalette = { racing: true, hide: [], game: true }
+
+/**
+ * Hackable 3D's palette (the same values as studio/kitScreens.ts KIT_SCREENS['3d'].toolbox; a test keeps them equal):
+ * the 3D category, without the Platformer blocks that move a brick by its own 2D sweep or set "on ground" by hand, and
+ * without "if on edge, bounce" (a build plate has no edge to bounce on).
+ */
+export const THREE_D_PALETTE: KitPalette = {
+  racing: false,
+  threeD: true,
+  hide: ['platformer_setmover', 'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_tellhit', 'platformer_setonground', 'motion_ifonedgebounce'],
+}
+
+/** A kit's palette: Hackable Racing's, Start from nothing's, Hackable 3D's, or the Platformer's (no kit, or the Platformer). */
 export function paletteForKit(kit: KitId | undefined): KitPalette {
-  return kit === 'race' ? RACE_PALETTE : PLATFORMER_PALETTE
+  return kit === 'race' ? RACE_PALETTE : kit === 'blank' ? GAME_PALETTE : kit === '3d' ? THREE_D_PALETTE : PLATFORMER_PALETTE
+}
+
+/** The Game category: its own blocks first, then the Platformer's and Racing's under their own labels. */
+function gameCategory(platformer: ToolboxCategory, racing: ToolboxCategory): ToolboxCategory {
+  const body = (cat: ToolboxCategory) => cat.contents ?? []
+  return {
+    kind: 'category',
+    name: 'Game',
+    colour: CATEGORY_COLORS.game,
+    cssConfig: { container: 'code-extension-category' },
+    contents: [
+      { kind: 'label', text: 'Game blocks' },
+      { kind: 'block', type: 'game_touchingplayer' },
+      ...body(platformer),
+      ...body(racing),
+    ],
+  }
 }
 
 /** The Racing extension (Hackable Racing R1): laps and the track, in the Racing colour. */
@@ -102,6 +142,55 @@ function racingCategory(): ToolboxCategory {
   }
 }
 
+/**
+ * The 3D category (Hackable 3D): the Platformer's blocks that still mean something on a build plate (they take x, y and
+ * z there), then the two only 3D has. It stands where Platformer stands, in the 3D colour.
+ */
+function threeDCategory(): ToolboxCategory {
+  return {
+    kind: 'category',
+    name: '3D',
+    colour: CATEGORY_COLORS.threeD,
+    cssConfig: { container: 'code-extension-category' },
+    contents: [
+      { kind: 'label', text: '3D blocks' },
+      { kind: 'block', type: 'platformer_everytick' },
+      { kind: 'block', type: 'platformer_whenland' },
+      { kind: 'block', type: 'platformer_whenleaveground' },
+      { kind: 'block', type: 'platformer_whenbump' },
+      { kind: 'sep' },
+      { kind: 'block', type: 'platformer_setgravity' },
+      { kind: 'block', type: 'platformer_setsolid' },
+      { kind: 'sep' },
+      { kind: 'block', type: 'platformer_setspeed', inputs: { SPEED: numShadow(5) } },
+      { kind: 'block', type: 'platformer_changespeed', inputs: { SPEED: numShadow(1) } },
+      { kind: 'block', type: 'platformer_speed' },
+      { kind: 'sep' },
+      { kind: 'block', type: 'platformer_onground' },
+      { kind: 'sep' },
+      { kind: 'block', type: 'kit3d_launchlanders', inputs: { SPEED: numShadow(15) } },
+      { kind: 'block', type: 'kit3d_gohome' },
+    ],
+  }
+}
+
+/** The Motion blocks with a z, each placed just after its x and y sibling (in studs, like every 3D distance). */
+const MOTION_Z_BLOCKS: ReadonlyArray<{ after: string; block: ToolboxBlock }> = [
+  { after: 'motion_gotoxy', block: { kind: 'block', type: 'kit3d_gotoxyz', inputs: { X: numShadow(0), Y: numShadow(0), Z: numShadow(0) } } },
+  { after: 'motion_sety', block: { kind: 'block', type: 'kit3d_changez', inputs: { DZ: numShadow(1) } } },
+  { after: 'kit3d_changez', block: { kind: 'block', type: 'kit3d_setz', inputs: { Z: numShadow(0) } } },
+  { after: 'motion_yposition', block: { kind: 'block', type: 'kit3d_zposition' } },
+]
+
+function withZ(motion: ToolboxCategory): ToolboxCategory {
+  const contents = [...(motion.contents ?? [])]
+  for (const { after, block } of MOTION_Z_BLOCKS) {
+    const i = contents.findIndex((item) => item.kind === 'block' && item.type === after)
+    contents.splice(i < 0 ? contents.length : i + 1, 0, block)
+  }
+  return { ...motion, contents }
+}
+
 /** A category without the hidden blocks, and without the gaps they leave: no gap first, last, twice, or before a label. */
 function withoutHidden(category: ToolboxCategory, hide: ReadonlySet<string>): ToolboxCategory {
   if (!category.contents || !category.contents.some((item) => item.kind === 'block' && hide.has(item.type))) return category
@@ -119,7 +208,8 @@ function withoutHidden(category: ToolboxCategory, hide: ReadonlySet<string>): To
  * Creates the complete continuous-category toolbox specification for Scratch 3 opcodes.
  * If isStage is true, the Motion category is omitted. `kit` is the project's Hackable kit (missing means the
  * Platformer) and picks its palette (`paletteForKit`); `palette` overrides it (the kit's screens descriptor).
- * The Platformer's palette is exactly the one it has always had.
+ * The Platformer's palette is exactly the one it has always had. In a 3D palette the 3D category replaces Platformer
+ * and Motion gains go to x y z, change z by, set z to and z position.
  */
 export function createContinuousToolbox(
   context?: EditorContext,
@@ -446,20 +536,35 @@ export function createContinuousToolbox(
         { kind: 'block', type: 'platformer_setmover' },
         { kind: 'block', type: 'platformer_moveuntilhit', inputs: { DISTANCE: numShadow(5) } },
         { kind: 'block', type: 'platformer_hitsomething' },
+        { kind: 'block', type: 'platformer_whathit' },
+        { kind: 'block', type: 'platformer_slipcorner', inputs: { STEPS: numShadow(4) } },
+        { kind: 'block', type: 'platformer_movecarry', inputs: { DISTANCE: numShadow(2) } },
         { kind: 'block', type: 'platformer_tellhit' },
         { kind: 'block', type: 'platformer_setonground' },
       ],
     },
   ]
 
-  // Racing comes just before Platformer: a race brick's own blocks first, then the ones that move it.
-  if (palette.racing) allCategories.splice(allCategories.findIndex((cat) => cat.name === 'Platformer'), 0, racingCategory())
+  // In 3D, the 3D category takes Platformer's place, and Motion gains its z blocks.
+  if (palette.threeD) {
+    allCategories.splice(allCategories.findIndex((cat) => cat.name === 'Platformer'), 1, threeDCategory())
+    const motion = allCategories.findIndex((cat) => cat.name === 'Motion')
+    allCategories[motion] = withZ(allCategories[motion])
+  }
+  if (palette.game) {
+    // Start from nothing: one Game category where Platformer was.
+    const at = allCategories.findIndex((cat) => cat.name === 'Platformer')
+    allCategories.splice(at, 1, gameCategory(allCategories[at], racingCategory()))
+  } else if (palette.racing) {
+    // Racing comes just before Platformer (or 3D): a race brick's own blocks first, then the ones that move it.
+    allCategories.splice(allCategories.findIndex((cat) => cat.name === 'Platformer' || cat.name === '3D'), 0, racingCategory())
+  }
   const hide = new Set(palette.hide)
   const kitCategories = hide.size ? allCategories.map((cat) => withoutHidden(cat, hide)) : allCategories
 
-  // Motion, Platformer and Racing all act on a brick's body; the Stage has none of them.
+  // Motion, Platformer, Racing and 3D all act on a brick's body; the Stage has none of them.
   const contents = isStage
-    ? kitCategories.filter((cat) => cat.name !== 'Motion' && cat.name !== 'Platformer' && cat.name !== 'Racing')
+    ? kitCategories.filter((cat) => !BODY_CATEGORIES.has(cat.name))
     : kitCategories
 
   return {
@@ -467,6 +572,9 @@ export function createContinuousToolbox(
     contents,
   }
 }
+
+/** The categories that act on a brick's body, which the Stage has none of. */
+const BODY_CATEGORIES = new Set(['Motion', 'Platformer', 'Racing', '3D', 'Game'])
 
 /** Pre-built continuous toolbox configuration. */
 export const CONTINUOUS_TOOLBOX = createContinuousToolbox()

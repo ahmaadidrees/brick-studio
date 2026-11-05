@@ -4,7 +4,7 @@ import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
 import { KindChip } from '../../projects/ProjectSections'
 import { kindOfWorld } from '../../projects/projects'
-import { buildingCount, classmatesLabel, isInviteOnly, isLevel2d, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
+import { buildingCount, canPlayTogether, classmatesLabel, isInviteOnly, isLevel2d, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
  * Plate-pattern card art. There are no thumbnails, so the card shows the build
@@ -67,7 +67,7 @@ export function FormatChip({ world }: { world: WorldsWorld }) {
 export function SharingChip({ world }: { world: WorldsWorld }) {
   if (!isShared(world)) return null
   return <span className="worlds-chip-tag worlds-chip-shared">
-    <Users size={14} aria-hidden="true" /> Shared · {isInviteOnly(world) ? classmatesLabel(world.members?.length ?? 0) : world.format === 'hackable' ? 'play together' : sharedForBuilding(world) ? 'build together' : 'look only'}
+    <Users size={14} aria-hidden="true" /> Shared · {isInviteOnly(world) ? classmatesLabel(world.members?.length ?? 0) : canPlayTogether(world) ? 'play together' : sharedForBuilding(world) && world.format !== 'hackable' ? 'build together' : 'look only'}
   </span>
 }
 
@@ -109,8 +109,9 @@ export function InviteesChip({ world }: { world: WorldsWorld }) {
 }
 
 export function AccessChip({ world }: { world: WorldsWorld }) {
-  if (world.format === 'hackable') return <span className="worlds-chip-tag worlds-chip-build"><Users size={14} aria-hidden="true" /> Play together</span>
-  return world.canEdit
+  if (canPlayTogether(world)) return <span className="worlds-chip-tag worlds-chip-build"><Users size={14} aria-hidden="true" /> Play together</span>
+  // Hackable 3D has no rooms yet (D3): shared, it is look only.
+  return world.canEdit && world.format !== 'hackable'
     ? <span className="worlds-chip-tag worlds-chip-build"><Hammer size={14} aria-hidden="true" /> Build together</span>
     : <span className="worlds-chip-tag worlds-chip-look"><Eye size={14} aria-hidden="true" /> Look only</span>
 }

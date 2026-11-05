@@ -149,6 +149,23 @@ export function buildCamera(bounds: StageBounds, viewport: Viewport): Camera {
   return { x: bounds.left + viewWidth / 2, y: (bounds.bottom + bounds.top) / 2, viewWidth }
 }
 
+/**
+ * Pixels at the top of the stage that Build's view tools (Zoom in, Zoom out, Fit: stage.css `.stage-view-tools`, 12 px
+ * from the top, one 36 px row in a 6 px padded box) float over, plus a small gap.
+ */
+export const BUILD_TOOLS_INSET = 64
+
+/**
+ * The camera `make` would give, fitted below a band of `topInset` pixels at the top of the viewport instead of the
+ * whole of it, so nothing it frames sits under the floating view tools (Start from nothing's one-screen stage, whose
+ * top-right cells the Zoom buttons covered). The zoom comes from the shorter viewport; the view moves up by half the band.
+ */
+export function clearOfTop(make: (viewport: Viewport) => Camera, viewport: Viewport, topInset: number): Camera {
+  if (topInset <= 0 || viewport.height - topInset <= 0 || viewport.width <= 0) return make(viewport)
+  const camera = make({ width: viewport.width, height: viewport.height - topInset })
+  return { ...camera, y: camera.y + topInset / 2 / getCameraZoom(camera, viewport) }
+}
+
 /** Whether the whole level fits at a readable scale. */
 export function wholeLevelReadable(bounds: StageBounds, viewport: Viewport): boolean {
   return fitZoom(bounds, viewport) >= READABLE_MIN_ZOOM

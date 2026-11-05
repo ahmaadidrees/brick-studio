@@ -19,8 +19,12 @@ import { NO_HERO_MESSAGE, PLAY_CONTROLS_HINT } from './builder/playRules'
 import { TIPS_SEEN_KEY } from './screen/firstRunTips'
 import { RACE_COPY } from './race/raceCopy'
 import { raceDrawerActive, raceDrawerCategories, raceDrawerEntries, raceDrawerHint } from './race/raceDrawer'
+import { BLANK_COPY, BLANK_DRAWER_CATEGORIES, backdropOf, blankDrawerActive, blankDrawerEntries, createBlankProject } from './blank/blankProject'
+import { createStarter3dProject, PROJECT_NAME_3D } from './three/project3d'
 
-export type ScreensKit = 'platformer' | 'race'
+export type ScreensKit = 'platformer' | 'race' | 'blank' | '3d'
+/** What the Stage draws behind the level when it has no backdrop picture ('3d': the Stage slot is a three.js world). */
+export type StageBackground = 'sky' | 'grass' | 'paper' | 'night' | '3d'
 
 /** The words a kit's screens use. */
 export interface KitCopy {
@@ -59,8 +63,18 @@ export interface KitScreens {
   kit: ScreensKit
   /** A new project of this kit. */
   starter(): StudioProject
-  /** The brick the camera follows, Play needs and Code opens on (remixed copies count: isPlayerBrick). */
+  /**
+   * The brick the camera follows, Play needs and Code opens on (remixed copies count: isPlayerBrick). Empty for Start from
+   * nothing, whose player is the design's own `player` brick.
+   */
   playerBrickId: string
+  /** Play waits for a placed player (the Hero, the Car). Start from nothing plays without one, like Scratch. */
+  playNeedsPlayer: boolean
+  /**
+   * Start from nothing's screens (docs/qa/blank-2d): the empty-stage button, the next-step line instead of the tips,
+   * Borrow under the drawer, One thing / Tiles when naming a brick, the Stage card, and "Give it a job" on the card.
+   */
+  fromNothing: boolean
   drawer: KitDrawer
   /** Code's "Start from…" for a fresh brick: BRICK_TEMPLATES ids, in that list's order. */
   codeStarts: readonly string[]
@@ -68,10 +82,10 @@ export interface KitScreens {
   powers: boolean
   /** Code offers "Just this brick" (a small test room built around a helper Hero). */
   testRoom: boolean
-  /** The palette: a Racing category, and block types left out. */
-  toolbox: { racing: boolean; hide: readonly string[] }
-  /** What the Stage draws behind the level when it has no backdrop. */
-  background: 'sky' | 'grass'
+  /** The palette: a Racing category, the 3D category (in place of Platformer), block types left out, and Start from nothing's one Game category. */
+  toolbox: { racing: boolean; threeD?: boolean; hide: readonly string[]; game?: boolean }
+  /** What the Stage draws behind the level when it has no backdrop (Start from nothing: the design's, backgroundOf). */
+  background: StageBackground
   /** Play's follow camera width in steps; the Stage's own choice when missing. */
   followViewWidth?: number
   copy: KitCopy
@@ -99,6 +113,8 @@ export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {
     kit: 'platformer',
     starter: () => createStarterProject(),
     playerBrickId: 'brick_hero',
+    playNeedsPlayer: true,
+    fromNothing: false,
     drawer: {
       get categories() { return CATALOG_CATEGORIES },
       entries: (bricks) => drawerEntries(bricks),
@@ -119,6 +135,8 @@ export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {
     kit: 'race',
     starter: () => createRaceStarterProject(),
     playerBrickId: 'brick_car',
+    playNeedsPlayer: true,
+    fromNothing: false,
     drawer: {
       get categories() { return raceDrawerCategories() },
       entries: (bricks) => raceDrawerEntries(bricks),
@@ -133,13 +151,70 @@ export const KIT_SCREENS: Readonly<Record<ScreensKit, KitScreens>> = {
     background: 'grass',
     get copy() { return RACE_COPY },
   },
+  blank: {
+    kit: 'blank',
+    starter: () => createBlankProject(),
+    playerBrickId: '',
+    playNeedsPlayer: false,
+    fromNothing: true,
+    drawer: {
+      get categories() { return BLANK_DRAWER_CATEGORIES },
+      entries: (bricks) => blankDrawerEntries(bricks),
+      hint: () => undefined,
+      active: (brushBrickId, bricks) => blankDrawerActive(brushBrickId, bricks),
+    },
+    // "Start from…" offers the jobs instead (studio/blank/jobs.ts, CodeColumn).
+    codeStarts: [],
+    powers: true,
+    // The test room is built around a helper Hero; a game from nothing runs whole.
+    testRoom: false,
+    // Every Platformer and Racing block, in one Game category (core/editor/toolbox.ts).
+    toolbox: { racing: true, hide: [], game: true },
+    background: 'paper',
+    get copy() { return BLANK_COPY },
+  },
+  // Hackable 3D (D1, docs/qa/hackable-3d/D1.md). Its drawer, Stage, test room and HUD are React slots
+  // (screen/kitParts.tsx); the drawer data here is unused because the 3D drawer lists parts, not bricks.
+  '3d': {
+    kit: '3d',
+    starter: () => createStarter3dProject(),
+    playerBrickId: 'brick_hero3d',
+    playNeedsPlayer: true,
+    fromNothing: false,
+    drawer: { categories: [], entries: () => [], hint: () => undefined, active: () => null },
+    codeStarts: [],
+    powers: false,
+    testRoom: true,
+    // The 2D-only Platformer blocks: moving by your own sweep, the old hit flags, and setting "on ground" by hand.
+    toolbox: { racing: false, threeD: true, hide: ['platformer_setmover', 'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_tellhit', 'platformer_setonground', 'motion_ifonedgebounce'] },
+    background: '3d',
+    get copy() { return COPY_3D },
+  },
 }
 
-/** A design's screens. A kit with no screens yet (3D) gets the Platformer's; the studio refuses to open it anyway. */
-export const screensFor = (design: Pick<LevelDesign, 'kit'>): KitScreens => {
-  const kit = designKit(design)
-  return kit === 'race' ? KIT_SCREENS.race : KIT_SCREENS.platformer
+const COPY_3D: KitCopy = {
+  get projectName() { return PROJECT_NAME_3D },
+  player: 'Hero',
+  noPlayer: 'Place the Hero first: it is under Code bricks in the Bricks drawer.',
+  controlsHint: 'Arrows or WASD move, Space jumps, Shift or X runs, drag to look around',
+  followLabel: 'Follow the Hero',
+  tipsKey: 'brickgineers.hackable3d.tips',
+  tips: {
+    build: 'Pick a brick, then click a stud to place it. Drag to look around.',
+    buildPhone: 'Press Bricks, pick one, then tap a stud to place it.',
+    code: 'Open a code brick’s code. Change a number, then press Restart.',
+    codeSmall: 'On a bigger screen, open a code brick’s code.',
+    play: 'Press Play to try your world.',
+  },
+  helpPlay: 'Press Play to try your world. The arrow keys (or WASD) move, Space jumps, and Shift or X runs. Drag the world to turn the camera; the Hero walks the way the camera looks. Press Build to go back.',
 }
+
+/** A design's screens. */
+export const screensFor = (design: Pick<LevelDesign, 'kit'>): KitScreens => KIT_SCREENS[designKit(design)]
+
+/** What the Stage draws behind this design: the kit's, or the backdrop a Start from nothing game picked. */
+export const backgroundOf = (design: Pick<LevelDesign, 'kit' | 'backdrop'>): StageBackground =>
+  designKit(design) === 'blank' ? backdropOf(design) : screensFor(design).background
 
 /**
  * Is this brick the kit's player? Its own id, a remix of it ("My Car" remembers it was the Car), or a brick the kid
@@ -147,22 +222,28 @@ export const screensFor = (design: Pick<LevelDesign, 'kit'>): KitScreens => {
  */
 export function isPlayerBrick(design: LevelDesign, brickId: string): boolean {
   const brick = design.bricks.find((b) => b.id === brickId)
-  return !!brick && isPlayer(screensFor(design), brick)
+  return !!brick && isPlayer(design, brick)
 }
 
-function isPlayer(screens: KitScreens, brick: Pick<BrickDef, 'id' | 'name' | 'remixOf'>): boolean {
+/** Start from nothing names its player by id (`design.player`); the kits by their player brick, a remix or its name. */
+function isPlayer(design: Pick<LevelDesign, 'kit' | 'player'>, brick: Pick<BrickDef, 'id' | 'name' | 'remixOf'>): boolean {
+  if (designKit(design) === 'blank') return !!design.player && brick.id === design.player
+  const screens = screensFor(design)
   return brick.id === screens.playerBrickId || brick.remixOf === screens.playerBrickId || brick.name.trim().toLowerCase() === screens.copy.player.toLowerCase()
 }
 
 /** The first brick (in the level's order) that is the player, for the camera to follow. */
-export function playerBrickOf(design: Pick<LevelDesign, 'kit' | 'bricks'>): BrickDef | undefined {
-  const screens = screensFor(design)
-  return design.bricks.find((b) => isPlayer(screens, b))
+export function playerBrickOf(design: Pick<LevelDesign, 'kit' | 'bricks' | 'player'>): BrickDef | undefined {
+  return design.bricks.find((b) => isPlayer(design, b))
 }
 
 /** Play can start: a copy of the player is placed. */
 export function hasPlayer(design: LevelDesign): boolean {
-  const screens = screensFor(design)
-  const ids = new Set(design.bricks.filter((b) => isPlayer(screens, b)).map((b) => b.id))
+  const ids = new Set(design.bricks.filter((b) => isPlayer(design, b)).map((b) => b.id))
   return design.copies.some((c) => ids.has(c.brickId))
+}
+
+/** The player's id, for screens that need one: the design's own (Start from nothing) or the kit's player brick. */
+export function playerIdOf(design: Pick<LevelDesign, 'kit' | 'bricks' | 'player'>): string | undefined {
+  return designKit(design) === 'blank' ? design.player : screensFor(design).playerBrickId
 }

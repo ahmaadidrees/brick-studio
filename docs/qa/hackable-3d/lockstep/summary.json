@@ -1,0 +1,853 @@
+{
+  "ticks": 1800,
+  "bricks": 500,
+  "rejoinAt": 907,
+  "node": "v22.23.2",
+  "events": 1857,
+  "scenarios": {
+    "room, 500 bricks as scenery": {
+      "applied": [
+        "tick 300: Bounce pad: launch 15 → 20",
+        "tick 750: Build: a 2 × 4 brick dropped (501 bricks)"
+      ],
+      "totals": {
+        "bounces": 2,
+        "coins": 3,
+        "landings": 94
+      },
+      "d1": {
+        "riderTicks": 45,
+        "sentHome": 1,
+        "doorOpened": true,
+        "coinCollected": true
+      },
+      "runs": [
+        {
+          "engine": "Node v22.23.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.046,
+          "finalHash": "a5fd68718f4aa4db",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        },
+        {
+          "engine": "Node v22.23.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.026,
+          "finalHash": "a5fd68718f4aa4db",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.027,
+          "finalHash": "a5fd68718f4aa4db",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.03,
+          "finalHash": "a5fd68718f4aa4db",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 24,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 4.704033097329197,
+                "y": 0.18,
+                "z": 19.058119930395318
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        }
+      ],
+      "rejoin": {
+        "at": 907,
+        "snapshotBytes": 17190,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "room, 500 bricks as targets": {
+      "applied": [
+        "tick 300: Bounce pad: launch 15 → 20",
+        "tick 750: Build: a 2 × 4 brick dropped (501 bricks)"
+      ],
+      "totals": {
+        "bounces": 2,
+        "coins": 3,
+        "landings": 100
+      },
+      "d1": {
+        "riderTicks": 45,
+        "sentHome": 1,
+        "doorOpened": true,
+        "coinCollected": true
+      },
+      "runs": [
+        {
+          "engine": "Node v22.23.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.457,
+          "finalHash": "76f2a2ac0e8e89bd",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        },
+        {
+          "engine": "Node v22.23.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.397,
+          "finalHash": "76f2a2ac0e8e89bd",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.243,
+          "finalHash": "76f2a2ac0e8e89bd",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.217,
+          "finalHash": "76f2a2ac0e8e89bd",
+          "final": {
+            "coins": 0,
+            "bounces": 0,
+            "landings": 25,
+            "heroes": [
+              {
+                "player": 2,
+                "x": 1.2411332765629755,
+                "y": 1.8166666666666669,
+                "z": 17.79868170961366
+              }
+            ],
+            "d1": {
+              "d1_brick3d_pad": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": 3.7199999999999998,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_mover": {
+                "x": -5.551115123125783e-17,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_spinner": {
+                "x": -3.1,
+                "y": 0,
+                "z": 1.24,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_coin": {
+                "x": 0,
+                "y": 0.31,
+                "z": 1.55,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_goal": {
+                "x": -1.8599999999999999,
+                "y": 0,
+                "z": -2.48,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_button": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -1.8599999999999999,
+                "direction": 90,
+                "visible": true
+              },
+              "d1_brick3d_door": {
+                "x": 1.8599999999999999,
+                "y": 0,
+                "z": -3.41,
+                "direction": 90,
+                "visible": true
+              }
+            }
+          }
+        }
+      ],
+      "rejoin": {
+        "at": 907,
+        "snapshotBytes": 320635,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    }
+  },
+  "bench": [
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 0.978,
+      "tickAvgMs": 0.035,
+      "tickP95Ms": 0.067,
+      "copyAvgMs": 0.077,
+      "rewind10Ms": 0.66,
+      "fingerprintMs": 0.065,
+      "jsonMs": 0.112,
+      "jsonBytes": 15195
+    },
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 1.606,
+      "tickAvgMs": 0.03,
+      "tickP95Ms": 0.052,
+      "copyAvgMs": 0.069,
+      "rewind10Ms": 0.413,
+      "fingerprintMs": 0.074,
+      "jsonMs": 0.105,
+      "jsonBytes": 15198
+    },
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 511,
+      "playMs": 2.305,
+      "tickAvgMs": 0.368,
+      "tickP95Ms": 0.822,
+      "copyAvgMs": 2.132,
+      "rewind10Ms": 6.053,
+      "fingerprintMs": 2.344,
+      "jsonMs": 1.678,
+      "jsonBytes": 318529
+    },
+    {
+      "engine": "Node v22.23.2",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2011,
+      "playMs": 7.438,
+      "tickAvgMs": 1.634,
+      "tickP95Ms": 2.613,
+      "copyAvgMs": 8.453,
+      "rewind10Ms": 28.939,
+      "fingerprintMs": 9.379,
+      "jsonMs": 6.895,
+      "jsonBytes": 1237143
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 6.7,
+      "tickAvgMs": 0.053,
+      "tickP95Ms": 0.2,
+      "copyAvgMs": 0.076,
+      "rewind10Ms": 0.714,
+      "fingerprintMs": 0.092,
+      "jsonMs": 0.2,
+      "jsonBytes": 15195
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 2.3,
+      "tickAvgMs": 0.02,
+      "tickP95Ms": 0.1,
+      "copyAvgMs": 0.065,
+      "rewind10Ms": 0.386,
+      "fingerprintMs": 0.079,
+      "jsonMs": 0.1,
+      "jsonBytes": 15198
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 511,
+      "playMs": 2.9,
+      "tickAvgMs": 0.245,
+      "tickP95Ms": 0.4,
+      "copyAvgMs": 1.984,
+      "rewind10Ms": 4.271,
+      "fingerprintMs": 2.548,
+      "jsonMs": 1.8,
+      "jsonBytes": 318529
+    },
+    {
+      "engine": "Chrome",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2011,
+      "playMs": 5.6,
+      "tickAvgMs": 0.751,
+      "tickP95Ms": 1.1,
+      "copyAvgMs": 7.739,
+      "rewind10Ms": 15.186,
+      "fingerprintMs": 9.882,
+      "jsonMs": 6.1,
+      "jsonBytes": 1237143
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 29.1,
+      "tickAvgMs": 0.346,
+      "tickP95Ms": 1.3,
+      "copyAvgMs": 0.626,
+      "rewind10Ms": 4.671,
+      "fingerprintMs": 0.471,
+      "jsonMs": 1.2,
+      "jsonBytes": 15195
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 10.7,
+      "tickAvgMs": 0.202,
+      "tickP95Ms": 1.2,
+      "copyAvgMs": 0.57,
+      "rewind10Ms": 2.4,
+      "fingerprintMs": 0.449,
+      "jsonMs": 0.7,
+      "jsonBytes": 15198
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 511,
+      "playMs": 27.3,
+      "tickAvgMs": 1.704,
+      "tickP95Ms": 2.9,
+      "copyAvgMs": 11.535,
+      "rewind10Ms": 26.8,
+      "fingerprintMs": 14.24,
+      "jsonMs": 11.5,
+      "jsonBytes": 318529
+    },
+    {
+      "engine": "Chrome at 6× CPU slowdown",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2011,
+      "playMs": 34.8,
+      "tickAvgMs": 5.637,
+      "tickP95Ms": 8.6,
+      "copyAvgMs": 48.85,
+      "rewind10Ms": 103.7,
+      "fingerprintMs": 61.155,
+      "jsonMs": 35.7,
+      "jsonBytes": 1237143
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 500,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 5,
+      "tickAvgMs": 0.067,
+      "tickP95Ms": 1,
+      "copyAvgMs": 0.162,
+      "rewind10Ms": 0.571,
+      "fingerprintMs": 0.067,
+      "jsonMs": 1,
+      "jsonBytes": 15195
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 2000,
+      "mode": "scenery",
+      "targets": 11,
+      "playMs": 3,
+      "tickAvgMs": 0.027,
+      "tickP95Ms": 0,
+      "copyAvgMs": 0.108,
+      "rewind10Ms": 0.429,
+      "fingerprintMs": 0.057,
+      "jsonMs": 1,
+      "jsonBytes": 15198
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 500,
+      "mode": "targets",
+      "targets": 511,
+      "playMs": 3,
+      "tickAvgMs": 0.301,
+      "tickP95Ms": 1,
+      "copyAvgMs": 2.986,
+      "rewind10Ms": 6.571,
+      "fingerprintMs": 1.465,
+      "jsonMs": 1,
+      "jsonBytes": 318529
+    },
+    {
+      "engine": "WebKit",
+      "bricks": 2000,
+      "mode": "targets",
+      "targets": 2011,
+      "playMs": 4,
+      "tickAvgMs": 0.649,
+      "tickP95Ms": 1,
+      "copyAvgMs": 11.311,
+      "rewind10Ms": 18.429,
+      "fingerprintMs": 5.137,
+      "jsonMs": 5,
+      "jsonBytes": 1237143
+    }
+  ]
+}

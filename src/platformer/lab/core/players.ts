@@ -118,5 +118,7 @@ export function removePlayer(runtime: Runtime, num: number): void {
     const i = world.targets.indexOf(t)
     if (i >= 0) world.targets.splice(i, 1)
   }
+  // Everyone still here had finished, and was only waiting for this player: the round is over.
+  if (world.players.length && world.players.every((p) => p.finished !== undefined)) runtime.stopAll()
   runtime.syncThreadsToWorld()
 }

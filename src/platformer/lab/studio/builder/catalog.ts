@@ -7,6 +7,7 @@
 import type { BrickDef } from '../../core/contracts'
 import { catalogOriginal } from '../remix'
 import { GRID_BRICK_KEYS, gridBrickTemplate, type GridBrickKey, type GridBrickTemplate } from '../gridBricks'
+import { PLATFORMER_EXTRAS, extraBrick, extraOriginal } from '../builtins/extras'
 
 export type CatalogCategory = 'terrain' | 'blocks' | 'items' | 'critters' | 'course' | 'mine'
 
@@ -33,6 +34,8 @@ const BY_NAME: Record<string, CatalogCategory> = {
 /** Which drawer category a brick belongs in. */
 export function categoryForBrick(brick: Pick<BrickDef, 'name'> & Partial<Pick<BrickDef, 'id' | 'remixOf'>>): CatalogCategory {
   if (brick.remixOf || (brick.id && !isCatalogBrick(brick as BrickDef))) return 'mine'
+  const extra = brick.id ? extraBrick(brick.id) : undefined
+  if (extra && PLATFORMER_EXTRAS.includes(extra)) return extra.category as CatalogCategory
   return BY_NAME[brick.name.trim().toLowerCase().replace(/\s+\d+$/, '')] ?? 'mine'
 }
 
@@ -42,6 +45,10 @@ export const brickIdOf = (entryId: string) => entryId.slice('brick:'.length)
 export const gridEntryId = (key: string) => `grid:${key}`
 export const isGridEntry = (id: string) => id.startsWith('grid:')
 export const gridKeyOf = (entryId: string) => entryId.slice('grid:'.length) as GridBrickKey
+/** A built-in brick the level doesn't have yet (builtins/extras.ts): picking it adds it. */
+export const extraEntryId = (brickId: string) => `extra:${brickId}`
+export const isExtraEntry = (id: string) => id.startsWith('extra:')
+export const extraIdOf = (entryId: string) => entryId.slice('extra:'.length)
 
 const templates = new Map<GridBrickKey, GridBrickTemplate | null>()
 
@@ -118,10 +125,30 @@ export function drawerEntries(bricks: readonly BrickDef[]): DrawerEntry[] {
       hint: template.hint,
     })
   }
+  // The level's own bricks, then the Platformer's other built-in bricks (parity bucket B: the level's copy, or an offer
+  // to add one), then the kid's own bricks last, so the bricks kids know keep their places.
+  const extras: DrawerEntry[] = []
+  for (const extra of PLATFORMER_EXTRAS) {
+    const have = bricks.find((b) => b.id === extra.id && !b.remixOf)
+    if (have) used.add(have.id)
+    const original = extraOriginal(extra.id)!.brick
+    extras.push({
+      id: have ? brickEntryId(have.id) : extraEntryId(extra.id),
+      name: have?.name ?? original.name,
+      category: extra.category,
+      brick: have,
+      asset: (have ?? original).costumes[0]?.asset,
+      hint: extra.hint,
+    })
+  }
+  const mine: DrawerEntry[] = []
   for (const b of placeableBricks(bricks)) {
     if (used.has(b.id)) continue
-    out.push({ id: brickEntryId(b.id), name: b.name, category: b.grid ? 'mine' : categoryForBrick(b), brick: b, asset: b.costumes[0]?.asset })
+    const entry: DrawerEntry = { id: brickEntryId(b.id), name: b.name, category: b.grid ? 'mine' : categoryForBrick(b), brick: b, asset: b.costumes[0]?.asset }
+    if (entry.category === 'mine') mine.push(entry)
+    else out.push(entry)
   }
+  out.push(...extras, ...mine)
   return out
 }
 

@@ -81,6 +81,10 @@ const WORDS: Readonly<Record<string, KnobWords>> = {
   reverse_top: { hint: 'How fast I can reverse, as a share of my top speed.', min: 0, max: 1, step: 0.05 },
   reverse_from: { hint: 'How slow I must be before the brakes start reversing.', min: 0, max: 1, step: 0.05 },
   roll: { hint: 'Below this share of my top speed, I steer less.', min: 0.05, max: 1, step: 0.05 },
+  tires_bounce: { hint: 'How much speed a tire stack gives back. Low soaks it up.', min: 0, max: 1, step: 0.01 },
+  tires_keep: { hint: 'How much speed I keep sliding along a tire stack.', min: 0, max: 1, step: 0.05 },
+  bumper_push: { hint: 'How hard a bumper kicks me back.', min: 0, max: 12, step: 0.1 },
+  scenery_bounce: { hint: 'How much speed a tree or a grandstand gives back.', min: 0, max: 1, step: 0.05 },
 }
 
 /** "More sliders" for a driver, by CAR_KNOBS id. The four Build sliders are up front, not in a group. */
@@ -89,6 +93,7 @@ const GROUPS: ReadonlyArray<{ id: string; label: string; keys: readonly string[]
   { id: 'handling', label: 'Steering', keys: ['roll', 'bounce', 'side_keep'] },
   { id: 'ground', label: 'Grass, dirt and ice', keys: ['grass', 'grass_ease', 'dirt', 'ice_grip', 'ice_push'] },
   { id: 'boost', label: 'Boost pads', keys: ['boost', 'boost_ticks', 'ease'] },
+  { id: 'bumps', label: 'Bumping into things', keys: ['tires_bounce', 'tires_keep', 'bumper_push', 'scenery_bounce'] },
 ]
 
 export interface DriverKnobSpec {
