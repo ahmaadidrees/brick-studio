@@ -1,0 +1,271 @@
+{
+  "origin": "http://localhost:5273",
+  "steps": [
+    {
+      "name": "3D: the classic builder opens the 9-brick build",
+      "ok": true
+    },
+    {
+      "name": "3D: This project → Open in Hackable 3D makes a Hackable 3D copy",
+      "ok": true,
+      "detail": {
+        "url": "/3d/hackable?draft=hmw2o5i032fg6",
+        "kit": "3d",
+        "name": "My 3D world",
+        "scenery": 9,
+        "codeBricks": [
+          "Hero"
+        ]
+      }
+    },
+    {
+      "name": "3D: This project has no Play together",
+      "ok": true,
+      "detail": {
+        "playTogether": 0
+      }
+    },
+    {
+      "name": "3D: Play, the arrow keys and Space move the Hero",
+      "ok": true,
+      "detail": {
+        "from": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "to": {
+          "x": 0,
+          "y": 0,
+          "z": -3.9100946801211944
+        }
+      }
+    },
+    {
+      "name": "3D: saved, then reloaded: the same project",
+      "ok": true,
+      "detail": {
+        "chip": "Saved on this computerSaved on this computer",
+        "sameAddress": true,
+        "bytes": 4513
+      }
+    },
+    {
+      "name": "3D: no console errors",
+      "ok": true,
+      "detail": {
+        "ignored": 0
+      }
+    },
+    {
+      "name": "1366: the landing page shows all four games (Platformer, Racing, Start from nothing, 3D)",
+      "ok": true,
+      "detail": {
+        "platformer": 1,
+        "racing": 1,
+        "fromNothing": "/2d/hackable-blank?new=1",
+        "threeD": "/build"
+      }
+    },
+    {
+      "name": "1366: the Make a game picker shows the four games",
+      "ok": true,
+      "detail": {
+        "buttons": 7
+      }
+    },
+    {
+      "name": "1366: picker → Platformer: Start opens /2d/build",
+      "ok": true,
+      "detail": {
+        "classic": "/2d/build?new=1"
+      }
+    },
+    {
+      "name": "1366: picker → Platformer: code inside opens /2d/hackable",
+      "ok": true,
+      "detail": {
+        "kit": "platformer"
+      }
+    },
+    {
+      "name": "1366: picker → Racing: Start opens /2d/build",
+      "ok": true,
+      "detail": {
+        "classic": "/2d/build?new=1&kit=race-starter"
+      }
+    },
+    {
+      "name": "1366: picker → Racing: code inside opens /2d/hackable-race",
+      "ok": true,
+      "detail": {
+        "kit": "race"
+      }
+    },
+    {
+      "name": "1366: picker → 3D: Start opens /build",
+      "ok": true,
+      "detail": {
+        "classic": "/build"
+      }
+    },
+    {
+      "name": "1366: picker → 3D: code inside opens /3d/hackable",
+      "ok": true,
+      "detail": {
+        "kit": "3d"
+      }
+    },
+    {
+      "name": "1366: picker → From nothing opens /2d/hackable-blank",
+      "ok": true,
+      "detail": {
+        "kit": "blank"
+      }
+    },
+    {
+      "name": "1366: no console errors",
+      "ok": true
+    },
+    {
+      "name": "768: the landing page shows all four games (Platformer, Racing, Start from nothing, 3D)",
+      "ok": true,
+      "detail": {
+        "platformer": 1,
+        "racing": 1,
+        "fromNothing": "/2d/hackable-blank?new=1",
+        "threeD": "/build"
+      }
+    },
+    {
+      "name": "768: the Make a game picker shows the four games",
+      "ok": true,
+      "detail": {
+        "buttons": 7
+      }
+    },
+    {
+      "name": "768: picker → Platformer: Start opens /2d/build",
+      "ok": true,
+      "detail": {
+        "classic": "/2d/build?new=1"
+      }
+    },
+    {
+      "name": "768: picker → Platformer: code inside opens /2d/hackable",
+      "ok": true,
+      "detail": {
+        "kit": "platformer"
+      }
+    },
+    {
+      "name": "768: picker → Racing: Start opens /2d/build",
+      "ok": true,
+      "detail": {
+        "classic": "/2d/build?new=1&kit=race-starter"
+      }
+    },
+    {
+      "name": "768: picker → Racing: code inside opens /2d/hackable-race",
+      "ok": true,
+      "detail": {
+        "kit": "race"
+      }
+    },
+    {
+      "name": "768: picker → 3D: Start opens /build",
+      "ok": true,
+      "detail": {
+        "classic": "/build"
+      }
+    },
+    {
+      "name": "768: picker → 3D: code inside opens /3d/hackable",
+      "ok": true,
+      "detail": {
+        "kit": "3d"
+      }
+    },
+    {
+      "name": "768: picker → From nothing opens /2d/hackable-blank",
+      "ok": true,
+      "detail": {
+        "kit": "blank"
+      }
+    },
+    {
+      "name": "768: no console errors",
+      "ok": true
+    },
+    {
+      "name": "390: the landing page shows all four games (Platformer, Racing, Start from nothing, 3D)",
+      "ok": true,
+      "detail": {
+        "platformer": 1,
+        "racing": 1,
+        "fromNothing": "/2d/hackable-blank?new=1",
+        "threeD": "/build"
+      }
+    },
+    {
+      "name": "390: the Make a game picker shows the four games",
+      "ok": true,
+      "detail": {
+        "buttons": 7
+      }
+    },
+    {
+      "name": "390: picker → Platformer: Start opens /2d/build",
+      "ok": true,
+      "detail": {
+        "classic": "/2d/build?new=1"
+      }
+    },
+    {
+      "name": "390: picker → Platformer: code inside opens /2d/hackable",
+      "ok": true,
+      "detail": {
+        "kit": "platformer"
+      }
+    },
+    {
+      "name": "390: picker → Racing: Start opens /2d/build",
+      "ok": true,
+      "detail": {
+        "classic": "/2d/build?new=1&kit=race-starter"
+      }
+    },
+    {
+      "name": "390: picker → Racing: code inside opens /2d/hackable-race",
+      "ok": true,
+      "detail": {
+        "kit": "race"
+      }
+    },
+    {
+      "name": "390: picker → 3D: Start opens /build",
+      "ok": true,
+      "detail": {
+        "classic": "/build"
+      }
+    },
+    {
+      "name": "390: picker → 3D: code inside opens /3d/hackable",
+      "ok": true,
+      "detail": {
+        "kit": "3d"
+      }
+    },
+    {
+      "name": "390: picker → From nothing opens /2d/hackable-blank",
+      "ok": true,
+      "detail": {
+        "kit": "blank"
+      }
+    },
+    {
+      "name": "390: no console errors",
+      "ok": true
+    }
+  ]
+}

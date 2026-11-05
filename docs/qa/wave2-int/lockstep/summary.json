@@ -1,0 +1,1072 @@
+{
+  "ticks": 1800,
+  "rejoinAt": 900,
+  "node": "v26.8.2",
+  "kits": {
+    "platformer solo": {
+      "events": 644,
+      "keyEvents": 636,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [],
+      "applied": [
+        "tick 200: placed another brick_walker at x 234",
+        "tick 300: Stage: \"change coins by 1\" is now \"by 5\" (script stage_6)",
+        "tick 450: painted 3 Ground cells",
+        "tick 750: Hero: \"jump power\" x 1.3 on 1 copy",
+        "tick 820: Walker's code changed (its scripts restart) [restarted brick_walker]",
+        "tick 1300: the code change put back [restarted brick_walker]"
+      ],
+      "skipped": [],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.137,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 539,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "3a96e6b9f48dd7e6"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.118,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 539,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "3a96e6b9f48dd7e6"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.149,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 539,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "3a96e6b9f48dd7e6"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.11,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 539,
+                "y": 24
+              }
+            ]
+          },
+          "finalHash": "3a96e6b9f48dd7e6"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 115834,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "platformer room": {
+      "events": 1351,
+      "keyEvents": 1338,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 200: placed another brick_walker at x 234",
+        "tick 300: Stage: \"change coins by 1\" is now \"by 5\" (script stage_6)",
+        "tick 450: painted 3 Ground cells",
+        "tick 750: Hero: \"jump power\" x 1.3 on 3 copies",
+        "tick 820: Walker's code changed (its scripts restart) [restarted brick_walker]",
+        "tick 1300: the code change put back [restarted brick_walker]"
+      ],
+      "skipped": [],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.192,
+          "final": {
+            "coins": 11,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 120.25,
+                "y": 54.5
+              }
+            ]
+          },
+          "finalHash": "5abd95a0edd3445f"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.179,
+          "final": {
+            "coins": 11,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 120.25,
+                "y": 54.5
+              }
+            ]
+          },
+          "finalHash": "5abd95a0edd3445f"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.223,
+          "final": {
+            "coins": 11,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 120.25,
+                "y": 54.5
+              }
+            ]
+          },
+          "finalHash": "5abd95a0edd3445f"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.217,
+          "final": {
+            "coins": 11,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 120.25,
+                "y": 54.5
+              }
+            ]
+          },
+          "finalHash": "5abd95a0edd3445f"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 228581,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "race solo": {
+      "events": 679,
+      "keyEvents": 671,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [],
+      "applied": [
+        "tick 450: painted 3 Road cells",
+        "tick 750: Car: \"top speed\" x 1.3 on 1 copy",
+        "tick 820: Starter's code changed (its scripts restart) [restarted brick_starter]",
+        "tick 1300: the code change put back [restarted brick_starter]"
+      ],
+      "skipped": [
+        "tick 200: together place",
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.349,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 606.9308426974331,
+                "y": 69.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              }
+            ]
+          },
+          "finalHash": "2a1a414f5023b340"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.46,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 606.9308426974331,
+                "y": 69.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              }
+            ]
+          },
+          "finalHash": "2a1a414f5023b340"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.33,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 606.9308426974331,
+                "y": 69.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              }
+            ]
+          },
+          "finalHash": "2a1a414f5023b340"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.342,
+          "final": {
+            "players": [
+              {
+                "name": "Car",
+                "x": 606.9308426974331,
+                "y": 69.5
+              },
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              }
+            ]
+          },
+          "finalHash": "2a1a414f5023b340"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 569150,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "race room": {
+      "events": 1443,
+      "keyEvents": 1430,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 450: painted 3 Road cells",
+        "tick 750: Car: \"top speed\" x 1.3 on 3 copies",
+        "tick 820: Starter's code changed (its scripts restart) [restarted brick_starter]",
+        "tick 1300: the code change put back [restarted brick_starter]"
+      ],
+      "skipped": [
+        "tick 200: together place",
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.381,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              },
+              {
+                "name": "Car",
+                "x": 471.2938839884947,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "369b8991c079da42"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.498,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              },
+              {
+                "name": "Car",
+                "x": 471.2938839884947,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "369b8991c079da42"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.365,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              },
+              {
+                "name": "Car",
+                "x": 471.2938839884947,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "369b8991c079da42"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.458,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 394.32862879077277,
+                "y": 90.93258868694635
+              },
+              {
+                "name": "Computer racer",
+                "x": 339.81957921553357,
+                "y": 92.47629069964115
+              },
+              {
+                "name": "Car",
+                "x": 471.2938839884947,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "369b8991c079da42"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 625488,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "platformer + Parity B solo": {
+      "events": 644,
+      "keyEvents": 636,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [],
+      "applied": [
+        "tick 200: placed another brick_shellbug at x 704",
+        "tick 300: Stage: \"change coins by 1\" is now \"by 5\" (script stage_6)",
+        "tick 450: painted 3 Ground cells",
+        "tick 750: Hero: \"jump power\" x 1.3 on 1 copy",
+        "tick 820: Moving platform's code changed (its scripts restart) [restarted brick_platform]",
+        "tick 1300: the code change put back [restarted brick_platform]"
+      ],
+      "skipped": [],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.184,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 298.625,
+                "y": 69
+              },
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              }
+            ]
+          },
+          "finalHash": "f9d9a25376e170b6"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.172,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 298.625,
+                "y": 69
+              },
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              }
+            ]
+          },
+          "finalHash": "f9d9a25376e170b6"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.199,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 298.625,
+                "y": 69
+              },
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              }
+            ]
+          },
+          "finalHash": "f9d9a25376e170b6"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.195,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Hero",
+                "x": 298.625,
+                "y": 69
+              },
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              }
+            ]
+          },
+          "finalHash": "f9d9a25376e170b6"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 131584,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "platformer + Parity B room": {
+      "events": 1351,
+      "keyEvents": 1338,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 200: placed another brick_shellbug at x 704",
+        "tick 300: Stage: \"change coins by 1\" is now \"by 5\" (script stage_6)",
+        "tick 450: painted 3 Ground cells",
+        "tick 750: Hero: \"jump power\" x 1.3 on 3 copies",
+        "tick 820: Moving platform's code changed (its scripts restart) [restarted brick_platform]",
+        "tick 1300: the code change put back [restarted brick_platform]"
+      ],
+      "skipped": [],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.321,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              },
+              {
+                "name": "Hero",
+                "x": 515.90625,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "349c63b73d3fe42b"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.257,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              },
+              {
+                "name": "Hero",
+                "x": 515.90625,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "349c63b73d3fe42b"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.339,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              },
+              {
+                "name": "Hero",
+                "x": 515.90625,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "349c63b73d3fe42b"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.222,
+          "final": {
+            "coins": 1,
+            "players": [
+              {
+                "name": "Moving platform",
+                "x": 282,
+                "y": 120
+              },
+              {
+                "name": "Up-down platform",
+                "x": 760,
+                "y": 160
+              },
+              {
+                "name": "Hero",
+                "x": 515.90625,
+                "y": 40
+              }
+            ]
+          },
+          "finalHash": "349c63b73d3fe42b"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 242785,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "race + Parity B room": {
+      "events": 1443,
+      "keyEvents": 1430,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 450: painted 3 Road cells",
+        "tick 750: Car: \"top speed\" x 1.3 on 3 copies",
+        "tick 820: Starter's code changed (its scripts restart) [restarted brick_starter]",
+        "tick 1300: the code change put back [restarted brick_starter]"
+      ],
+      "skipped": [
+        "tick 200: together place",
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.434,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 422.9659963820659,
+                "y": 97.1514689088034
+              },
+              {
+                "name": "Computer racer",
+                "x": 270.1479513675112,
+                "y": 116.57285352128936
+              },
+              {
+                "name": "Car",
+                "x": 351.47398381179715,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "5956b116e0796c69"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.43,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 422.9659963820659,
+                "y": 97.1514689088034
+              },
+              {
+                "name": "Computer racer",
+                "x": 270.1479513675112,
+                "y": 116.57285352128936
+              },
+              {
+                "name": "Car",
+                "x": 351.47398381179715,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "5956b116e0796c69"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.494,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 422.9659963820659,
+                "y": 97.1514689088034
+              },
+              {
+                "name": "Computer racer",
+                "x": 270.1479513675112,
+                "y": 116.57285352128936
+              },
+              {
+                "name": "Car",
+                "x": 351.47398381179715,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "5956b116e0796c69"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.553,
+          "final": {
+            "players": [
+              {
+                "name": "Computer racer",
+                "x": 422.9659963820659,
+                "y": 97.1514689088034
+              },
+              {
+                "name": "Computer racer",
+                "x": 270.1479513675112,
+                "y": 116.57285352128936
+              },
+              {
+                "name": "Car",
+                "x": 351.47398381179715,
+                "y": 69.5
+              }
+            ]
+          },
+          "finalHash": "5956b116e0796c69"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 718797,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "blank solo": {
+      "events": 646,
+      "keyEvents": 636,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [],
+      "applied": [
+        "tick 200: placed another brick9 at x 404",
+        "tick 450: painted 3 Wall cells",
+        "tick 520: the backdrop changed",
+        "tick 750: Zip: \"speed\" x 1.3 on 1 copy",
+        "tick 820: Checkpoint's code changed (its scripts restart) [restarted brick8]",
+        "tick 1100: the backdrop changed",
+        "tick 1300: the code change put back [restarted brick8]"
+      ],
+      "skipped": [
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.044,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 472,
+                "y": 15.800000000000002
+              }
+            ]
+          },
+          "finalHash": "a1cebf5d67009334"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.038,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 472,
+                "y": 15.800000000000002
+              }
+            ]
+          },
+          "finalHash": "a1cebf5d67009334"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.048,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 472,
+                "y": 15.800000000000002
+              }
+            ]
+          },
+          "finalHash": "a1cebf5d67009334"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.053,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 472,
+                "y": 15.800000000000002
+              }
+            ]
+          },
+          "finalHash": "a1cebf5d67009334"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 29462,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    },
+    "blank room": {
+      "events": 1353,
+      "keyEvents": 1338,
+      "restarts": [
+        600,
+        1200
+      ],
+      "players": [
+        "join 1 @0",
+        "join 2 @100",
+        "join 3 @400",
+        "leave 3 @1000",
+        "leave 1 @1500"
+      ],
+      "applied": [
+        "tick 200: placed another brick9 at x 404",
+        "tick 450: painted 3 Wall cells",
+        "tick 520: the backdrop changed",
+        "tick 750: Zip: \"speed\" x 1.3 on 3 copies",
+        "tick 820: Checkpoint's code changed (its scripts restart) [restarted brick8]",
+        "tick 1100: the backdrop changed",
+        "tick 1300: the code change put back [restarted brick8]"
+      ],
+      "skipped": [
+        "tick 300: Stage: change by 1 → by 5 (nothing to change)"
+      ],
+      "runs": [
+        {
+          "engine": "Node v26.8.2",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.05,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 216,
+                "y": 153.1000000000001
+              }
+            ]
+          },
+          "finalHash": "fb9f61350b6b5519"
+        },
+        {
+          "engine": "Node v26.8.2 again",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.048,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 216,
+                "y": 153.1000000000001
+              }
+            ]
+          },
+          "finalHash": "fb9f61350b6b5519"
+        },
+        {
+          "engine": "Chrome 156.0.8078.80",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.054,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 216,
+                "y": 153.1000000000001
+              }
+            ]
+          },
+          "finalHash": "fb9f61350b6b5519"
+        },
+        {
+          "engine": "WebKit 26.5",
+          "matches": true,
+          "firstMismatchTick": null,
+          "stepMsPerTick": 0.062,
+          "final": {
+            "players": [
+              {
+                "name": "Zip",
+                "x": 216,
+                "y": 153.1000000000001
+              }
+            ]
+          },
+          "finalHash": "fb9f61350b6b5519"
+        }
+      ],
+      "mismatchExplain": {},
+      "rejoin": {
+        "snapshotBytes": 35200,
+        "matches": true,
+        "firstMismatchTick": null
+      }
+    }
+  }
+}
